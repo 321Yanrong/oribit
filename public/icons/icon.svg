@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="orbit-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00FFB3"/>
+      <stop offset="100%" style="stop-color:#00D9FF"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="#121212"/>
+  <ellipse cx="256" cy="256" rx="180" ry="100" fill="none" stroke="url(#orbit-gradient)" stroke-width="8" filter="url(#glow)" transform="rotate(-20 256 256)"/>
+  <ellipse cx="256" cy="256" rx="120" ry="60" fill="none" stroke="url(#orbit-gradient)" stroke-width="4" opacity="0.6" filter="url(#glow)" transform="rotate(15 256 256)"/>
+  <circle cx="256" cy="256" r="30" fill="url(#orbit-gradient)" filter="url(#glow)"/>
+  <circle cx="180" cy="200" r="12" fill="#FF9F43" filter="url(#glow)"/>
+  <circle cx="340" cy="300" r="12" fill="#00D9FF" filter="url(#glow)"/>
+  <circle cx="300" cy="180" r="8" fill="#FF6B6B" filter="url(#glow)"/>
+</svg>

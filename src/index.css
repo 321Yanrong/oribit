@@ -1,0 +1,144 @@
+/* 导入字体 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Orbit 轨迹 - 全局样式 */
+
+/* 基础样式 */
+@layer base {
+  * {
+    @apply box-border;
+  }
+  
+  html {
+    @apply antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    @apply bg-orbit-black text-white font-sans;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  /* 隐藏滚动条但保持滚动功能 */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 组件样式 */
+@layer components {
+  /* 毛玻璃效果 */
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+  
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5;
+  }
+  
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-xl;
+  }
+  
+  /* 发光效果 */
+  .glow-mint {
+    box-shadow: 0 0 10px rgba(0, 255, 179, 0.3),
+                0 0 20px rgba(0, 255, 179, 0.2),
+                0 0 30px rgba(0, 255, 179, 0.1);
+  }
+  
+  .glow-orange {
+    box-shadow: 0 0 10px rgba(255, 107, 53, 0.3),
+                0 0 20px rgba(255, 107, 53, 0.2),
+                0 0 30px rgba(255, 107, 53, 0.1);
+  }
+  
+  /* 地图光点动画 */
+  .pin-pulse {
+    animation: pinPulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes pinPulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.8;
+    }
+  }
+  
+  /* 渐变文字 */
+  .text-gradient-mint {
+    @apply bg-gradient-to-r from-orbit-mint to-emerald-400 bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-orange {
+    @apply bg-gradient-to-r from-orbit-orange to-amber-400 bg-clip-text text-transparent;
+  }
+  
+  /* 按钮样式 */
+  .btn-primary {
+    @apply px-6 py-3 bg-orbit-mint text-orbit-black font-semibold rounded-full 
+           transition-all duration-300 hover:bg-orbit-mint-dim 
+           active:scale-95 glow-mint;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 glass text-white font-medium rounded-full 
+           transition-all duration-300 hover:bg-white/10 active:scale-95;
+  }
+  
+  /* 输入框样式 */
+  .input-glass {
+    @apply w-full px-4 py-3 glass rounded-xl text-white placeholder-white/40
+           focus:outline-none focus:ring-2 focus:ring-orbit-mint/50
+           transition-all duration-300;
+  }
+  
+  /* 头像样式 */
+  .avatar {
+    @apply rounded-full object-cover ring-2 ring-white/20 transition-all duration-300;
+  }
+  
+  .avatar-active {
+    @apply ring-orbit-mint glow-mint;
+  }
+}
+
+/* 实用工具类 */
+@layer utilities {
+  /* 安全区域适配 */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  
+  /* 触摸反馈 */
+  .tap-effect {
+    @apply transition-transform duration-150 active:scale-95;
+  }
+  
+  /* 渐变背景 */
+  .bg-gradient-radial {
+    background: radial-gradient(circle at center, var(--tw-gradient-stops));
+  }
+  
+  /* 文字阴影 */
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+}
