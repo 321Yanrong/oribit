@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone } from 'react-icons/fa';
-import { useMemoryStore, useUserStore } from '../store';
+import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { createMemory, createLocation, createLedger } from '../api/supabase';
-import MediaUploader from '../components/MediaUploader';
+import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -697,6 +697,63 @@ const FriendSelector = ({
 };
 
 // 创建记忆弹窗
+// ── 账单相关类型 & 组件 ──────────────────────────────────────────
+interface LedgerItem {
+  id: string;
+  category: string;
+  note: string;
+  amount: string;
+}
+
+const CATEGORIES = ['🍜 饮食', '🏨 住宿', '🚗 交通', '🎢 娱乐', '🛍️ 购物', '💊 其他'];
+
+function CalcPad({
+  expr, onChange, onConfirm,
+}: { expr: string; onChange: (v: string) => void; onConfirm: (v: string) => void }) {
+  const evaluate = (e: string): string | null => {
+    try {
+      const safe = e.replace(/×/g, '*').replace(/÷/g, '/');
+      // eslint-disable-next-line no-new-func
+      const fn = new Function('"use strict"; return (' + safe + ')');
+      const result = fn();
+      if (typeof result === 'number' && isFinite(result) && result >= 0)
+        return parseFloat(result.toFixed(2)).toString();
+      return null;
+    } catch { return null; }
+  };
+  const press = (btn: string) => {
+    if (btn === 'C') { onChange(''); return; }
+    if (btn === '←') { onChange(expr.slice(0, -1)); return; }
+    if (btn === '=') { const r = evaluate(expr); if (r !== null) onConfirm(r); return; }
+    onChange(expr + btn);
+  };
+  const BTN_ROWS = [
+    ['7','8','9','÷'],
+    ['4','5','6','×'],
+    ['1','2','3','-'],
+    ['C','0','.', '+'],
+  ];
+  return (
+    <div className="bg-black/50 rounded-2xl p-3 space-y-2 border border-white/10">
+      <div className="text-right px-2 py-1 text-white font-mono text-xl min-h-[2.5rem] tracking-wide">{expr || '0'}</div>
+      {BTN_ROWS.map((row, ri) => (
+        <div key={ri} className="grid grid-cols-4 gap-1.5">
+          {row.map(btn => (
+            <button key={btn} type="button" onClick={() => press(btn)}
+              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
+                ['÷','×','-','+'].includes(btn) ? 'bg-[#FF9F43]/20 text-[#FF9F43] border border-[#FF9F43]/20' :
+                btn === 'C' ? 'bg-red-500/20 text-red-400' :
+                btn === '←' ? 'bg-white/10 text-white/60' :
+                'bg-white/10 text-white hover:bg-white/20'}`}>{btn}</button>
+          ))}
+        </div>
+      ))}
+      <button type="button" onClick={() => { const r = evaluate(expr); if (r !== null) onConfirm(r); }}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold">= 确认</button>
+    </div>
+  );
+}
+
 // 发布/编辑 记忆的通用弹窗 (双模超体版)
 // 发布/编辑 记忆的通用弹窗 (修复闭合版)
 const CreateMemoryModal = ({
@@ -746,9 +803,14 @@ const CreateMemoryModal = ({
   const [videos, setVideos] = useState<string[]>(editData?.videos || []);
   const [audios, setAudios] = useState<string[]>(editData?.audios || []);
   const [enableLedger, setEnableLedger] = useState(editData?.has_ledger || false);
-  const [amount, setAmount] = useState(editData?.ledger?.total_amount?.toString() || '');
-  const [ledgerDescription, setLedgerDescription] = useState(editData?.ledger?.description || '');
-  
+  const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>(() =>
+    editData?.ledger?.total_amount
+      ? [{ id: '1', category: '🍜 饮食', note: '', amount: String(editData.ledger.total_amount) }]
+      : [{ id: '1', category: '🍜 饮食', note: '', amount: '' }]
+  );
+  const [splitType, setSplitType] = useState<'personal' | 'equal'>('personal');
+  const [activeCalcId, setActiveCalcId] = useState<string | null>(null);
+
   const [memoryDate, setMemoryDate] = useState(() => {
     if (editData?.memory_date || editData?.created_at) {
       const d = new Date(editData.memory_date || editData.created_at);
@@ -762,6 +824,11 @@ const CreateMemoryModal = ({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const totalAmount = ledgerItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  const addLedgerItem = () => setLedgerItems(prev => [...prev, { id: Date.now().toString(), category: '💊 其他', note: '', amount: '' }]);
+  const removeLedgerItem = (id: string) => setLedgerItems(prev => prev.length > 1 ? prev.filter(i => i.id !== id) : prev);
+  const updateLedgerItem = (id: string, field: keyof LedgerItem, value: string) => setLedgerItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
+
   // 2. 逻辑处理
   const toggleFriend = (friendId: string) => {
     setSelectedFriends(prev => 
@@ -774,7 +841,8 @@ const CreateMemoryModal = ({
   };
   
   const handleSubmit = async () => {
-    if (!currentUser || !content.trim()) return;
+    const hasContent = content.trim().length > 0 || audios.length > 0 || photos.length > 0 || videos.length > 0;
+    if (!currentUser || !hasContent) return;
     setIsSubmitting(true);
     
     try {
@@ -802,27 +870,31 @@ const CreateMemoryModal = ({
           audios: audios,
           tagged_friends: selectedFriends,
           has_ledger: enableLedger,
-          ledger: enableLedger ? { 
-            total_amount: parseFloat(amount),
-            description: ledgerDescription
-          } : null
+          ledger: enableLedger ? { total_amount: totalAmount } : null
         });
         onSuccess();
         onClose();
         return;
       } else {
         // 新建模式
+        // 如果开启记账但未填金额，提示用户
+        if (enableLedger && totalAmount === 0) {
+          alert('已开启顺便记账，请先输入金额');
+          setIsSubmitting(false);
+          return;
+        }
         const memory = await createMemory(
-          currentUser.id, finalContent, new Date(memoryDate).toISOString(), locationId, photos, selectedFriends, videos, audios
+          currentUser.id, finalContent, new Date(memoryDate).toISOString(), locationId, photos, selectedFriends, videos, audios, enableLedger
         );
-        if (enableLedger && amount) {
-          await createLedger(
-            currentUser.id, 
-            parseFloat(amount), 
-            [], 
-            memory.id, 
-            ledgerDescription
-          );
+        if (enableLedger && totalAmount > 0) {
+          // 过滤虚拟好友（temp- 前缀），他们没有真实 auth UUID，不能存入 ledger_participants
+          const realFriendIds = selectedFriends.filter(id => !id.startsWith('temp-'));
+          const participants = splitType === 'equal' && realFriendIds.length > 0
+            ? [currentUser.id, ...realFriendIds].map(uid => ({ userId: uid, amount: totalAmount / (realFriendIds.length + 1) }))
+            : [{ userId: currentUser.id, amount: totalAmount }];
+          await createLedger(currentUser.id, totalAmount, participants, memory.id);
+          // 同步刷新账单列表
+          await useLedgerStore.getState().fetchLedgers();
         }
         await useMemoryStore.getState().fetchMemories();
       }
@@ -831,6 +903,7 @@ const CreateMemoryModal = ({
       onClose();
     } catch (error) {
       console.error('操作失败:', error);
+      alert(`发布失败：${(error as any)?.message || '请重试'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -844,7 +917,7 @@ const CreateMemoryModal = ({
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }} 
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl" 
+      className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-xl" 
       onClick={onClose}
     >
       <motion.div 
@@ -852,7 +925,7 @@ const CreateMemoryModal = ({
         animate={{ y: 0 }} 
         exit={{ y: '100%' }} 
         transition={{ type: 'spring', damping: 25, stiffness: 300 }} 
-        className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1a] border-t border-white/10 pb-10" 
+        className="absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1a] border-t border-white/10 pb-24" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* 标题栏 */}
@@ -861,7 +934,7 @@ const CreateMemoryModal = ({
           <span className="text-white font-semibold">{isEditMode ? '编辑回忆' : '记录此刻'}</span>
           <button 
             onClick={handleSubmit} 
-            disabled={!content.trim() || isSubmitting} 
+            disabled={(!content.trim() && audios.length === 0 && photos.length === 0 && videos.length === 0) || isSubmitting} 
             className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30"
           >
             {isSubmitting ? <FaSpinner className="animate-spin" /> : (isEditMode ? '保存修改' : '发布')}
@@ -931,11 +1004,28 @@ const CreateMemoryModal = ({
             />
           </div>
 
-          <textarea placeholder="写点什么..." value={content} onChange={(e) => setContent(e.target.value)} rows={4} className="w-full bg-transparent text-white outline-none resize-none text-lg" />
+          {/* 内容输入：文字 + 语音 */}
+          <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+            <textarea
+              placeholder="写点什么..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={4}
+              className="w-full bg-transparent text-white outline-none resize-none text-lg px-4 pt-4 pb-2"
+            />
+            <div className="border-t border-white/10 px-4 py-3">
+              <VoiceRecorder
+                userId={currentUser?.id || ''}
+                audios={audios}
+                onAudiosChange={setAudios}
+                compact
+              />
+            </div>
+          </div>
           
           <FriendSelector selectedFriends={selectedFriends} onToggle={toggleFriend} friends={friends} />
           
-          <MediaUploader userId={currentUser?.id || ''} photos={photos} videos={videos} audios={audios} onPhotosChange={setPhotos} onVideosChange={setVideos} onAudiosChange={setAudios} />
+          <MediaUploader userId={currentUser?.id || ''} photos={photos} videos={videos} onPhotosChange={setPhotos} onVideosChange={setVideos} />
           
           <div className="flex items-center justify-between py-4 border-t border-white/5">
             <div className="flex items-center gap-3">
@@ -948,24 +1038,94 @@ const CreateMemoryModal = ({
           </div>
           
           {enableLedger && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="text-white/60 text-xl">¥</span>
-                <input 
-                  type="number" 
-                  placeholder="金额" 
-                  value={amount} 
-                  onChange={(e) => setAmount(e.target.value)} 
-                  className="flex-1 bg-white/5 rounded-xl px-4 py-3 text-white text-2xl font-semibold outline-none border border-white/10" 
-                />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {/* 个人 / 均分 */}
+              <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+                {(['personal', 'equal'] as const).map(t => (
+                  <button key={t} type="button" onClick={() => setSplitType(t)}
+                    className={`flex-1 py-2 text-sm rounded-lg font-medium transition-all ${splitType === t ? 'bg-[#FF9F43] text-black' : 'text-white/50 hover:text-white'}`}>
+                    {t === 'personal' ? '👤 个人' : '👥 均分'}
+                  </button>
+                ))}
               </div>
-              <input 
-                type="text" 
-                placeholder="给这笔消费加个备注..." 
-                value={ledgerDescription} 
-                onChange={(e) => setLedgerDescription(e.target.value)} 
-                className="w-full bg-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none border border-white/10" 
-              />
+
+              {/* 消费项目列表 */}
+              {ledgerItems.map((item) => (
+                <div key={item.id} className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-2">
+                  {/* 类别 + 删除 */}
+                  <div className="flex items-center gap-1">
+                    <div className="flex gap-1 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none' }}>
+                      {CATEGORIES.map(cat => (
+                        <button key={cat} type="button" onClick={() => updateLedgerItem(item.id, 'category', cat)}
+                          className={`shrink-0 px-2 py-1 rounded-lg text-xs transition-all ${
+                            item.category === cat
+                              ? 'bg-[#FF9F43]/20 text-[#FF9F43] border border-[#FF9F43]/30'
+                              : 'bg-white/5 text-white/40 border border-transparent'
+                          }`}>{cat}</button>
+                      ))}
+                    </div>
+                    {ledgerItems.length > 1 && (
+                      <button type="button" onClick={() => removeLedgerItem(item.id)}
+                        className="shrink-0 p-1.5 text-white/30 hover:text-red-400 transition-colors">
+                        <FaTimes className="text-xs" />
+                      </button>
+                    )}
+                  </div>
+                  {/* 备注 + 金额按钮 */}
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="备注（选填）" value={item.note}
+                      onChange={e => updateLedgerItem(item.id, 'note', e.target.value)}
+                      className="flex-1 bg-white/5 rounded-xl px-3 py-2 text-white text-sm outline-none border border-white/10 placeholder-white/30" />
+                    <button type="button"
+                      onClick={() => setActiveCalcId(activeCalcId === item.id ? null : item.id)}
+                      className="shrink-0 min-w-[80px] flex items-center justify-end px-3 py-2 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20 text-[#FF9F43] font-mono font-bold text-sm">
+                      ¥{item.amount || '0'}
+                    </button>
+                  </div>
+                  {/* 计算器 */}
+                  {activeCalcId === item.id && (
+                    <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.15 }}>
+                      <CalcPad
+                        expr={item.amount}
+                        onChange={v => updateLedgerItem(item.id, 'amount', v)}
+                        onConfirm={v => { updateLedgerItem(item.id, 'amount', v); setActiveCalcId(null); }}
+                      />
+                    </motion.div>
+                  )}
+                </div>
+              ))}
+
+              {/* 添加项目 */}
+              <button type="button" onClick={addLedgerItem}
+                className="w-full py-2.5 rounded-xl border border-dashed border-white/20 text-white/40 text-sm flex items-center justify-center gap-1.5 hover:border-[#FF9F43]/40 hover:text-[#FF9F43] transition-colors">
+                <FaPlus className="text-xs" /> 添加项目
+              </button>
+
+              {/* 合计 */}
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20">
+                <span className="text-white/60 text-sm">合计</span>
+                <span className="text-[#FF9F43] font-bold text-xl">¥ {totalAmount.toFixed(2)}</span>
+              </div>
+
+              {/* 均分说明 */}
+              {splitType === 'equal' && selectedFriends.length > 0 && totalAmount > 0 && (
+                <div className="px-4 py-3 rounded-xl bg-white/5">
+                  <p className="text-white/40 text-xs mb-2">人均分摊</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {[currentUser?.id, ...selectedFriends].map((uid) => {
+                      const name = uid === currentUser?.id
+                        ? (currentUser?.username || '我')
+                        : (friends.find((f: any) => f.friend?.id === uid)?.friend?.username || '好友');
+                      const per = totalAmount / (selectedFriends.length + 1);
+                      return (
+                        <span key={uid} className="text-white/70 text-sm">
+                          {name} <span className="text-[#FF9F43] font-semibold">¥ {per.toFixed(2)}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </div>  
@@ -983,7 +1143,7 @@ export default function MemoryStreamPage() {
   const { currentUser } = useUserStore(); // 获取当前用户，用来判断是不是自己发的回忆
   const [editingMemory, setEditingMemory] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterFriendId, setFilterFriendId] = useState<string | null>(null);
+  const [filterFriendIds, setFilterFriendIds] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState<'date' | 'city'>('date');
 
   // 点赞 + 吐槽互动（本地持久化到 localStorage）
@@ -1035,9 +1195,9 @@ export default function MemoryStreamPage() {
   };
 
   const getMemoryAuthor = (userId: string) => {
-    if (userId === currentUser?.id) return { name: currentUser?.username || '我', avatar: currentUser?.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest' };
+    if (userId === currentUser?.id) return { name: currentUser?.username || '我', avatar: currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest' };
     const f = friends.find((f: any) => f.friend?.id === userId)?.friend;
-    return { name: f?.username || '好友', avatar: f?.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest' };
+    return { name: f?.username || '好友', avatar: f?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest' };
   };
 
   // 搜索 + 好友筛选
@@ -1050,11 +1210,16 @@ export default function MemoryStreamPage() {
         m.location?.name?.toLowerCase().includes(q)
       );
     }
-    if (filterFriendId) {
-      result = result.filter((m: any) => m.tagged_friends?.includes(filterFriendId));
+    if (filterFriendIds.length > 0) {
+      // AND 逻辑：所有选中的好友都出现在这条记忆里（包括发布者）
+      result = result.filter((m: any) =>
+        filterFriendIds.every(id =>
+          m.tagged_friends?.includes(id) || m.user_id === id
+        )
+      );
     }
     return result;
-  }, [memories, searchQuery, filterFriendId]);
+  }, [memories, searchQuery, filterFriendIds]);
 
   // 按日期分组
   const groupedMemories = useMemo(() => groupMemoriesByDate(filteredMemories), [filteredMemories]);
@@ -1088,7 +1253,7 @@ export default function MemoryStreamPage() {
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white leading-tight">回忆流</h1>
             <p className="text-white/40 text-xs mt-0.5">
-              {(searchQuery || filterFriendId) && filteredMemories.length !== memories.length
+              {(searchQuery || filterFriendIds.length > 0) && filteredMemories.length !== memories.length
                 ? `找到 ${filteredMemories.length} / ${memories.length} 条`
                 : `共 ${memories.length} 条记忆`}
             </p>
@@ -1128,27 +1293,33 @@ export default function MemoryStreamPage() {
           </button>
         </div>
 
-        {/* 好友筛选能 */}
+        {/* 好友筛选（支持多选，AND 逻辑：选中的好友必须同时出现） */}
         {friends.length > 0 && (
           <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
             <button
-              onClick={() => setFilterFriendId(null)}
+              onClick={() => setFilterFriendIds([])}
               className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
-                !filterFriendId ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
+                filterFriendIds.length === 0 ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
               }`}
             >全部</button>
-            {friends.map((f: any) => (
-              <button
-                key={f.friend.id}
-                onClick={() => setFilterFriendId(filterFriendId === f.friend.id ? null : f.friend.id)}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
-                  filterFriendId === f.friend.id ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
-                }`}
-              >
-                <img src={f.friend.avatar_url} className="w-3.5 h-3.5 rounded-full object-cover" />
-                {f.friend.username}
-              </button>
-            ))}
+            {friends.map((f: any) => {
+              const isSelected = filterFriendIds.includes(f.friend.id);
+              return (
+                <button
+                  key={f.friend.id}
+                  onClick={() => setFilterFriendIds(prev =>
+                    isSelected ? prev.filter(id => id !== f.friend.id) : [...prev, f.friend.id]
+                  )}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
+                    isSelected ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
+                  }`}
+                >
+                  <img src={f.friend.avatar_url} className="w-3.5 h-3.5 rounded-full object-cover" />
+                  {f.friend.username}
+                  {isSelected && <FaCheck className="text-[9px]" />}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1217,9 +1388,19 @@ export default function MemoryStreamPage() {
                       {photos.length >= 2 && photos.length <= 4 && (<div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>{photos.slice(0,4).map((p: string, i: number) => <img key={i} src={p} alt="" className="w-full h-36 rounded-xl object-cover" />)}</div>)}
                       {photos.length >= 5 && (<div className="px-4 pb-3 grid grid-cols-3 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>{photos.slice(0,6).map((p: string, i: number) => <div key={i} className="relative"><img src={p} alt="" className="w-full h-24 rounded-xl object-cover" />{i===5&&photos.length>6&&<div className="absolute inset-0 rounded-xl bg-black/60 flex items-center justify-center"><span className="text-white font-bold">+{photos.length-6}</span></div>}</div>)}</div>)}
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
-                        <div className="flex items-center gap-2 px-4 pb-3">
+                        <div className="px-4 pb-3 space-y-2">
                           {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/40 text-xs">🎥 {memory.videos.length}个视频</span>}
-                          {memory.audios?.length > 0 && <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00FFB3]/10 text-[#00FFB3] text-xs"><FaMicrophone className="text-xs" />{memory.audios.length}条语音</span>}
+                          {memory.audios?.length > 0 && (
+                            <div className="flex flex-col gap-1.5">
+                              {memory.audios.map((url: string, idx: number) => (
+                                <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#00FFB3]/5 border border-[#00FFB3]/20">
+                                  <FaMicrophone className="text-[#00FFB3] text-xs shrink-0" />
+                                  <audio src={url} controls className="flex-1 h-7 accent-[#00FFB3]" style={{ minWidth: 0 }} />
+                                  <span className="text-[#00FFB3]/60 text-[10px] shrink-0">{idx + 1}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                       {(memory.tagged_friends?.length > 0 || memory.has_ledger) && (
@@ -1344,11 +1525,21 @@ export default function MemoryStreamPage() {
                         </div>
                       )}
 
-                      {/* ── 视频/语音 标签 ── */}
+                      {/* ── 视频/语音 ── */}
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
-                        <div className="flex items-center gap-2 px-4 pb-3">
+                        <div className="px-4 pb-3 space-y-2">
                           {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/40 text-xs">🎥 {memory.videos.length}个视频</span>}
-                          {memory.audios?.length > 0 && <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00FFB3]/10 text-[#00FFB3] text-xs"><FaMicrophone className="text-xs" />{memory.audios.length}条语音</span>}
+                          {memory.audios?.length > 0 && (
+                            <div className="flex flex-col gap-1.5">
+                              {memory.audios.map((url: string, idx: number) => (
+                                <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#00FFB3]/5 border border-[#00FFB3]/20">
+                                  <FaMicrophone className="text-[#00FFB3] text-xs shrink-0" />
+                                  <audio src={url} controls className="flex-1 h-7 accent-[#00FFB3]" style={{ minWidth: 0 }} />
+                                  <span className="text-[#00FFB3]/60 text-[10px] shrink-0">{idx + 1}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1410,7 +1601,7 @@ export default function MemoryStreamPage() {
                             <div className="p-4 space-y-3">
                               {reaction.roasts.map((r: any, i: number) => (
                                 <div key={i} className="flex items-start gap-2">
-                                  <img src={currentUser?.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                                  <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
                                   <div className="flex-1 bg-white/5 rounded-2xl px-3 py-2">
                                     <p className="text-[#00FFB3] text-xs font-medium mb-0.5">{r.author}</p>
                                     <p className="text-white/70 text-sm">{r.text}</p>
@@ -1418,7 +1609,7 @@ export default function MemoryStreamPage() {
                                 </div>
                               ))}
                               <div className="flex items-center gap-2">
-                                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
                                 <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-2xl px-3 py-2 border border-white/10">
                                   <input
                                     type="text"

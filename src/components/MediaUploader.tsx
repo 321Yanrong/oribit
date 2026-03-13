@@ -2,20 +2,36 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaVideo, FaTimes, FaSpinner, FaPlay, FaMicrophone, FaStop, FaTrash, FaBolt } from 'react-icons/fa';
 
+const MAX_VIDEO_SIZE_MB = 30;
+const LIVE_MAX_SIZE_MB = 30;
+const UPLOAD_TIMEOUT_MS = 45000;
+
+const withTimeout = async <T,>(promise: Promise<T>, ms = UPLOAD_TIMEOUT_MS): Promise<T> => {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('上传超时，请检查网络后重试')), ms);
+  });
+  return Promise.race([promise, timeout]);
+};
+
+export interface VoiceRecorderProps {
+  userId: string;
+  audios: string[];
+  onAudiosChange: (urls: string[]) => void;
+  compact?: boolean;
+}
+
 interface MediaUploaderProps {
   userId: string;
   photos: string[];
   videos: string[];
-  audios?: string[];
   onPhotosChange: (urls: string[]) => void;
   onVideosChange: (urls: string[]) => void;
-  onAudiosChange?: (urls: string[]) => void;
 }
 
 // ── 语音录制器 ────────────────────────────────────────────────────
-function VoiceRecorder({
-  userId, audios, onAudiosChange,
-}: { userId: string; audios: string[]; onAudiosChange: (urls: string[]) => void }) {
+export function VoiceRecorder({
+  userId, audios, onAudiosChange, compact = false,
+}: VoiceRecorderProps) {
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -88,6 +104,38 @@ function VoiceRecorder({
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <motion.button
+            onClick={handleToggle}
+            animate={recording ? { scale: [1, 1.06, 1], transition: { repeat: Infinity, duration: 0.8 } } : {}}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium select-none ${recording ? 'bg-red-500 text-white' : uploading ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-[#00FFB3]/10 text-[#00FFB3] hover:bg-[#00FFB3]/20'}`}
+            disabled={uploading}
+          >
+            {uploading ? <FaSpinner className="text-xs animate-spin" /> : recording ? <FaStop className="text-xs" /> : <FaMicrophone className="text-xs" />}
+            <span>{uploading ? '上传中...' : recording ? `停止 ${fmt(elapsed)}` : '语音'}</span>
+          </motion.button>
+          {!recording && !uploading && <span className="text-white/30 text-xs">文字 / 语音 均可</span>}
+        </div>
+        {audios.length > 0 && (
+          <div className="space-y-1.5">
+            {audios.map((url, i) => (
+              <div key={url} className="flex items-center gap-2 p-2 rounded-xl bg-white/5">
+                <FaMicrophone className="text-[#00FFB3] text-xs shrink-0" />
+                <audio src={url} controls className="flex-1 h-7 accent-[#00FFB3]" />
+                <button onClick={() => onAudiosChange(audios.filter((_, j) => j !== i))} className="p-1 text-white/30 hover:text-red-400 transition-colors shrink-0">
+                  <FaTrash className="text-xs" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-center gap-4 py-6">
@@ -127,14 +175,26 @@ function LivePhotoUploader({
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || uploading) return;
-    const valid = Array.from(files).filter(f => f.type.startsWith('video/') || f.name.match(/\.(mov|mp4|heic|heif)$/i));
-    if (!valid.length) { alert('请选择 Live Photo 文件（.mov / .mp4 / .heic）'); return; }
+    const all = Array.from(files);
+    const valid = all.filter(f => f.type.startsWith('video/') || f.name.match(/\.(mov|mp4|webm)$/i));
+    if (!valid.length) {
+      alert('请选择 Live 视频文件（.mov / .mp4 / .webm）');
+      return;
+    }
+    const oversize = valid.find(f => f.size > LIVE_MAX_SIZE_MB * 1024 * 1024);
+    if (oversize) {
+      alert(`Live 文件不能超过 ${LIVE_MAX_SIZE_MB}MB`);
+      return;
+    }
     setUploading(true);
     try {
-      const { uploadMultipleVideos } = await import('../api/supabase');
-      const urls = await uploadMultipleVideos(userId, valid);
+      const { uploadVideo } = await import('../api/supabase');
+      const urls = await Promise.all(valid.map(file => withTimeout(uploadVideo(userId, file))));
       onLivePhotosChange([...livePhotos, ...urls]);
-    } catch { alert('Live 图上传失败，请重试'); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '未知错误';
+      alert(`Live 上传失败：${msg}`);
+    }
     finally { setUploading(false); }
   };
 
@@ -144,7 +204,7 @@ function LivePhotoUploader({
         {uploading ? <FaSpinner className="text-[#FFD700] text-3xl animate-spin" /> : (
           <>
             <div className="w-14 h-14 rounded-xl bg-[#FFD700]/20 flex items-center justify-center"><FaBolt className="text-[#FFD700] text-2xl" /></div>
-            <p className="text-white/50 text-sm text-center">点击上传 Live Photo<br /><span className="text-white/25 text-xs">支持 .mov / .heic / .mp4</span></p>
+            <p className="text-white/50 text-sm text-center">点击上传 Live Photo<br /><span className="text-white/25 text-xs">支持 .mov / .mp4 / .webm（≤30MB）</span></p>
           </>
         )}
       </div>
@@ -159,7 +219,7 @@ function LivePhotoUploader({
           ))}
         </div>
       )}
-      <input ref={inputRef} type="file" accept="video/*, .heic, .heif, .mov" multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
+      <input ref={inputRef} type="file" accept="video/*,.mov,.mp4,.webm" multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
     </div>
   );
 }
@@ -168,14 +228,12 @@ export default function MediaUploader({
   userId,
   photos,
   videos,
-  audios = [],
   onPhotosChange,
   onVideosChange,
-  onAudiosChange,
 }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [activeTab, setActiveTab] = useState<'photo' | 'video' | 'voice' | 'live'>('photo');
+  const [activeTab, setActiveTab] = useState<'photo' | 'video' | 'live'>('photo');
   const [livePhotos, setLivePhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -196,32 +254,38 @@ export default function MediaUploader({
       if (type === 'video' && !file.type.startsWith('video/')) {
         return false;
       }
+      if (type === 'video' && file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+        return false;
+      }
       return true;
     });
 
     if (validFiles.length === 0) {
-      alert(type === 'photo' ? '请选择图片文件' : '请选择视频文件');
+      alert(type === 'photo' ? '请选择图片文件' : `请选择视频文件（单条≤${MAX_VIDEO_SIZE_MB}MB）`);
       return;
     }
     setUploading(true);
     try {
       if (type === 'photo') {
-        const { uploadMultiplePhotos } = await import('../api/supabase');
-        const urls = await uploadMultiplePhotos(userId, validFiles);
+        const { uploadPhoto } = await import('../api/supabase');
+        const urls = await Promise.all(validFiles.map(file => withTimeout(uploadPhoto(userId, file))));
         onPhotosChange([...photos, ...urls]);
       } else {
-        const { uploadMultipleVideos } = await import('../api/supabase');
-        const urls = await uploadMultipleVideos(userId, validFiles);
+        const { uploadVideo } = await import('../api/supabase');
+        const urls = await Promise.all(validFiles.map(file => withTimeout(uploadVideo(userId, file))));
         onVideosChange([...videos, ...urls]);
       }
-    } catch { alert('上传失败，请重试'); }
+    } catch (err) {
+      console.error('Upload error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`上传失败：${msg}`);
+    }
     finally { setUploading(false); }
   };
 
   const tabs = [
     { key: 'photo' as const, label: '照片', count: photos.length, color: 'from-orbit-mint to-emerald-400', icon: <FaImage /> },
     { key: 'video' as const, label: '视频', count: videos.filter(v => !livePhotos.includes(v)).length, color: 'from-orbit-orange to-amber-400', icon: <FaVideo /> },
-    { key: 'voice' as const, label: '语音', count: audios.length, color: 'from-[#a855f7] to-[#7c3aed]', icon: <FaMicrophone /> },
     { key: 'live'  as const, label: 'Live', count: livePhotos.length, color: 'from-[#FFD700] to-[#FFA500]', icon: <FaBolt /> },
   ];
 
@@ -295,11 +359,6 @@ export default function MediaUploader({
           </div>
           <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={e => handleFileSelect(e.target.files, 'video')} />
         </>
-      )}
-
-      {/* ── 语音 ── */}
-      {activeTab === 'voice' && (
-        <VoiceRecorder userId={userId} audios={audios} onAudiosChange={onAudiosChange || (() => {})} />
       )}
 
       {/* ── Live 图 ── */}

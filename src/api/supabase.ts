@@ -6,6 +6,15 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
+const UPLOAD_TIMEOUT_MS = 45000
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs = UPLOAD_TIMEOUT_MS): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('上传超时，请检查网络后重试')), timeoutMs)
+  })
+  return Promise.race([promise, timeoutPromise])
+}
+
 // ==================== 照片上传 ====================
 
 export const uploadPhoto = async (
@@ -15,12 +24,14 @@ export const uploadPhoto = async (
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
   
-  const { error: uploadError } = await supabase.storage
-    .from('photos')
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false,
-    })
+  const { error: uploadError } = await withTimeout(
+    supabase.storage
+      .from('photos')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+  )
   
   if (uploadError) throw uploadError
   
@@ -65,12 +76,15 @@ export const uploadVideo = async (
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
   
-  const { error: uploadError } = await supabase.storage
-    .from('videos')
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false,
-    })
+  const { error: uploadError } = await withTimeout(
+    supabase.storage
+      .from('videos')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type || undefined,
+      })
+  )
   
   if (uploadError) throw uploadError
   
@@ -99,13 +113,15 @@ export const uploadAudio = async (
   const mimeType = blob.type || 'audio/webm'
   const ext = mimeType.includes('mp4') || mimeType.includes('aac') ? 'm4a' : 'webm'
   const fileName = `${userId}/${Date.now()}-voice.${ext}`
-  const { error: uploadError } = await supabase.storage
-    .from('videos') // reuse videos bucket (supports audio too)
-    .upload(fileName, blob, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: mimeType,
-    })
+  const { error: uploadError } = await withTimeout(
+    supabase.storage
+      .from('videos') // reuse videos bucket (supports audio too)
+      .upload(fileName, blob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: mimeType,
+      })
+  )
   if (uploadError) throw uploadError
   const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(fileName)
   return publicUrl
@@ -192,7 +208,8 @@ export const signIn = async (email: string, password: string) => {
 }
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut()
+  // local scope is faster and more reliable for SPA logout UX
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw error
 }
 
@@ -204,26 +221,42 @@ export const getCurrentUser = async () => {
 // ==================== 邀请码 & 虚拟好友绑定 ====================
 
 export const saveInviteCode = async (userId: string, inviteCode: string): Promise<void> => {
-  // 只在 invite_code 为空时写入，避免重复更新
-  const { error } = await supabase
+  console.log('[saveInviteCode] 尝试保存邀请码', { userId, inviteCode });
+  const { data, error } = await supabase
     .from('profiles')
     .update({ invite_code: inviteCode })
     .eq('id', userId)
-    .is('invite_code', null)
-  if (error) console.warn('保存邀请码失败:', error)
+    .select('id, invite_code')
+  if (error) {
+    console.error('[saveInviteCode] 保存失败:', JSON.stringify(error));
+  } else {
+    console.log('[saveInviteCode] 保存成功，返回数据:', JSON.stringify(data));
+  }
 }
 
 export const lookupProfileByInviteCode = async (inviteCode: string) => {
+  console.log('[lookupProfile] 查询邀请码:', inviteCode);
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url')
+    .select('id, username, avatar_url, invite_code')
     .eq('invite_code', inviteCode)
-    .single()
-  if (error || !data) throw new Error('未找到该邀请码对应的用户，请确认对方已注册并开启了 Orbit')
+    .maybeSingle()
+  console.log('[lookupProfile] 原始结果:', JSON.stringify({ data, error }));
+  if (error) throw new Error(`查询失败: ${JSON.stringify(error)}`)
+  if (!data) throw new Error('找不到该邀请码，请确认对方已登录过 Orbit（登录后邀请码才会生效）')
   return data
 }
 
 export const bindVirtualFriend = async (friendshipId: string, realUserId: string): Promise<void> => {
+  // 0. 先查出发起方（A 的 user_id），用于创建反向记录
+  const { data: existing, error: fetchErr } = await supabase
+    .from('friendships')
+    .select('user_id')
+    .eq('id', friendshipId)
+    .single();
+  if (fetchErr) throw fetchErr;
+  const ownerUserId = existing.user_id;
+
   // 1. 更新 friendships.friend_id 为真实用户 UUID，状态改为 accepted
   const { error: e1 } = await supabase
     .from('friendships')
@@ -231,12 +264,29 @@ export const bindVirtualFriend = async (friendshipId: string, realUserId: string
     .eq('id', friendshipId)
   if (e1) throw e1
 
-  // 2. 将所有打了该马甲标签的 memory_tags 更新为真实用户 ID
+  // 2. 为真实用户 B 创建反向记录（B → A），让 B 的好友列表也能看到 A
+  const { error: e3 } = await supabase
+    .from('friendships')
+    .insert({ user_id: realUserId, friend_id: ownerUserId, status: 'accepted' });
+  if (e3 && (e3 as any).code !== '23505') {
+    // 23505 = unique violation（已存在），可忽略；其余报错也只警告不中断
+    console.warn('[bindVirtualFriend] 创建反向关系失败:', (e3 as any).message);
+  }
+
+  // 3. 将所有打了该马甲标签的 memory_tags 更新为真实用户 ID
+  // virtual_friend_id 存的是 friendships.id
   const { error: e2 } = await supabase
     .from('memory_tags')
     .update({ user_id: realUserId, virtual_friend_id: null })
     .eq('virtual_friend_id', friendshipId)
-  if (e2) throw e2
+    .select()
+  if (e2) {
+    // virtual_friend_id 列不存在时会报错 — 说明需要先运行 SQL进行数据库升级
+    console.error('[bindVirtualFriend] memory_tags 同步失败（可能缺 virtual_friend_id 列）:', e2.message);
+    // 不抛出，允许 friendships 绑定步骤已成功
+  } else {
+    console.log(`[bindVirtualFriend] memory_tags 同步完成`);
+  }
 }
 
 export const getProfile = async (userId: string, userEmail?: string) => {
@@ -341,6 +391,7 @@ export const getMemories = async (userId: string) => {
 
   const formattedData = allMemories.map((memory: any) => ({
     ...memory,
+    is_owner: memory.user_id === userId,
     tagged_friends: [...new Set(
       (memory.tags?.map((t: any) =>
         t.user_id ? t.user_id : (t.virtual_friend_id ? `temp-${t.virtual_friend_id}` : null)
@@ -359,7 +410,8 @@ export const createMemory = async (
   photos?: string[],
   taggedFriends?: string[],
   videos?: string[],
-  audios?: string[]
+  audios?: string[],
+  hasLedger?: boolean
 ) => {
   // 创建记忆
   const { data: memory, error: memoryError } = await supabase
@@ -372,6 +424,7 @@ export const createMemory = async (
       photos: photos || [],
       videos: videos || [],
       audios: audios || [],
+      has_ledger: hasLedger || false,
     })
     .select()
     .single()
@@ -434,7 +487,7 @@ export const createLedger = async (
   totalAmount: number,
   participants: { userId: string; amount: number }[],
   memoryId?: string,
-  description?: string
+  expenseType: 'shared' | 'personal' = 'shared'
 ) => {
   // 创建账单
   const { data: ledger, error: ledgerError } = await supabase
@@ -443,9 +496,9 @@ export const createLedger = async (
       creator_id: creatorId,
       total_amount: totalAmount,
       memory_id: memoryId,
-      description: description || '日常消费',
-      currency: 'RMB', 
+      currency: 'RMB',
       status: 'pending',
+      expense_type: expenseType,
     })
     .select()
     .single()
@@ -477,16 +530,52 @@ export const getLedgers = async (userId: string) => {
     .from('ledgers')
     .select(`
       *,
-      participants:ledger_participants(
-        *,
-        user:profiles(*)
-      )
+      participants:ledger_participants(*)
     `)
-    .or(`creator_id.eq.${userId},ledger_participants.user_id.eq.${userId}`)
+    .eq('creator_id', userId)
     .order('created_at', { ascending: false })
   
   if (error) throw error
   return data
+}
+
+export const updateLedger = async (
+  ledgerId: string,
+  creatorId: string,
+  totalAmount: number,
+  participants: { userId: string; amount: number }[],
+  memoryId?: string,
+  expenseType: 'shared' | 'personal' = 'shared'
+) => {
+  // 1. 更新账单主表
+  const { error: ledgerError } = await supabase
+    .from('ledgers')
+    .update({
+      total_amount: totalAmount,
+      memory_id: memoryId,
+      expense_type: expenseType,
+    })
+    .eq('id', ledgerId)
+  if (ledgerError) throw ledgerError
+
+  // 2. 删除旧的参与者再重新插入
+  await supabase.from('ledger_participants').delete().eq('ledger_id', ledgerId)
+  if (participants.length > 0) {
+    const records = participants.map(p => ({
+      ledger_id: ledgerId,
+      user_id: p.userId,
+      amount: p.amount,
+      paid: p.userId === creatorId,
+      paid_at: p.userId === creatorId ? new Date().toISOString() : null,
+    }))
+    const { error: pErr } = await supabase.from('ledger_participants').insert(records)
+    if (pErr) throw pErr
+  }
+}
+
+export const deleteLedger = async (ledgerId: string): Promise<void> => {
+  const { error } = await supabase.from('ledgers').delete().eq('id', ledgerId)
+  if (error) throw error
 }
 
 // ==================== 结算相关 ====================
@@ -545,18 +634,97 @@ export const deleteFriendship = async (friendshipId: string): Promise<void> => {
   if (error) throw error;
 };
 
-// 通过邀请码直接添加已注册好友（不需要先建临时好友）
+// 好友备注更新
+export const updateFriendRemark = async (friendshipId: string, remark: string): Promise<void> => {
+  const { error } = await supabase
+    .from('friendships')
+    .update({ remark: remark || null } as any)
+    .eq('id', friendshipId)
+  if (error) throw error
+}
+
+// 通过邀请码发送好友申请（对方需要接受）
 export const addRealFriendByCode = async (currentUserId: string, inviteCode: string): Promise<any> => {
   const profile = await lookupProfileByInviteCode(inviteCode);
+
+  if (profile.id === currentUserId) throw new Error('不能添加自己为好友');
+
+  // 检查是否已经是好友或已发过申请
+  const { data: existing } = await supabase
+    .from('friendships')
+    .select('id, status')
+    .or(`and(user_id.eq.${currentUserId},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${currentUserId})`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === 'accepted') throw new Error(`已经是 ${profile.username} 的好友了`);
+    if (existing.status === 'pending') throw new Error('好友申请已发送，等待对方确认');
+  }
+
   const { error } = await supabase
     .from('friendships')
     .insert({
       user_id: currentUserId,
       friend_id: profile.id,
-      status: 'friends',
+      status: 'pending',
     });
   if (error) throw error;
   return profile;
+};
+
+// 获取收到的好友申请（status = 'pending'，friend_id = 自己）
+export const getPendingFriendRequests = async (userId: string): Promise<any[]> => {
+  // Step 1: 获取所有发给自己的 pending 记录
+  const { data, error } = await supabase
+    .from('friendships')
+    .select('id, user_id, created_at')
+    .eq('friend_id', userId)
+    .eq('status', 'pending');
+
+  if (error) {
+    console.error('[getPendingFriendRequests] error:', error.message);
+    return [];
+  }
+  if (!data || data.length === 0) return [];
+
+  // Step 2: 批量查申请人的 profile（friendships.user_id → profiles.id）
+  const requesterIds = data.map((r: any) => r.user_id);
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url')
+    .in('id', requesterIds);
+
+  const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+  return data.map((r: any) => ({
+    ...r,
+    requester: profileMap.get(r.user_id) || null,
+  }));
+};
+
+// 接受好友申请：把发起方记录改为 accepted，再插一条反向记录
+export const acceptFriendRequest = async (friendshipId: string, requesterId: string, currentUserId: string): Promise<void> => {
+  // 1. 更新申请方那条记录
+  const { error: e1 } = await supabase
+    .from('friendships')
+    .update({ status: 'accepted' })
+    .eq('id', friendshipId);
+  if (e1) throw e1;
+
+  // 2. 创建反向记录（让双方都能在自己的好友列表看到对方）
+  const { error: e2 } = await supabase
+    .from('friendships')
+    .insert({ user_id: currentUserId, friend_id: requesterId, status: 'accepted' });
+  if (e2 && e2.code !== '23505') throw e2; // 23505 = unique violation → already exists, OK
+};
+
+// 拒绝 / 忽略好友申请
+export const rejectFriendRequest = async (friendshipId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('friendships')
+    .delete()
+    .eq('id', friendshipId);
+  if (error) throw error;
 };
 
 // ==================== 记忆删除 ====================

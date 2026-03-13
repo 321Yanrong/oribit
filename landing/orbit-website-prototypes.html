@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbit 网站原型（Figma Frames）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      * { font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+      body { background:#f4f4f4; }
+      .frame {
+        width: 1440px;
+        min-height: 1024px;
+        margin: 48px auto;
+        background: #fff;
+        border: 1px solid #111;
+        box-shadow: 0 24px 60px rgba(0,0,0,.12);
+        position: relative;
+        overflow: hidden;
+      }
+      .ink { color:#111; }
+      .line {
+        border: 2px solid #111;
+        border-radius: 28px;
+        background: #fff;
+      }
+      .doodle {
+        border: 2px dashed #111;
+        border-radius: 999px;
+        opacity: .5;
+      }
+      .phone {
+        width: 210px;
+        height: 478px; /* 24px header + 210*(844/390)=454px screen = 478px total */
+        border: 4px solid #111;
+        border-radius: 34px;
+        overflow: hidden;
+        background: #0d0d0d;
+        box-shadow: 0 16px 28px rgba(0,0,0,.22);
+        flex-shrink: 0;
+      }
+      .phone-header {
+        height: 24px;
+        border-bottom: 2px solid #111;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size: 10px;
+        font-weight: 700;
+        background:#fff;
+        color:#111;
+      }
+      .shot {
+        width:100%;
+        height:calc(100% - 24px);
+        object-fit: cover;
+        object-position: top center;
+      }
+      .sticker {
+        border:2px solid #111;
+        border-radius: 999px;
+        background:#fff;
+        padding: .35rem .9rem;
+        font-size: 13px;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="max-w-[1500px] mx-auto px-4 py-10">
+      <div class="mb-8 text-center text-gray-600">
+        <p class="text-sm">用于导入 Figma 的高保真静态原型（单文件，多画板）</p>
+        <p class="text-xs mt-1">推荐导出尺寸：每张 1440 × 1024</p>
+      </div>
+
+      <!-- Frame 01: Hero -->
+      <section class="frame p-16" id="frame-hero">
+        <div class="absolute top-8 left-8 sticker">01 / Hero 首屏</div>
+        <div class="absolute -top-20 -left-16 w-72 h-72 doodle"></div>
+        <div class="absolute bottom-10 right-10 w-60 h-60 doodle"></div>
+
+        <header class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+                <!-- Orbit ring (back, drawn first) -->
+                <ellipse cx="50" cy="50" rx="46" ry="16" fill="none" stroke="#111" stroke-width="3" transform="rotate(-15 50 50)"/>
+                <!-- Left floppy ear -->
+                <ellipse cx="31" cy="43" rx="10" ry="15" fill="white" stroke="#111" stroke-width="3" transform="rotate(-22 31 43)"/>
+                <!-- Right floppy ear -->
+                <ellipse cx="69" cy="43" rx="10" ry="15" fill="white" stroke="#111" stroke-width="3" transform="rotate(22 69 43)"/>
+                <!-- Dog head -->
+                <circle cx="50" cy="57" r="23" fill="white" stroke="#111" stroke-width="3"/>
+                <!-- Happy eyes (curved arcs) -->
+                <path d="M 38 53 Q 42 47 46 53" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M 54 53 Q 58 47 62 53" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+                <!-- Nose -->
+                <ellipse cx="50" cy="63" rx="3.5" ry="2.5" fill="#111"/>
+                <!-- Smile -->
+                <path d="M 43 69 Q 50 76 57 69" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
+                <!-- Satellite dot on orbit (upper right, outside dog) -->
+                <circle cx="91" cy="37" r="4" fill="#111"/>
+              </svg>
+            </div>
+            <span class="text-2xl font-black ink">Orbit 轨迹</span>
+          </div>
+          <nav class="flex items-center gap-6 text-sm font-bold ink">
+            <span>功能</span><span>流程</span><span>好友系统</span><span>下载</span>
+          </nav>
+        </header>
+
+        <div class="grid grid-cols-2 gap-10 mt-14 items-center">
+          <div>
+            <div class="inline-flex items-center gap-2 line px-4 py-2 mb-6">
+              <i class="fa-solid fa-sparkles"></i>
+              <span class="text-sm font-extrabold">记录与好友的每一个足迹</span>
+            </div>
+            <h1 class="text-[68px] leading-[1.05] font-black ink">把回忆、地图、账单<br/>装进同一个小宇宙</h1>
+            <p class="mt-6 text-[22px] leading-relaxed text-gray-700 max-w-xl">
+              一款给普通用户的可爱生活记录 App：
+              和朋友一起打卡、记照片、分账单，
+              还能玩小游戏，轻松又治愈。
+            </p>
+            <div class="mt-10 flex items-center gap-4">
+              <button class="line px-8 py-4 text-lg font-black ink"><i class="fa-brands fa-apple mr-2"></i> iOS 下载</button>
+              <button class="line px-8 py-4 text-lg font-black ink"><i class="fa-brands fa-android mr-2"></i> Android 下载</button>
+            </div>
+            <div class="mt-7 flex gap-3">
+              <span class="sticker">白底黑线·可爱风</span>
+              <span class="sticker">私密小圈子</span>
+              <span class="sticker">超轻量上手</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-6 relative py-6">
+            <div class="phone rotate-[-6deg] translate-y-4">
+              <div class="phone-header">地图页</div>
+              <img class="shot" src="screenshots/app/map.png" alt="地图页" />
+            </div>
+            <div class="phone z-10">
+              <div class="phone-header">记忆流</div>
+              <img class="shot" src="screenshots/app/memory.png" alt="记忆流" />
+            </div>
+            <div class="phone rotate-[6deg] translate-y-4">
+              <div class="phone-header">小游戏</div>
+              <img class="shot" src="screenshots/app/games.png" alt="小游戏" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 02: Features -->
+      <section class="frame p-16" id="frame-features">
+        <div class="absolute top-8 left-8 sticker">02 / 核心功能展示</div>
+        <div class="text-center mt-10">
+          <h2 class="text-6xl font-black ink">四个模块，一站式记录</h2>
+          <p class="mt-4 text-2xl text-gray-700">地图、记忆、账单、小游戏，陪你把日常变成有温度的故事</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 mt-14">
+          <article class="line p-7">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-3xl font-black"><i class="fa-solid fa-map-location-dot mr-2"></i> 地图</h3>
+              <span class="sticker">共同足迹</span>
+            </div>
+            <img src="screenshots/app/map.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="地图功能" />
+            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 按好友筛选回忆地点</li>
+              <li>• 点击地图点位查看细节</li>
+              <li>• 城市级汇总共同记忆</li>
+            </ul>
+          </article>
+
+          <article class="line p-7">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-3xl font-black"><i class="fa-solid fa-images mr-2"></i> 记忆</h3>
+              <span class="sticker">图文胶囊</span>
+            </div>
+            <img src="screenshots/app/memory.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="记忆功能" />
+            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 一键记录照片、地点、文字</li>
+              <li>• @ 好友形成共享回忆</li>
+              <li>• 支持回忆流快速浏览</li>
+            </ul>
+          </article>
+
+          <article class="line p-7">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-3xl font-black"><i class="fa-solid fa-wallet mr-2"></i> 账单</h3>
+              <span class="sticker">智能分摊</span>
+            </div>
+            <img src="screenshots/app/ledger.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="账单功能" />
+            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 和回忆卡片绑定，避免漏单</li>
+              <li>• 自动计算谁该付多少</li>
+              <li>• 已结清状态清晰可见</li>
+            </ul>
+          </article>
+
+          <article class="line p-7">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-3xl font-black"><i class="fa-solid fa-gamepad mr-2"></i> 游戏</h3>
+              <span class="sticker">聚会破冰</span>
+            </div>
+            <img src="screenshots/app/games.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="游戏功能" />
+            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 骰子、转盘、连连看等内置小游戏</li>
+              <li>• 适合聚会、旅行、约会场景</li>
+              <li>• 轻松活跃气氛，不尴尬</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <!-- Frame 03: How it works -->
+      <section class="frame p-16" id="frame-how">
+        <div class="absolute top-8 left-8 sticker">03 / 用户使用流程（How it works）</div>
+
+        <div class="mt-10 text-center">
+          <h2 class="text-6xl font-black">三步开始你的 Orbit 旅程</h2>
+          <p class="mt-4 text-2xl text-gray-700">流程清晰，普通用户也能零学习成本上手</p>
+        </div>
+
+        <div class="mt-16 grid grid-cols-3 gap-8">
+          <article class="line p-8 relative">
+            <span class="absolute -top-5 left-6 sticker">STEP 1</span>
+            <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl">
+              <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <h3 class="text-3xl font-black mt-6">创建账号 & 添加好友</h3>
+            <p class="mt-4 text-xl text-gray-700 leading-relaxed">注册后可先添加虚拟好友，后续一键绑定真人账号，不会丢失历史回忆。</p>
+            <img src="screenshots/app/profile.png" class="mt-5 h-64 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="step1" />
+          </article>
+
+          <article class="line p-8 relative">
+            <span class="absolute -top-5 left-6 sticker">STEP 2</span>
+            <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl">
+              <i class="fa-solid fa-camera-retro"></i>
+            </div>
+            <h3 class="text-3xl font-black mt-6">记录当天的回忆</h3>
+            <p class="mt-4 text-xl text-gray-700 leading-relaxed">上传照片、写一句话、定位地点并 @ 同行好友，回忆立刻沉淀到地图和记忆流。</p>
+            <img src="screenshots/app/memory.png" class="mt-5 h-64 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="step2" />
+          </article>
+
+          <article class="line p-8 relative">
+            <span class="absolute -top-5 left-6 sticker">STEP 3</span>
+            <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl">
+              <i class="fa-solid fa-receipt"></i>
+            </div>
+            <h3 class="text-3xl font-black mt-6">分账 & 轻松结算</h3>
+            <p class="mt-4 text-xl text-gray-700 leading-relaxed">在回忆中附带账单，系统自动均摊，谁该给谁一目了然，避免社交尴尬。</p>
+            <img src="screenshots/app/ledger.png" class="mt-5 h-64 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="step3" />
+          </article>
+        </div>
+
+        <div class="mt-12 flex items-center justify-center gap-6 text-2xl font-black">
+          <span class="line px-6 py-3">创建</span>
+          <i class="fa-solid fa-arrow-right-long"></i>
+          <span class="line px-6 py-3">记录</span>
+          <i class="fa-solid fa-arrow-right-long"></i>
+          <span class="line px-6 py-3">结算</span>
+        </div>
+      </section>
+
+      <!-- Frame 04: Friend system -->
+      <section class="frame p-16" id="frame-friend-system">
+        <div class="absolute top-8 left-8 sticker">04 / 好友系统介绍</div>
+
+        <div class="mt-10 text-center">
+          <h2 class="text-6xl font-black">虚拟好友 → 绑定真人账号</h2>
+          <p class="mt-4 text-2xl text-gray-700">先记录，后绑定；历史回忆自动继承，不用重建关系</p>
+        </div>
+
+        <div class="mt-14 grid grid-cols-12 gap-8 items-stretch">
+          <div class="col-span-5 line p-8">
+            <h3 class="text-3xl font-black mb-4"><i class="fa-regular fa-face-smile mr-2"></i> 虚拟好友阶段</h3>
+            <ul class="space-y-3 text-xl text-gray-800 font-semibold">
+              <li>• 可先添加「小王」「阿泽」等昵称</li>
+              <li>• 立刻开始打标签和记回忆</li>
+              <li>• 不要求对方已注册 Orbit</li>
+            </ul>
+            <div class="mt-6 p-4 rounded-2xl border-2 border-dashed border-black">
+              <p class="text-base font-bold text-gray-700">适用场景：朋友还没下载 App，但你想先把回忆记下来。</p>
+            </div>
+          </div>
+
+          <div class="col-span-2 flex flex-col items-center justify-center">
+            <div class="line p-5 rounded-full text-4xl">🔗</div>
+            <div class="mt-4 text-lg font-black text-center">输入邀请码<br/>一键绑定</div>
+          </div>
+
+          <div class="col-span-5 line p-8">
+            <h3 class="text-3xl font-black mb-4"><i class="fa-solid fa-user-check mr-2"></i> 绑定真实账号后</h3>
+            <ul class="space-y-3 text-xl text-gray-800 font-semibold">
+              <li>• 之前所有 @ 标签自动迁移</li>
+              <li>• 好友关系双向可见</li>
+              <li>• 记忆流与地图同步刷新</li>
+            </ul>
+            <div class="mt-6 p-4 rounded-2xl border-2 border-dashed border-black">
+              <p class="text-base font-bold text-gray-700">优势：不丢历史数据，关系更真实，体验连续。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-12 grid grid-cols-3 gap-6">
+          <div class="line p-5 text-center">
+            <p class="text-lg font-black">① 创建虚拟好友</p>
+            <p class="text-gray-700 mt-2">记录不等待</p>
+          </div>
+          <div class="line p-5 text-center">
+            <p class="text-lg font-black">② 输入邀请码绑定</p>
+            <p class="text-gray-700 mt-2">一键替换身份</p>
+          </div>
+          <div class="line p-5 text-center">
+            <p class="text-lg font-black">③ 回忆自动继承</p>
+            <p class="text-gray-700 mt-2">数据完整保留</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 05: Footer -->
+      <section class="frame p-16" id="frame-footer">
+        <div class="absolute top-8 left-8 sticker">05 / Footer 下载与联系</div>
+
+        <div class="line p-12 mt-20">
+          <div class="grid grid-cols-12 gap-8">
+            <div class="col-span-5">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+                    <ellipse cx="50" cy="50" rx="46" ry="16" fill="none" stroke="#111" stroke-width="3" transform="rotate(-15 50 50)"/>
+                    <ellipse cx="31" cy="43" rx="10" ry="15" fill="white" stroke="#111" stroke-width="3" transform="rotate(-22 31 43)"/>
+                    <ellipse cx="69" cy="43" rx="10" ry="15" fill="white" stroke="#111" stroke-width="3" transform="rotate(22 69 43)"/>
+                    <circle cx="50" cy="57" r="23" fill="white" stroke="#111" stroke-width="3"/>
+                    <path d="M 38 53 Q 42 47 46 53" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M 54 53 Q 58 47 62 53" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+                    <ellipse cx="50" cy="63" rx="3.5" ry="2.5" fill="#111"/>
+                    <path d="M 43 69 Q 50 76 57 69" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
+                    <circle cx="91" cy="37" r="4" fill="#111"/>
+                  </svg>
+                </div>
+                <h2 class="text-4xl font-black">Orbit 轨迹</h2>
+              </div>
+              <p class="text-xl text-gray-700 mt-5 leading-relaxed">
+                一个轻量、可爱、真实的生活记录工具。
+                让你和朋友把每次见面都变成可回看的温暖档案。
+              </p>
+              <div class="mt-8 flex gap-3 flex-wrap">
+                <span class="sticker">地图记忆</span>
+                <span class="sticker">共享回忆</span>
+                <span class="sticker">轻松分账</span>
+                <span class="sticker">聚会小游戏</span>
+              </div>
+            </div>
+
+            <div class="col-span-2">
+              <h3 class="text-2xl font-black mb-4">下载</h3>
+              <div class="space-y-3 text-lg font-bold">
+                <div class="line px-4 py-3"><i class="fa-brands fa-apple mr-2"></i> App Store</div>
+                <div class="line px-4 py-3"><i class="fa-brands fa-android mr-2"></i> 安卓下载</div>
+                <div class="line px-4 py-3"><i class="fa-solid fa-qrcode mr-2"></i> 扫码下载</div>
+              </div>
+            </div>
+
+            <div class="col-span-3">
+              <h3 class="text-2xl font-black mb-4">联系</h3>
+              <ul class="space-y-3 text-lg font-bold text-gray-800">
+                <li>
+                  <i class="fa-regular fa-envelope mr-2"></i>
+                  <a href="mailto:chenyanrong2025@163.com" class="inline-flex items-center underline decoration-2 underline-offset-4 hover:text-black break-all">chenyanrong2025@163.com</a>
+                </li>
+                <li><i class="fa-brands fa-weixin mr-2"></i> Orbit 官方号</li>
+                <li><i class="fa-brands fa-x-twitter mr-2"></i> @orbit_track</li>
+                <li>
+                  <i class="fa-solid fa-link mr-2"></i>
+                  <a href="https://oribit.vercel.app/" target="_blank" rel="noopener noreferrer" class="underline decoration-2 underline-offset-4 hover:text-black">点击进入 Orbit 网站</a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="col-span-2">
+              <h3 class="text-2xl font-black mb-4">链接</h3>
+              <ul class="space-y-3 text-lg font-bold text-gray-800">
+                <li><a class="hover:underline" href="#">隐私政策</a></li>
+                <li><a class="hover:underline" href="#">用户协议</a></li>
+                <li><a class="hover:underline" href="#">常见问题</a></li>
+                <li><a class="hover:underline" href="#">更新日志</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-12 pt-6 border-t-2 border-black flex justify-between text-base font-bold text-gray-700">
+            <span>© 2026 Orbit Team. All rights reserved.</span>
+            <span>设计规范：白底 / 黑色简笔画 / 可爱真实感</span>
+          </div>
+        </div>
+
+        <div class="absolute right-14 bottom-12 text-sm text-gray-600">
+          Figma 导入建议：按 frame-hero ~ frame-footer 分别截图导入
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

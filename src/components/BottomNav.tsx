@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMap, FaImages, FaWallet, FaUser } from 'react-icons/fa';
-import { useNavStore } from '../store';
+import { FaMap, FaImages, FaWallet, FaUser, FaGamepad } from 'react-icons/fa';
+import { useNavStore, useUserStore } from '../store';
 import { PageType } from '../types';
 
 // 简笔画开心表情 SVG 组件
@@ -44,11 +44,13 @@ const navItems: { id: PageType; icon: typeof FaMap; label: string }[] = [
   { id: 'map', icon: FaMap, label: '地图' },
   { id: 'memory', icon: FaImages, label: '记忆' },
   { id: 'ledger', icon: FaWallet, label: '账单' },
+  { id: 'games', icon: FaGamepad, label: '游戏' },
   { id: 'profile', icon: FaUser, label: '我的' },
 ];
 
 export default function BottomNav() {
   const { currentPage, setCurrentPage } = useNavStore();
+  const pendingCount = useUserStore((s) => s.pendingRequests.length);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
@@ -109,6 +111,12 @@ export default function BottomNav() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                    {/* 好友申请红点 */}
+                    {item.id === 'profile' && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                        {pendingCount}
+                      </span>
+                    )}
                   </div>
                   
                   {/* 标签 */}

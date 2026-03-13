@@ -6,9 +6,10 @@ import { useUserStore } from '../store';
 
 interface AuthModalProps {
   onSuccess: () => void;
+  onDemo: () => void;
 }
 
-export default function AuthModal({ onSuccess }: AuthModalProps) {
+export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,12 +43,26 @@ export default function AuthModal({ onSuccess }: AuthModalProps) {
         if (!username.trim()) {
           throw new Error('请输入用户名');
         }
+        if (password.length < 6) {
+          throw new Error('密码至少需要 6 位');
+        }
         await signUp(email, password, username);
-        setError('注册成功！请检查邮箱验证后登录。');
+        setError('✅ 注册成功！请前往邮箱点击验证链接，再回来登录。');
         setIsLogin(true);
       }
     } catch (err: any) {
-      setError(err.message || '操作失败，请重试');
+      const msg: string = err.message || '';
+      if (msg.includes('Email not confirmed')) {
+        setError('📧 邮箱尚未验证，请先点击注册邮件中的链接');
+      } else if (msg.includes('User already registered') || msg.includes('already been registered')) {
+        setError('该邮箱已注册，请直接登录');
+      } else if (msg.includes('Invalid login credentials')) {
+        setError('邮箱或密码错误，请重新输入');
+      } else if (msg.includes('Email rate limit exceeded')) {
+        setError('邮件发送太频繁，请稍后再试');
+      } else {
+        setError(msg || '操作失败，请重试');
+      }
     } finally {
       setLoading(false);
     }
@@ -196,7 +211,7 @@ export default function AuthModal({ onSuccess }: AuthModalProps) {
         {/* 演示模式 */}
         <div className="mt-6 pt-6 border-t border-white/10">
           <button
-            onClick={onSuccess}
+            onClick={onDemo}
             className="w-full py-3 text-white/40 hover:text-white/60 text-sm transition-colors"
           >
             暂不登录，先看看演示 ✨

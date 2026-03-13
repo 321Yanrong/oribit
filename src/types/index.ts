@@ -43,6 +43,7 @@ export interface Memory {
   tagged_friends: string[]; // @的好友ID
   has_ledger: boolean; // 是否附带账单
   ledger_id?: string; // 关联的账单ID
+  is_owner?: boolean; // 是否是自己创建的记忆（false = 被好友标记进来的）
 }
 
 // 账单
@@ -91,4 +92,4 @@ export interface MapPin {
 }
 
 // 导航页面类型
-export type PageType = 'map' | 'memory' | 'ledger' | 'profile';
+export type PageType = 'map' | 'memory' | 'ledger' | 'profile' | 'games';

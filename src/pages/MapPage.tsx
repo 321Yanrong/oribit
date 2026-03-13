@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft } from 'react-icons/fa';
 import AMapLoader from '@amap/amap-jsapi-loader';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
-import MemoryCard from '../components/MemoryCard'; // 确保你有这个组件，如果没有可以暂时注释掉
-import FloatingParticles from '../components/FloatingParticles'; // 确保你有这个组件
+import FloatingParticles from '../components/FloatingParticles';
 
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
 
@@ -29,6 +28,7 @@ export default function MapPage() {
   const { friends, currentUser } = useUserStore();
   
   const [showMemoryDetail, setShowMemoryDetail] = useState(false);
+  const [selectedMemory, setSelectedMemory] = useState<any>(null); // 单条记忆详情
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [mapGroupBy, setMapGroupBy] = useState<'location' | 'city'>('location');
@@ -63,16 +63,25 @@ export default function MapPage() {
       const pin = pinMap.get(locId);
       pin.memories.push(memory);
 
-      // 收集该地点涉及的好友
-      memory.tagged_friends?.forEach((friendId: string) => {
-        if (!pin.friends.some((f: any) => f.id === friendId)) {
-          const friendObj = friends.find(f => f.friend?.id === friendId)?.friend;
-          if (friendObj) pin.friends.push(friendObj);
-        }
-      });
+      // 统一添加人物头像（跳过自己、跳过虚拟好友、跳过重复）
+      const addPersonToPin = (pin: any, personId: string) => {
+        if (!personId || personId.startsWith('temp-')) return;
+        if (personId === currentUser?.id) return;
+        if (pin.friends.some((f: any) => f.id === personId)) return;
+        const friendObj = friends.find((f: any) => f.friend?.id === personId || f.friend_id === personId)?.friend;
+        if (friendObj) pin.friends.push(friendObj);
+      };
+
+      // 所有被 @ 的真实好友
+      memory.tagged_friends?.forEach((friendId: string) => addPersonToPin(pin, friendId));
+
+      // 如果是别人发布的共享记忆，也把发布者加进来
+      if (memory.user_id && memory.user_id !== currentUser?.id) {
+        addPersonToPin(pin, memory.user_id);
+      }
     });
     return Array.from(pinMap.values());
-  }, [memories, friends]);
+  }, [memories, friends, currentUser]);
 
   // 城市级别聚合
   const cityPins = useMemo(() => {
@@ -92,20 +101,25 @@ export default function MapPage() {
       }
       const cp = cityMap.get(city)!;
       cp.memories.push(memory);
-      // accumulate friends
-      memory.tagged_friends?.forEach((friendId: string) => {
-        if (!cp.friends.some((f: any) => f.id === friendId)) {
-          const fo = friends.find(f => f.friend?.id === friendId)?.friend;
-          if (fo) cp.friends.push(fo);
-        }
-      });
+      // 所有被 @ 的真实好友 + 如果是共享记忆，把发布者也加进来
+      const addPersonToCity = (cp: any, personId: string) => {
+        if (!personId || personId.startsWith('temp-')) return;
+        if (personId === currentUser?.id) return;
+        if (cp.friends.some((f: any) => f.id === personId)) return;
+        const fo = friends.find((f: any) => f.friend?.id === personId || f.friend_id === personId)?.friend;
+        if (fo) cp.friends.push(fo);
+      };
+      memory.tagged_friends?.forEach((friendId: string) => addPersonToCity(cp, friendId));
+      if (memory.user_id && memory.user_id !== currentUser?.id) {
+        addPersonToCity(cp, memory.user_id);
+      }
       // average lat/lng for city center
       const n = cp.memories.length;
       cp.lat = (cp.lat * (n - 1) + memory.location.lat) / n;
       cp.lng = (cp.lng * (n - 1) + memory.location.lng) / n;
     });
     return Array.from(cityMap.values());
-  }, [memories, friends]);
+  }, [memories, friends, currentUser]);
 
   // 根据选中的好友过滤光点
   const basePins = mapGroupBy === 'city' ? cityPins : derivedPins;
@@ -156,7 +170,7 @@ export default function MapPage() {
       const isCityPin = mapGroupBy === 'city';
 
       // 光点始终显示自己的头像
-      const myAvatar = currentUser?.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest';
+      const myAvatar = currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest';
 
       // 同行人头像叠加（最多显示 2 个）
       const friendAvatarsHtml = pin.friends.slice(0, 2).map((f: any) =>
@@ -193,7 +207,7 @@ export default function MapPage() {
       `;
 
       const marker = new AMap.Marker({
-        position: [pin.location.lng, pin.location.lat],
+        position: [pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat],
         content: markerContent,
         offset: new AMap.Pixel(-24, -24), // 往左上偏移一半，确保指针居中
         extData: pin
@@ -294,44 +308,181 @@ export default function MapPage() {
         </div>
       </div>
       
-      {/* 记忆详情弹窗 */}
+      {/* 记忆列表底部弹窗 */}
       <AnimatePresence>
-        {showMemoryDetail && selectedPin && (
+        {showMemoryDetail && selectedPin && !selectedMemory && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setShowMemoryDetail(false)}
           >
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[70vh] overflow-y-auto hide-scrollbar bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 p-6 mb-24" // 留出底部导航栏空间
+              className="w-full max-w-lg max-h-[72vh] flex flex-col bg-[#1a1a1a] rounded-t-3xl border-t border-white/10"
             >
-              <div className="flex items-center justify-between mb-6 sticky top-0 bg-[#1a1a1a] pt-2 pb-4 z-10 border-b border-white/5">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#00FFB3]/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#00FFB3]/20 flex items-center justify-center shrink-0">
                     <FaMapMarkerAlt className="w-5 h-5 text-[#00FFB3]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">{selectedPin.location.name}</h2>
-                    <p className="text-white/40 text-xs truncate max-w-[200px]">{selectedPin.location.address}</p>
+                    <h2 className="text-white font-bold">{(selectedPin as any).location?.name || (selectedPin as any).city}</h2>
+                    <p className="text-white/40 text-xs truncate max-w-[200px]">
+                      {selectedPin.location?.address || `${pinMemories.length} 条记忆`}
+                    </p>
                   </div>
                 </div>
-                <button onClick={() => setShowMemoryDetail(false)} className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white">
+                <button onClick={() => setShowMemoryDetail(false)} className="p-2 rounded-full bg-white/10 text-white">
                   <FaTimes />
                 </button>
               </div>
-              
-              {/* 渲染卡片 */}
-              <div className="space-y-4">
-                {pinMemories.map((memory: any) => (
-                  // 如果你有 MemoryCard 组件，直接替换这里的 div
-                  <div key={memory.id} className="p-4 bg-white/5 rounded-2xl border border-white/10 text-white">
-                    <p className="text-white/80">{memory.content}</p>
-                    <p className="text-[#00FFB3] text-xs mt-2">{new Date(memory.created_at).toLocaleString()}</p>
+
+              {/* Memory list */}
+              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3 hide-scrollbar">
+                {pinMemories.length === 0 ? (
+                  <p className="text-center text-white/40 py-10">暂无记忆</p>
+                ) : pinMemories.map((memory: any) => {
+                  const date = new Date(memory.memory_date || memory.created_at);
+                  const taggedNames = (memory.tagged_friends || []).map((id: string) => {
+                    const f = friends.find((fs: any) => fs.friend?.id === id || fs.friend_id === id);
+                    return f?.friend?.username || null;
+                  }).filter(Boolean);
+
+                  return (
+                    <motion.div
+                      key={memory.id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setSelectedMemory(memory)}
+                      className="flex gap-3 p-3 rounded-2xl bg-white/5 border border-white/8 cursor-pointer hover:bg-white/10 transition-colors active:bg-white/15"
+                    >
+                      {memory.photos?.[0] ? (
+                        <img
+                          src={memory.photos[0]}
+                          alt=""
+                          className="w-16 h-16 rounded-xl object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center shrink-0 text-2xl">
+                          {memory.location?.category === '咖啡厅' ? '☕' : memory.location?.category === '美食' ? '🍜' : '📍'}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white/40 text-xs">
+                            {date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
+                          </span>
+                          {memory.has_ledger && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-[#FF9F43]/20 text-[#FF9F43] text-[10px]">含账单</span>
+                          )}
+                        </div>
+                        <p className="text-white text-sm line-clamp-2 leading-relaxed">
+                          {memory.content || '（无文字记录）'}
+                        </p>
+                        {taggedNames.length > 0 && (
+                          <p className="text-[#00FFB3] text-xs mt-1 truncate">
+                            @{taggedNames.join(' @')}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 单条记忆详情 */}
+      <AnimatePresence>
+        {selectedMemory && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setSelectedMemory(null)}
+          >
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg max-h-[80vh] overflow-y-auto hide-scrollbar bg-[#1a1a1a] rounded-t-3xl border-t border-white/10"
+            >
+              {/* 照片 */}
+              {selectedMemory.photos?.[0] && (
+                <div className="relative w-full aspect-[4/3]">
+                  <img src={selectedMemory.photos[0]} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-transparent" />
+                  {selectedMemory.photos.length > 1 && (
+                    <div className="absolute bottom-3 right-3 flex gap-1">
+                      {selectedMemory.photos.slice(1, 4).map((p: string, i: number) => (
+                        <img key={i} src={p} alt="" className="w-10 h-10 rounded-lg object-cover ring-1 ring-white/20" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="px-5 py-4">
+                {/* Back + close */}
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => setSelectedMemory(null)}
+                    className="flex items-center gap-1 text-white/50 hover:text-white text-sm"
+                  >
+                    <FaChevronLeft className="text-xs" /> 返回列表
+                  </button>
+                  <button onClick={() => { setSelectedMemory(null); setShowMemoryDetail(false); }} className="p-2 rounded-full bg-white/10 text-white">
+                    <FaTimes className="text-sm" />
+                  </button>
+                </div>
+
+                {/* Location */}
+                <div className="flex items-center gap-2 mb-3">
+                  <FaMapMarkerAlt className="text-[#00FFB3] text-sm shrink-0" />
+                  <span className="text-white font-semibold truncate">{selectedMemory.location?.name}</span>
+                  <span className="text-white/30 text-xs shrink-0">{selectedMemory.location?.address?.split(/[市区]/)[0]}</span>
+                </div>
+
+                {/* Date */}
+                <div className="flex items-center gap-2 mb-4 text-white/40 text-sm">
+                  <FaCalendar className="text-xs" />
+                  {new Date(selectedMemory.memory_date || selectedMemory.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+                </div>
+
+                {/* Content */}
+                {selectedMemory.content && (
+                  <p className="text-white/90 leading-relaxed mb-4 text-base">{selectedMemory.content}</p>
+                )}
+
+                {/* Tagged friends */}
+                {selectedMemory.tagged_friends?.length > 0 && (
+                  <div className="flex items-center gap-3 py-3 border-t border-white/8">
+                    <FaUsers className="text-white/30 text-sm shrink-0" />
+                    <div className="flex flex-wrap gap-2">
+                      {(selectedMemory.tagged_friends as string[]).map((id: string) => {
+                        const f = friends.find((fs: any) => fs.friend?.id === id || fs.friend_id === id);
+                        if (!f?.friend) return null;
+                        return (
+                          <div key={id} className="flex items-center gap-1.5">
+                            <img src={f.friend.avatar_url} alt={f.friend.username} className="w-6 h-6 rounded-full object-cover" />
+                            <span className="text-[#00FFB3] text-sm">@{f.friend.username}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {/* Ledger badge */}
+                {selectedMemory.has_ledger && (
+                  <div className="flex items-center gap-2 mt-3 py-2 px-3 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20">
+                    <FaReceipt className="text-[#FF9F43] text-sm" />
+                    <span className="text-[#FF9F43] text-sm">此记忆附有账单</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

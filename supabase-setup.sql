@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT,
   avatar_url TEXT,
+  invite_code TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -37,6 +38,9 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- Profile policies
 CREATE POLICY "Users can view own profile" ON profiles
   FOR SELECT USING (auth.uid() = id);
+-- Allow any authenticated user to look up a profile by invite_code
+CREATE POLICY "Users can lookup profile by invite code" ON profiles
+  FOR SELECT USING (invite_code IS NOT NULL);
 CREATE POLICY "Users can update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
@@ -48,6 +52,7 @@ CREATE TABLE IF NOT EXISTS friendships (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   friend_id UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- nullable for virtual friends
   friend_name TEXT, -- name for virtual/offline friends
+  remark TEXT, -- user-defined nickname/note
   status TEXT DEFAULT 'accepted',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -101,8 +106,17 @@ CREATE TABLE IF NOT EXISTS memories (
 
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own memories" ON memories
-  FOR SELECT USING (auth.uid() = user_id);
+-- Owner sees own memories; tagged friends also see memories they're @-mentioned in
+DROP POLICY IF EXISTS "Users can view own memories" ON memories;
+CREATE POLICY "Users can view own or tagged memories" ON memories
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM memory_tags
+      WHERE memory_tags.memory_id = memories.id
+        AND memory_tags.user_id = auth.uid()
+    )
+  );
 CREATE POLICY "Users can create memories" ON memories
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own memories" ON memories
@@ -117,14 +131,23 @@ CREATE TABLE IF NOT EXISTS memory_tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   memory_id UUID REFERENCES memories(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  virtual_friend_id UUID REFERENCES friendships(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE memory_tags ENABLE ROW LEVEL SECURITY;
 
--- SELECT: tagged user can see their own tags; memory creator can see all tags on their memory
+-- Tagged user sees own tags; memory creator sees all tags on their memories
+DROP POLICY IF EXISTS "Users can view memory tags" ON memory_tags;
 CREATE POLICY "Users can view memory tags" ON memory_tags
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM memories
+      WHERE memories.id = memory_tags.memory_id
+        AND memories.user_id = auth.uid()
+    )
+  );
 
 -- ALL operations for the memory creator (insert/delete/update tags on their own memories)
 -- ⚠️ IMPORTANT: Run this DROP + CREATE in Supabase SQL Editor if you hit duplicate-tag bugs
@@ -147,6 +170,7 @@ CREATE TABLE IF NOT EXISTS ledgers (
   total_amount FLOAT NOT NULL,
   currency TEXT DEFAULT 'HKD',
   memory_id UUID REFERENCES memories(id) ON DELETE SET NULL,
+  expense_type TEXT DEFAULT 'shared',
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -159,6 +183,8 @@ CREATE POLICY "Users can create ledgers" ON ledgers
   FOR INSERT WITH CHECK (auth.uid() = creator_id);
 CREATE POLICY "Users can update own ledgers" ON ledgers
   FOR UPDATE USING (auth.uid() = creator_id);
+CREATE POLICY "Users can delete own ledgers" ON ledgers
+  FOR DELETE USING (auth.uid() = creator_id);
 
 -- =============================================
 -- 7. LEDGER_PARTICIPANTS TABLE
@@ -175,10 +201,23 @@ CREATE TABLE IF NOT EXISTS ledger_participants (
 
 ALTER TABLE ledger_participants ENABLE ROW LEVEL SECURITY;
 
+-- Participant can see their own rows; creator can see all rows on their ledger
 CREATE POLICY "Users can view ledger participants" ON ledger_participants
-  FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can create ledger participants" ON ledger_participants
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR EXISTS (SELECT 1 FROM ledgers WHERE ledgers.id = ledger_id AND ledgers.creator_id = auth.uid())
+  );
+-- Creator inserts participants for all users (including others)
+DROP POLICY IF EXISTS "Users can create ledger participants" ON ledger_participants;
+CREATE POLICY "Ledger creator can insert participants" ON ledger_participants
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM ledgers WHERE ledgers.id = ledger_id AND ledgers.creator_id = auth.uid())
+  );
+-- Creator can delete participants when editing/updating a ledger
+CREATE POLICY "Ledger creator can delete participants" ON ledger_participants
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM ledgers WHERE ledgers.id = ledger_id AND ledgers.creator_id = auth.uid())
+  );
 
 -- =============================================
 -- 8. SETTLEMENTS TABLE

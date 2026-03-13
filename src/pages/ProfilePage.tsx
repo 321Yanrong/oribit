@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode } from '../api/supabase';
+import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest } from '../api/supabase';
 
 // 1. 添加好友弹窗（支持：临时好友 + 已注册真实好友）
 const AddFriendModal = ({
@@ -10,34 +10,64 @@ const AddFriendModal = ({
   onClose,
   onAddVirtual,
   onAddReal,
+  virtualFriends,
+  onBindExisting,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onAddVirtual: (name: string) => void;
+  onAddVirtual: (name: string, remark: string) => void;
   onAddReal: (code: string) => Promise<void>;
+  virtualFriends: any[];
+  onBindExisting: (friendId: string, code: string) => Promise<void>;
 }) => {
   const [tab, setTab] = useState<'virtual' | 'real'>('virtual');
   const [name, setName] = useState('');
+  const [remark, setRemark] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  // real tab state machine: 'input' | 'preview'
+  const [realStep, setRealStep] = useState<'input' | 'preview'>('input');
+  const [previewProfile, setPreviewProfile] = useState<any>(null);
+  const [bindTarget, setBindTarget] = useState<string>('new'); // 'new' or friendshipId
 
   const handleAdd = async () => {
     if (tab === 'virtual') {
       if (!name.trim()) return;
-      onAddVirtual(name.trim());
-      setName('');
+      onAddVirtual(name.trim(), remark.trim());
+      setName(''); setRemark('');
       onClose();
     } else {
-      if (code.length < 11) return;
-      setLoading(true);
-      try {
-        await onAddReal(code.trim().toUpperCase());
-        setCode('');
-        onClose();
-      } catch (err: any) {
-        alert(err.message || '找不到该邀请码对应的用户');
-      } finally {
-        setLoading(false);
+      if (realStep === 'input') {
+        if (code.length < 11) return;
+        setLoading(true);
+        try {
+          // lookup to preview
+          const { lookupProfileByInviteCode } = await import('../api/supabase');
+          const profile = await lookupProfileByInviteCode(code.trim().toUpperCase());
+          setPreviewProfile(profile);
+          setBindTarget('new');
+          setRealStep('preview');
+        } catch (err: any) {
+          alert(err.message || '找不到该邀请码对应的用户');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // confirm step
+        setLoading(true);
+        try {
+          if (bindTarget === 'new') {
+            await onAddReal(code.trim().toUpperCase());
+          } else {
+            await onBindExisting(bindTarget, code.trim().toUpperCase());
+          }
+          setCode(''); setRealStep('input'); setPreviewProfile(null);
+          onClose();
+        } catch (err: any) {
+          alert(err.message || '操作失败');
+        } finally {
+          setLoading(false);
+        }
       }
     }
   };
@@ -83,22 +113,29 @@ const AddFriendModal = ({
         </div>
 
         {tab === 'virtual' ? (
-          <div className="mb-6">
-            <p className="text-white/50 text-sm mb-4">
+          <div className="mb-6 space-y-3">
+            <p className="text-white/50 text-sm">
               输入昵称创建临时好友（马甲），方便打卡记账。等他/她注册后可通过邀请码绑定为真实账号。
             </p>
             <input
               type="text"
-              placeholder="好友昵称"
+              placeholder="好友昵称 *"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50"
             />
+            <input
+              type="text"
+              placeholder="备注（选填，如：大学室友）"
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50"
+            />
           </div>
-        ) : (
+        ) : realStep === 'input' ? (
           <div className="mb-6">
             <p className="text-white/50 text-sm mb-4">
-              让对方在「我的」页面查看并分享他/她的邀请码，输入后即可直接建立好友关系。
+              让对方在「我的」页面查看并分享邀请码，输入后可预览对方信息再确认添加。
             </p>
             <input
               type="text"
@@ -108,20 +145,68 @@ const AddFriendModal = ({
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50 font-mono tracking-widest text-center text-base"
             />
           </div>
+        ) : (
+          // preview step
+          <div className="mb-6">
+            {/* 找到的用户预览 */}
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#00FFB3]/10 border border-[#00FFB3]/20 mb-4">
+              <img
+                src={previewProfile?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${previewProfile?.id}`}
+                alt={previewProfile?.username}
+                className="w-12 h-12 rounded-xl ring-2 ring-[#00FFB3]/30"
+              />
+              <div>
+                <p className="text-white font-bold">{previewProfile?.username}</p>
+                <p className="text-[#00FFB3] text-xs mt-0.5">找到了 ✓</p>
+              </div>
+            </div>
+
+            {/* 选择：新建 or 绑定已有虚拟好友 */}
+            {virtualFriends.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-white/50 text-xs mb-2">这是你已有的「{previewProfile?.username}」？选择绑定或新建：</p>
+                <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === 'new' ? 'border-[#00FFB3] bg-[#00FFB3]/5' : 'border-white/10 bg-white/3'}`}>
+                  <input type="radio" name="bindTarget" value="new" checked={bindTarget === 'new'} onChange={() => setBindTarget('new')} className="accent-[#00FFB3]" />
+                  <span className="text-white text-sm">➕ 直接添加为新好友</span>
+                </label>
+                {virtualFriends.map((vf: any) => (
+                  <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-[#FF9F43]/5' : 'border-white/10 bg-white/3'}`}>
+                    <input type="radio" name="bindTarget" value={vf.id} checked={bindTarget === vf.id} onChange={() => setBindTarget(vf.id)} className="accent-[#FF9F43]" />
+                    <img src={vf.friend.avatar_url} alt={vf.friend.username} className="w-7 h-7 rounded-lg" />
+                    <div className="min-w-0">
+                      <p className="text-white text-sm truncate">{vf.friend.username}</p>
+                      {vf.remark && <p className="text-white/40 text-xs truncate">{vf.remark}</p>}
+                    </div>
+                    <span className="ml-auto text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded shrink-0">绑定</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
-        <button
-          onClick={handleAdd}
-          disabled={loading || (tab === 'virtual' ? !name.trim() : code.length < 11)}
-          className={`w-full py-3 rounded-xl font-semibold disabled:opacity-30 flex items-center justify-center gap-2 ${
-            tab === 'virtual'
-              ? 'bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black'
-              : 'bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white'
-          }`}
-        >
-          {loading && <FaSpinner className="animate-spin" />}
-          {tab === 'virtual' ? '添加临时好友' : '添加为好友'}
-        </button>
+        <div className="flex gap-2">
+          {tab === 'real' && realStep === 'preview' && (
+            <button
+              onClick={() => { setRealStep('input'); setPreviewProfile(null); }}
+              className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-semibold"
+            >
+              返回
+            </button>
+          )}
+          <button
+            onClick={handleAdd}
+            disabled={loading || (tab === 'virtual' ? !name.trim() : realStep === 'input' ? code.length < 11 : false)}
+            className={`flex-1 py-3 rounded-xl font-semibold disabled:opacity-30 flex items-center justify-center gap-2 ${
+              tab === 'virtual'
+                ? 'bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black'
+                : 'bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white'
+            }`}
+          >
+            {loading && <FaSpinner className="animate-spin" />}
+            {tab === 'virtual' ? '添加临时好友' : realStep === 'input' ? '查找' : bindTarget === 'new' ? '确认添加' : '确认绑定'}
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -162,7 +247,7 @@ const BindFriendModal = ({
         </div>
         
         <p className="text-white/40 text-sm mb-6">
-          【<span className="text-[#00FFB3]">{friend.username}</span>】目前是临时好友。当他/她注册后，输入他/她的邀请码，即可将过去的回忆和账单无缝同步过去！
+          【<span className="text-[#00FFB3]">{friend.real_username || friend.username}</span>】目前是临时好友。当他/她注册后，输入他/她的邀请码，即可将过去的回忆和账单无缝同步过去！
         </p>
         
         <input
@@ -195,11 +280,25 @@ const InviteCodeModal = ({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(inviteCode);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(inviteCode);
+      } else {
+        // Fallback for mobile/PWA where clipboard API is restricted
+        const el = document.createElement('textarea');
+        el.value = inviteCode;
+        el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Last resort: show the code in an alert so user can copy manually
+      alert(`你的邀请码：${inviteCode}`);
     }
   };
 
@@ -208,12 +307,12 @@ const InviteCodeModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl"
+      className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-xl"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
@@ -305,12 +404,21 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
 
 // 5. 共同记忆弹窗 (保持不变)
 const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memories: any[]; onClose: () => void; }) => {
+  const hasRemark = friend?.username !== friend?.real_username;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl overflow-y-auto" onClick={onClose}>
       <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="min-h-screen bg-[#1a1a1a] rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
           <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
-          <h2 className="text-lg font-bold text-white">与 {friend?.username} 的共同记忆</h2>
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-white">
+              与 {friend?.username} 的共同记忆
+            </h2>
+            {/* 详情页才展示真实账号名 */}
+            {hasRemark && (
+              <p className="text-white/30 text-xs mt-0.5">账号名：{friend?.real_username}</p>
+            )}
+          </div>
           <div className="w-10" />
         </div>
         <div className="p-4 pb-20">
@@ -334,7 +442,7 @@ const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memor
 
 // ================= 主页面 =================
 export default function ProfilePage() {
-  const { currentUser, friends, setCurrentUser, addFriend, deleteFriend } = useUserStore();
+  const { currentUser, friends, pendingRequests, setCurrentUser, addFriend, deleteFriend } = useUserStore();
   const { memories } = useMemoryStore();
   const { ledgers } = useLedgerStore();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -348,7 +456,19 @@ export default function ProfilePage() {
   const [randomMemory, setRandomMemory] = useState<any>(null);
   const [friendSearch, setFriendSearch] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [editingRemarkId, setEditingRemarkId] = useState<string | null>(null);
+  const [remarkInput, setRemarkInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveRemark = async (friendshipId: string) => {
+    try {
+      await updateFriendRemark(friendshipId, remarkInput);
+      await useUserStore.getState().fetchFriends();
+    } catch (e) {
+      alert('备注保存失败');
+    }
+    setEditingRemarkId(null);
+  };
   const handleSaveName = async () => {
     if (!newName.trim() || newName === currentUser?.username) {
       setIsEditingName(false);
@@ -387,35 +507,61 @@ export default function ProfilePage() {
       setSelectedFriend(friend);
     }
   };
-// 添加马甲好友
-const handleAddFriend = async (name: string) => {
+// 添加马甲好友（支持备注）
+const handleAddFriend = async (name: string, remark: string) => {
   if (!currentUser) return;
-
-  // 1. 构造存入数据库的数据（马甲好友不传 friend_id，让数据库默认为 NULL）
   const friendshipData: Record<string, any> = {
     user_id: currentUser.id,
     friend_name: name,
+    remark: remark || null,
     status: 'virtual',
   };
-
   try {
-    // 2. 调用 store 里的 addFriend (确保它执行了 supabase.insert)
     await addFriend(friendshipData);
-    
-    // 3. 成功后关闭弹窗
     setShowAddFriend(false);
   } catch (error) {
     console.error('添加失败:', error);
-    alert('添加失败，请检查数据库是否已增加 friend_name 字段');
+    alert('添加失败');
   }
 };
 
-  // 通过邀请码直接添加已注册好友
+  // 通过邀请码发送好友申请
   const handleAddRealFriend = async (inviteCode: string) => {
     if (!currentUser) return;
-    const profile = await addRealFriendByCode(currentUser.id, inviteCode);
+    const code = inviteCode.trim().toUpperCase();
+    const profile = await addRealFriendByCode(currentUser.id, code);
+    alert(`📨 已向 ${profile.username} 发送好友申请，等待对方确认！`);
+  };
+
+  // 通过邀请码把已有虚拟好友绑定为真实账号
+  const handleBindExisting = async (friendshipId: string, inviteCode: string) => {
+    const code = inviteCode.trim().toUpperCase();
+    const realProfile = await lookupProfileByInviteCode(code);
+    await bindVirtualFriend(friendshipId, realProfile.id);
     await useUserStore.getState().fetchFriends();
-    alert(`🎉 已成功添加 ${profile.username} 为好友！`);
+    await useMemoryStore.getState().fetchMemories();
+    alert(`🎉 绑定成功！与 ${realProfile.username} 的历史回忆已同步。`);
+  };
+
+  // 接受好友申请
+  const handleAcceptRequest = async (req: any) => {
+    try {
+      await acceptFriendRequest(req.id, req.user_id, currentUser!.id);
+      await useUserStore.getState().fetchFriends();
+      await useUserStore.getState().fetchPendingRequests();
+    } catch (err: any) {
+      alert('接受失败：' + err.message);
+    }
+  };
+
+  // 拒绝好友申请
+  const handleRejectRequest = async (req: any) => {
+    try {
+      await rejectFriendRequest(req.id);
+      await useUserStore.getState().fetchPendingRequests();
+    } catch (err: any) {
+      alert('操作失败：' + err.message);
+    }
   };
 
   // 删除好友（临时或真实）
@@ -430,8 +576,9 @@ const handleAddFriend = async (name: string) => {
 
   // 绑定真实好友：查邀请码 → 更新 friendships + memory_tags
   const handleBindFriend = async (tempId: string, inputCode: string) => {
-    if (!inputCode.startsWith('ORBIT') || inputCode.length < 11) {
-      alert('邀请码格式不正确！');
+    const code = inputCode.trim().toUpperCase();
+    if (!code.startsWith('ORBIT') || code.length < 11) {
+      alert('邀请码格式不正确，应为 ORBIT 开头的 11 位字符！');
       return;
     }
     try {
@@ -439,13 +586,14 @@ const handleAddFriend = async (name: string) => {
       const friendshipId = tempId.replace('temp-', '');
 
       // 1. 反查真实用户
-      const realProfile = await lookupProfileByInviteCode(inputCode);
+      const realProfile = await lookupProfileByInviteCode(code);
 
       // 2. 更新数据库：friendships + memory_tags
       await bindVirtualFriend(friendshipId, realProfile.id);
 
-      // 3. 刷新好友列表
+      // 3. 刷新好友列表 + 记忆流
       await useUserStore.getState().fetchFriends();
+      await useMemoryStore.getState().fetchMemories();
 
       setBindingFriend(null);
       alert(`🎉 绑定成功！与 ${realProfile.username} 的历史回忆已同步。`);
@@ -480,12 +628,13 @@ const handleAddFriend = async (name: string) => {
     setUploadingAvatar(true);
     try {
       const seed = Math.random().toString(36).slice(2, 10);
-      // adventurer 没有 sex 参数，用 hair 显式锁定发型来区分性别
-      const maleHair = 'short01,short02,short03,short04,short05,short06,short07,short08,short09,short10,short11,short12,short13,short14,short15,short16,short17,short18,short19';
-      const femaleHair = 'long01,long02,long03,long04,long05,long06,long07,long08,long09,long10,long11,long12,long13,long14,long15,long16,long17,long18,long19,long20,long21,long22,long23,long24,long25,long26';
-      const hair = sex === 'male' ? maleHair : femaleHair;
+      // Pick one random hair style to distinguish male vs female
+      const maleHairs = ['short01','short02','short03','short04','short05','short06','short07','short08','short09','short10','short11','short12','short13','short14','short15','short16','short17','short18','short19'];
+      const femaleHairs = ['long01','long02','long03','long04','long05','long06','long07','long08','long09','long10','long11','long12','long13','long14','long15','long16','long17','long18','long19','long20','long21','long22','long23','long24','long25','long26'];
+      const hairList = sex === 'male' ? maleHairs : femaleHairs;
+      const hair = hairList[Math.floor(Math.random() * hairList.length)];
       const earringsProbability = sex === 'male' ? 0 : 40;
-      const bg = sex === 'male' ? 'b6e3f4,c0aede,d1d4f9' : 'ffd5dc,ffdfbf,d1d4f9';
+      const bg = sex === 'male' ? 'b6e3f4' : 'ffd5dc';
       const url = `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}&hair=${hair}&earringsProbability=${earringsProbability}&backgroundColor=${bg}`;
       const { supabase } = await import('../api/supabase');
       await supabase.from('profiles').update({ avatar_url: url }).eq('id', currentUser.id);
@@ -508,7 +657,7 @@ const handleAddFriend = async (name: string) => {
           <div className="flex items-center gap-4 mb-6 relative">
             <div className="relative">
               <motion.div className="relative cursor-pointer" onClick={handleAvatarClick}>
-                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest'} alt={currentUser?.username} className="w-20 h-20 rounded-2xl ring-4 ring-orbit-mint/30 shadow-xl object-cover" />
+                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} alt={currentUser?.username} className="w-20 h-20 rounded-2xl ring-4 ring-orbit-mint/30 shadow-xl object-cover" />
                 {uploadingAvatar && <div className="absolute inset-0 rounded-2xl bg-black/60 flex items-center justify-center"><FaSpinner className="text-white animate-spin" /></div>}
               </motion.div>
               {/* 随机头像按钮 */}
@@ -595,6 +744,51 @@ const handleAddFriend = async (name: string) => {
         </motion.div>
       </div>
       
+      {/* 好友申请通知 */}
+      {pendingRequests.length > 0 && (
+        <div className="relative z-10 px-4 mt-6">
+          <h2 className="text-white/60 text-sm font-medium mb-2 px-1 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
+            好友申请
+            <span className="px-1.5 py-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold">{pendingRequests.length}</span>
+          </h2>
+          <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/5">
+            {pendingRequests.map((req: any) => {
+              const reqUser = req.requester;
+              return (
+                <div key={req.id} className="flex items-center gap-3 p-4">
+                  <img
+                    src={reqUser?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${reqUser?.id}`}
+                    alt={reqUser?.username}
+                    className="w-11 h-11 rounded-xl ring-2 ring-white/10 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">{reqUser?.username || '未知用户'}</p>
+                    <p className="text-white/40 text-xs">想加你为好友</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => handleRejectRequest(req)}
+                      className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white/50 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                      title="拒绝"
+                    >
+                      <FaTimes className="text-sm" />
+                    </button>
+                    <button
+                      onClick={() => handleAcceptRequest(req)}
+                      className="w-9 h-9 rounded-xl bg-[#00FFB3]/20 flex items-center justify-center text-[#00FFB3] hover:bg-[#00FFB3]/30 transition-colors"
+                      title="接受"
+                    >
+                      <FaCheck className="text-sm" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 朋友列表 */}
       <div className="relative z-10 px-4 mt-6">
         <div className="flex items-center justify-between mb-2 px-1">
@@ -618,10 +812,16 @@ const handleAddFriend = async (name: string) => {
         <div className="glass-card rounded-2xl overflow-hidden">
           {friends.length > 0 ? (
             friends
-              .filter((fs: any) => !friendSearch.trim() || fs.friend.username.toLowerCase().includes(friendSearch.toLowerCase()))
+              .filter((fs: any) => {
+                if (!friendSearch.trim()) return true;
+                const q = friendSearch.toLowerCase();
+                // 同时搜索备注和真实名
+                return fs.friend.username.toLowerCase().includes(q) || fs.friend.real_username?.toLowerCase().includes(q);
+              })
               .map((friendship, index, arr) => {
               const friend = friendship.friend;
               const isTemp = friend.id.startsWith('temp-');
+              const hasRemark = !!friendship.remark;
               
               return (
                 <motion.div
@@ -629,14 +829,37 @@ const handleAddFriend = async (name: string) => {
                   className={`w-full flex items-center gap-3 p-4 ${index !== arr.length - 1 ? 'border-b border-white/5' : ''} hover:bg-white/5`}
                 >
                   {/* 左侧可点击区域 */}
-                  <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => handleFriendClick(friend)}>
+                  <div className="flex items-center gap-3 flex-1 cursor-pointer min-w-0" onClick={() => { if (editingRemarkId !== friendship.id) handleFriendClick(friend); }}>
                     <img src={friend.avatar_url} alt={friend.username} className="w-12 h-12 rounded-xl ring-2 ring-white/10 shrink-0" />
-                    <div className="text-left min-w-0">
+                    <div className="text-left min-w-0 flex-1">
                       <div className="flex items-center gap-2">
+                        {/* 主显示名：备注优先 */}
                         <p className="text-white font-medium truncate">{friend.username}</p>
                         {isTemp && <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/10 text-white/40 shrink-0">临时</span>}
                       </div>
-                      <p className="text-white/40 text-sm">{isTemp ? '点击绑定真实账号' : '查看共同记忆'}</p>
+                      {/* 备注区：可内联编辑 */}
+                      {editingRemarkId === friendship.id ? (
+                        <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                          <input
+                            autoFocus
+                            value={remarkInput}
+                            onChange={e => setRemarkInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSaveRemark(friendship.id); if (e.key === 'Escape') setEditingRemarkId(null); }}
+                            placeholder="输入备注..."
+                            className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded-lg outline-none border border-[#00FFB3]/40 placeholder-white/30 min-w-0"
+                          />
+                          <button onClick={() => handleSaveRemark(friendship.id)} className="shrink-0 p-1 bg-[#00FFB3] text-black rounded-md"><FaCheck className="text-[10px]" /></button>
+                          <button onClick={() => setEditingRemarkId(null)} className="shrink-0 p-1 bg-white/10 text-white/60 rounded-md"><FaTimes className="text-[10px]" /></button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 group/remark" onClick={e => { e.stopPropagation(); setRemarkInput(friendship.remark || ''); setEditingRemarkId(friendship.id); }}>
+                          <p className="text-white/40 text-sm truncate">
+                            {/* 有备注时显示真实名，无备注时显示默认提示 */}
+                            {hasRemark ? friend.real_username : (isTemp ? '点击绑定真实账号' : '查看共同记忆')}
+                          </p>
+                          <FaEdit className="text-[10px] text-white/20 opacity-0 group-hover/remark:opacity-100 shrink-0 transition-opacity" />
+                        </div>
+                      )}
                     </div>
                   </div>
                   {/* 右侧操作按钮 */}
@@ -756,7 +979,21 @@ const handleAddFriend = async (name: string) => {
       </div>
       
       {/* 退出按钮 */}
-      <div className="relative z-10 px-4 mt-6 pb-20">
+      <div className="relative z-10 px-4 mt-6 pb-20 space-y-3">
+        <button
+          onClick={async () => {
+            // 先退出 Supabase session，再清空本地 store，让 AuthModal 弹出
+            try { await signOut(); } catch {}
+            useMemoryStore.setState({ memories: [] });
+            useLedgerStore.setState({ ledgers: [] });
+            useUserStore.setState({ friends: [], pendingRequests: [] });
+            setCurrentUser(null);
+          }}
+          className="w-full p-4 glass-card rounded-2xl flex items-center justify-center gap-2 text-[#00D9FF] hover:bg-[#00D9FF]/5"
+        >
+          <FaUsers className="w-5 h-5" />
+          切换账号
+        </button>
         <button onClick={handleLogout} disabled={loggingOut} className="w-full p-4 glass-card rounded-2xl flex items-center justify-center gap-2 text-red-400 disabled:opacity-50">
           {loggingOut ? <FaSpinner className="w-5 h-5 animate-spin" /> : <FaSignOutAlt className="w-5 h-5" />}
           {loggingOut ? '退出中...' : '退出登录'}
@@ -765,9 +1002,14 @@ const handleAddFriend = async (name: string) => {
       
       {/* 弹窗挂载区 */}
       <AnimatePresence>
-        {selectedFriend && <SharedMemoriesModal friend={selectedFriend} memories={memories.filter(m => m.tagged_friends?.includes(selectedFriend.id))} onClose={() => setSelectedFriend(null)} />}
+        {selectedFriend && <SharedMemoriesModal friend={selectedFriend} memories={memories.filter(m =>
+          // 我发布的、@了对方的记忆
+          m.tagged_friends?.includes(selectedFriend.id) ||
+          // 对方发布的、@了我的记忆（通过 RLS 已拉取到本地）
+          m.user_id === selectedFriend.id
+        )} onClose={() => setSelectedFriend(null)} />}
         {bindingFriend && <BindFriendModal friend={bindingFriend} isOpen={!!bindingFriend} onClose={() => setBindingFriend(null)} onBind={handleBindFriend} />}
-        {showAddFriend && <AddFriendModal isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} />}
+        {showAddFriend && <AddFriendModal isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
         {showInviteCode && <InviteCodeModal isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
         {randomMemory && <RandomMemoryModal memory={randomMemory} onClose={() => setRandomMemory(null)} friends={friends} />}
       </AnimatePresence>

@@ -3,6 +3,10 @@ import { User, Memory, Ledger, MapPin, Location, Settlement } from '../types';
 import { getMemories } from '../api/supabase';
 import { supabase } from '../api/supabase';
 
+// 仅接受真实 UUID（demo 模式用 'demo-user'，不能发给 Supabase）
+const isRealUUID = (id: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 // ==========================================
 // 1. 类型定义
 // ==========================================
@@ -10,11 +14,13 @@ export interface Friend {
   id: string;
   user_id: string;
   friend_id: string | null;
-  friend_name?: string;     
+  friend_name?: string;
+  remark?: string;
   status: string;
   friend?: {                
     id: string;
-    username: string;
+    username: string;      // 优先显示备注，无备注时为真实名
+    real_username: string; // 永远是真实账号名/马甲名，用于详情页
     avatar_url: string;
   };
   created_at: string;
@@ -26,8 +32,10 @@ export interface Friend {
 interface UserState {
   currentUser: any | null;
   friends: Friend[];
+  pendingRequests: any[];
   setCurrentUser: (user: any | null) => void;
   fetchFriends: () => Promise<void>;
+  fetchPendingRequests: () => Promise<void>;
   addFriend: (friendshipData: any) => Promise<void>;
   deleteFriend: (friendshipId: string) => Promise<void>;
 }
@@ -35,10 +43,19 @@ interface UserState {
 export const useUserStore = create<UserState>((set, get) => ({
   currentUser: null,
   friends: [],
+  pendingRequests: [],
   setCurrentUser: (user) => set({ currentUser: user }),
+  fetchPendingRequests: async () => {
+    const { currentUser } = get();
+    if (!currentUser || !isRealUUID(currentUser.id)) return;
+    const { getPendingFriendRequests } = await import('../api/supabase');
+    const data = await getPendingFriendRequests(currentUser.id);
+    set({ pendingRequests: data });
+  },
   fetchFriends: async () => {
   const { currentUser } = get();
   if (!currentUser) return;
+  if (!isRealUUID(currentUser.id)) return;
 
   // 1. 发起联表查询
   // 使用 as any 是因为你之前删除了外键关联，TS 插件可能无法自动识别关系
@@ -52,7 +69,8 @@ export const useUserStore = create<UserState>((set, get) => ({
         avatar_url
       )
     `)
-    .eq('user_id', currentUser.id) as any;
+    .eq('user_id', currentUser.id)
+    .in('status', ['accepted', 'virtual']) as any;
 
   if (error) {
     console.error("拉取好友失败:", error.message);
@@ -75,16 +93,27 @@ export const useUserStore = create<UserState>((set, get) => ({
         user_id: item.user_id,
         friend_id: item.friend_id, // 真实用户为 UUID，马甲为 null
         friend_name: item.friend_name,
+        remark: item.remark,
         status: item.status,
         created_at: item.created_at,
         
         // ✨ 统一包装名为 friend 的对象，让 UI 组件不需要做任何判断
         friend: {
           id: resolvedFriendId,
-          username: isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友',
+          // real_username: 真实账号名/马甲名，只在详情页展示
+          real_username: isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友',
+          // username: 优先显示备注，没有备注才用真实名
+          username: item.remark || (isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友'),
           avatar_url: isVirtual 
-            ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${item.friend_name || item.id}&backgroundColor=ffdfbf` 
-            : friendProfile?.avatar_url ?? 'https://api.dicebear.com/7.x/adventurer/svg?seed=guest'
+            ? `https://api.dicebear.com/9.x/adventurer/svg?seed=${item.friend_name || item.id}&backgroundColor=ffdfbf` 
+            : (() => {
+                const raw = friendProfile?.avatar_url ?? '';
+                if (raw && raw.includes('hair=') && raw.includes(',')) {
+                  const m = raw.match(/[?&]seed=([^&,]+)/);
+                  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${m ? m[1] : item.id}`;
+                }
+                return raw || `https://api.dicebear.com/9.x/adventurer/svg?seed=guest`;
+              })()
         }
       };
     });
@@ -130,7 +159,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
   setSelectedFriendId: (friendId) => set({ selectedFriendId: friendId }),
   fetchMemories: async () => {
     const userId = useUserStore.getState().currentUser?.id; 
-    if (!userId) return;
+    if (!userId || !isRealUUID(userId)) return;
     const data = await getMemories(userId);
     set({ memories: data || [] });
   },
@@ -168,7 +197,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
 
     // 3. 重新拉取最新数据，刷新列表显示
     const userId = useUserStore.getState().currentUser?.id;
-    if (userId) {
+    if (userId && isRealUUID(userId)) {
       const { getMemories } = await import('../api/supabase');
       const data = await getMemories(userId);
       set({ memories: data || [] });
@@ -203,12 +232,34 @@ interface LedgerState {
   ledgers: Ledger[];
   fetchLedgers: () => Promise<void>;
   addLedger: (ledger: Ledger) => void;
+  deleteLedger: (id: string) => Promise<void>;
 }
 
-export const useLedgerStore = create<LedgerState>((set) => ({
+export const useLedgerStore = create<LedgerState>((set, get) => ({
   ledgers: [],
-  fetchLedgers: async () => set({ ledgers: [] }),
+  fetchLedgers: async () => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId || !isRealUUID(userId)) return;
+    try {
+      const { getLedgers } = await import('../api/supabase');
+      const data = await getLedgers(userId);
+      const seen = new Set<string>();
+      const unique = ((data || []) as any[]).filter((l: any) => {
+        if (seen.has(l.id)) return false;
+        seen.add(l.id);
+        return true;
+      });
+      set({ ledgers: unique });
+    } catch (e) {
+      console.error('fetchLedgers error:', e);
+    }
+  },
   addLedger: (ledger) => set((state) => ({ ledgers: [...state.ledgers, ledger] })),
+  deleteLedger: async (id) => {
+    const { deleteLedger: deleteApi } = await import('../api/supabase');
+    await deleteApi(id);
+    set((state) => ({ ledgers: state.ledgers.filter((l) => l.id !== id) }));
+  },
 }));
 
 // ==========================================

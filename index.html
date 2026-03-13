@@ -17,6 +17,16 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     
     <title>Orbit 轨迹 - 记录与好友的每一个足迹</title>
+    <!-- Repair broken DiceBear avatar URLs cached by service worker -->
+    <script>
+      document.addEventListener('error', function(e) {
+        var img = e.target;
+        if (img.tagName === 'IMG' && img.src && img.src.includes('dicebear.com') && img.src.includes(',')) {
+          var m = img.src.match(/[?&]seed=([^&,]+)/);
+          img.src = 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + (m ? m[1] : 'guest');
+        }
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"></div>
