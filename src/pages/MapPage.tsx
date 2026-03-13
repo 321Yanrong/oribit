@@ -45,6 +45,22 @@ export default function MapPage() {
   }, [currentUser?.id, fetchMemories]);
 
   // ✨ 核心修复 2：将散落的 memories 按“地点”打包分组，生成地图需要的 Pins
+  const getFriendDisplay = (personId: string) => {
+    if (!personId) return null;
+    if (personId.startsWith('temp-')) {
+      const friendshipId = personId.replace('temp-', '');
+      const vf = friends.find((f: any) => f.id === friendshipId);
+      if (!vf) return null;
+      return {
+        id: personId,
+        username: vf.friend?.username || vf.friend_name || '好友',
+        avatar_url:
+          vf.friend?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${vf.friend_name || friendshipId}&backgroundColor=ffd5dc`,
+      };
+    }
+    return friends.find((f: any) => f.friend?.id === personId || f.friend_id === personId)?.friend || null;
+  };
+
   const derivedPins = useMemo(() => {
     const pinMap = new Map();
     memories.forEach(memory => {
@@ -65,10 +81,10 @@ export default function MapPage() {
 
       // 统一添加人物头像（跳过自己、跳过虚拟好友、跳过重复）
       const addPersonToPin = (pin: any, personId: string) => {
-        if (!personId || personId.startsWith('temp-')) return;
+        if (!personId) return;
         if (personId === currentUser?.id) return;
         if (pin.friends.some((f: any) => f.id === personId)) return;
-        const friendObj = friends.find((f: any) => f.friend?.id === personId || f.friend_id === personId)?.friend;
+        const friendObj = getFriendDisplay(personId);
         if (friendObj) pin.friends.push(friendObj);
       };
 
@@ -103,10 +119,10 @@ export default function MapPage() {
       cp.memories.push(memory);
       // 所有被 @ 的真实好友 + 如果是共享记忆，把发布者也加进来
       const addPersonToCity = (cp: any, personId: string) => {
-        if (!personId || personId.startsWith('temp-')) return;
+        if (!personId) return;
         if (personId === currentUser?.id) return;
         if (cp.friends.some((f: any) => f.id === personId)) return;
-        const fo = friends.find((f: any) => f.friend?.id === personId || f.friend_id === personId)?.friend;
+        const fo = getFriendDisplay(personId);
         if (fo) cp.friends.push(fo);
       };
       memory.tagged_friends?.forEach((friendId: string) => addPersonToCity(cp, friendId));

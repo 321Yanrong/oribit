@@ -889,10 +889,12 @@ const CreateMemoryModal = ({
         if (enableLedger && totalAmount > 0) {
           // 过滤虚拟好友（temp- 前缀），他们没有真实 auth UUID，不能存入 ledger_participants
           const realFriendIds = selectedFriends.filter(id => !id.startsWith('temp-'));
-          const participants = splitType === 'equal' && realFriendIds.length > 0
+          const isShared = splitType === 'equal' && realFriendIds.length > 0;
+          const participants = isShared
             ? [currentUser.id, ...realFriendIds].map(uid => ({ userId: uid, amount: totalAmount / (realFriendIds.length + 1) }))
             : [{ userId: currentUser.id, amount: totalAmount }];
-          await createLedger(currentUser.id, totalAmount, participants, memory.id);
+          const expenseType = isShared ? 'shared' : 'personal';
+          await createLedger(currentUser.id, totalAmount, participants, memory.id, expenseType);
           // 同步刷新账单列表
           await useLedgerStore.getState().fetchLedgers();
         }

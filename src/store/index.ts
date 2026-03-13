@@ -26,6 +26,44 @@ export interface Friend {
   created_at: string;
 }
 
+const sanitizeAvatarUrl = (raw: string | null | undefined, seed: string) => {
+  const fallback = `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}`;
+  if (!raw) return fallback;
+  if (raw.includes('hair=') && raw.includes(',')) {
+    const match = raw.match(/[?&]seed=([^&,]+)/);
+    return `https://api.dicebear.com/9.x/adventurer/svg?seed=${match ? match[1] : seed}`;
+  }
+  return raw;
+};
+
+const mapFriendRecord = (item: any): Friend => {
+  const isVirtual = !item.friend;
+  const resolvedFriendId = isVirtual
+    ? `temp-${item.id}`
+    : item.friend_id || item.friend?.id || `temp-${item.id}`;
+  const friendProfile = item.friend;
+
+  const avatarUrl = isVirtual
+    ? `https://api.dicebear.com/9.x/adventurer/svg?seed=${item.friend_name || item.id}&backgroundColor=ffdfbf`
+    : sanitizeAvatarUrl(friendProfile?.avatar_url ?? '', friendProfile?.id || item.id);
+
+  return {
+    id: item.id,
+    user_id: item.user_id,
+    friend_id: item.friend_id,
+    friend_name: item.friend_name,
+    remark: item.remark,
+    status: item.status,
+    created_at: item.created_at,
+    friend: {
+      id: resolvedFriendId,
+      real_username: isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友',
+      username: item.remark || (isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友'),
+      avatar_url: avatarUrl,
+    },
+  };
+};
+
 // ==========================================
 // 2. 用户 Store (包含马甲逻辑)
 // ==========================================
@@ -53,77 +91,52 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ pendingRequests: data });
   },
   fetchFriends: async () => {
-  const { currentUser } = get();
-  if (!currentUser) return;
-  if (!isRealUUID(currentUser.id)) return;
+    const { currentUser } = get();
+    if (!currentUser || !isRealUUID(currentUser.id)) return;
 
-  // 1. 发起联表查询
-  // 使用 as any 是因为你之前删除了外键关联，TS 插件可能无法自动识别关系
-  const { data, error } = await supabase
-    .from('friendships')
-    .select(`
-      *,
-      friend:friend_id (
-        id,
-        username,
-        avatar_url
-      )
-    `)
-    .eq('user_id', currentUser.id)
-    .in('status', ['accepted', 'virtual']) as any;
+    const { data, error } = await supabase
+      .from('friendships')
+      .select(`
+        *,
+        friend:friend_id (
+          id,
+          username,
+          avatar_url
+        )
+      `)
+      .eq('user_id', currentUser.id)
+      .in('status', ['accepted', 'virtual']) as any;
 
-  if (error) {
-    console.error("拉取好友失败:", error.message);
-    return;
-  }
+    if (error) {
+      console.error('拉取好友失败:', error.message);
+      return;
+    }
 
-  if (data) {
-    // 2. ✨ 数据清洗与包装 (Data Mapping)
-    const formattedFriends: Friend[] = data.map((item: any) => {
-      // 判断是否为马甲：没有关联的 friend 资料，或者 friend_id 为空
-      const isVirtual = !item.friend;
-
-      const resolvedFriendId = isVirtual
-        ? `temp-${item.id}`
-        : item.friend_id || item.friend?.id || `temp-${item.id}`;
-      const friendProfile = item.friend;
-
-      return {
-        id: item.id,            // 这里的 id 是 friendships 表的主键 (text)
-        user_id: item.user_id,
-        friend_id: item.friend_id, // 真实用户为 UUID，马甲为 null
-        friend_name: item.friend_name,
-        remark: item.remark,
-        status: item.status,
-        created_at: item.created_at,
-        
-        // ✨ 统一包装名为 friend 的对象，让 UI 组件不需要做任何判断
-        friend: {
-          id: resolvedFriendId,
-          // real_username: 真实账号名/马甲名，只在详情页展示
-          real_username: isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友',
-          // username: 优先显示备注，没有备注才用真实名
-          username: item.remark || (isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友'),
-          avatar_url: isVirtual 
-            ? `https://api.dicebear.com/9.x/adventurer/svg?seed=${item.friend_name || item.id}&backgroundColor=ffdfbf` 
-            : (() => {
-                const raw = friendProfile?.avatar_url ?? '';
-                if (raw && raw.includes('hair=') && raw.includes(',')) {
-                  const m = raw.match(/[?&]seed=([^&,]+)/);
-                  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${m ? m[1] : item.id}`;
-                }
-                return raw || `https://api.dicebear.com/9.x/adventurer/svg?seed=guest`;
-              })()
-        }
-      };
-    });
-
-    set({ friends: formattedFriends });
-  }
-},
+    if (data) {
+      set({ friends: data.map(mapFriendRecord) });
+    }
+  },
   addFriend: async (friendshipData) => {
-    const { error } = await supabase.from('friendships').insert([friendshipData]);
-    if (!error) await get().fetchFriends();
+    const { currentUser } = get();
+    if (!currentUser || !isRealUUID(currentUser.id)) return;
+    const { data, error } = await supabase
+      .from('friendships')
+      .insert([friendshipData])
+      .select(`
+        *,
+        friend:friend_id (
+          id,
+          username,
+          avatar_url
+        )
+      `)
+      .single();
+    if (error) {
+      console.error('添加好友失败:', error.message);
+      return;
+    }
+    const formatted = mapFriendRecord(data);
+    set((state) => ({ friends: [formatted, ...state.friends] }));
   },
   deleteFriend: async (friendshipId) => {
     const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);

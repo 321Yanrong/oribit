@@ -5,6 +5,8 @@ import { FaImage, FaVideo, FaTimes, FaSpinner, FaPlay, FaMicrophone, FaStop, FaT
 const MAX_VIDEO_SIZE_MB = 30;
 const LIVE_MAX_SIZE_MB = 30;
 const UPLOAD_TIMEOUT_MS = 45000;
+const MAX_IMAGE_EDGE = 1600;
+const MIN_IMAGE_COMPRESS_SIZE = 1.5 * 1024 * 1024; // 1.5MB 以上才压缩
 
 const withTimeout = async <T,>(promise: Promise<T>, ms = UPLOAD_TIMEOUT_MS): Promise<T> => {
   const timeout = new Promise<never>((_, reject) => {
@@ -27,6 +29,29 @@ interface MediaUploaderProps {
   onPhotosChange: (urls: string[]) => void;
   onVideosChange: (urls: string[]) => void;
 }
+
+const compressImage = async (file: File): Promise<File> => {
+  if (!file.type.startsWith('image/')) return file;
+  if (file.size < MIN_IMAGE_COMPRESS_SIZE) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+  } catch (err) {
+    console.warn('图片压缩失败，使用原图上传', err);
+    return file;
+  }
+};
 
 // ── 语音录制器 ────────────────────────────────────────────────────
 export function VoiceRecorder({
@@ -268,7 +293,8 @@ export default function MediaUploader({
     try {
       if (type === 'photo') {
         const { uploadPhoto } = await import('../api/supabase');
-        const urls = await Promise.all(validFiles.map(file => withTimeout(uploadPhoto(userId, file))));
+        const compressed = await Promise.all(validFiles.map(file => compressImage(file)));
+        const urls = await Promise.all(compressed.map(file => withTimeout(uploadPhoto(userId, file))));
         onPhotosChange([...photos, ...urls]);
       } else {
         const { uploadVideo } = await import('../api/supabase');
