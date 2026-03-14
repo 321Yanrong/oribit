@@ -221,10 +221,10 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
 
 ### P1（下个迭代）
 
-- [ ] 将核心业务 API（好友/记忆列表）设置为 `NetworkFirst + fallback` 策略
-- [ ] 对上传与写操作（发记忆、改资料）给出“离线不可用”明确提示
+- [x] 将核心业务 API（好友/记忆列表）设置为 `NetworkFirst + fallback` 策略
+- [x] 对上传与写操作（发记忆、改资料）给出“离线不可用”明确提示
 - [x] 统一更新提示条（新版本可用时提醒“点击刷新”）
-- [ ] 增加 iOS 安装引导文案（Safari “添加到主屏幕”）
+- [x] 增加 iOS 安装引导文案（Safari “添加到主屏幕”）
 - [ ] 设计离线模式信息架构（哪些页面可看、哪些操作禁用）
 
 ### P2（后续增强）

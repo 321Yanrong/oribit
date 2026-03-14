@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
+import { MemoryStreamDraft, useUIStore } from '../store/ui';
 import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 
@@ -148,6 +149,17 @@ const groupMemoriesByCity = (memories: any[]) => {
       const lb = new Date(b.memories[0].memory_date || b.memories[0].created_at).getTime();
       return lb - la;
     });
+};
+
+const getLocalDateTimeValue = (dateInput?: string) => {
+  if (dateInput) {
+    const d = new Date(dateInput);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().slice(0, 16);
 };
 
 // 记忆详情弹窗
@@ -762,12 +774,18 @@ const CreateMemoryModal = ({
   onSuccess,
   friends,
   editData,
+  initialDraft,
+  onDraftChange,
+  onClearDraft,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   friends: any[];
   editData?: any;
+  initialDraft?: MemoryStreamDraft | null;
+  onDraftChange?: (draft: MemoryStreamDraft) => void;
+  onClearDraft?: () => void;
 }) => {
   const { currentUser } = useUserStore(); 
   const isEditMode = !!editData;
@@ -776,57 +794,56 @@ const CreateMemoryModal = ({
   const existingMeta = useMemo(() => decodeMemoryContent(editData?.content || ''), [editData?.content]);
 
   // 1. 状态定义
-  const [content, setContent] = useState(existingMeta.text || '');
-  const [weather, setWeather] = useState(existingMeta.weather);
-  const [mood, setMood] = useState(existingMeta.mood);
-  const [route, setRoute] = useState(existingMeta.route);
-  const [locationName, setLocationName] = useState(editData?.location?.name || '');
+  const [content, setContent] = useState(isEditMode ? (existingMeta.text || '') : (initialDraft?.content || ''));
+  const [weather, setWeather] = useState(isEditMode ? existingMeta.weather : (initialDraft?.weather || ''));
+  const [mood, setMood] = useState(isEditMode ? existingMeta.mood : (initialDraft?.mood || ''));
+  const [route, setRoute] = useState(isEditMode ? existingMeta.route : (initialDraft?.route || ''));
+  const [locationName, setLocationName] = useState(isEditMode ? (editData?.location?.name || '') : (initialDraft?.locationName || ''));
   const [selectedLocation, setSelectedLocation] = useState<AMapPoi | null>(
-    editData?.location ? {
-      id: editData.location.id,
-      name: editData.location.name,
-      address: editData.location.address,
-      location: `${editData.location.lng},${editData.location.lat}`,
-      type: ''
-    } : null
+    isEditMode
+      ? (editData?.location ? {
+          id: editData.location.id,
+          name: editData.location.name,
+          address: editData.location.address,
+          location: `${editData.location.lng},${editData.location.lat}`,
+          type: ''
+        } : null)
+      : (initialDraft?.selectedLocation || null)
   );
   const [selectedFriends, setSelectedFriends] = useState<string[]>(
-    (editData?.tagged_friends || []).filter((id: string) => {
-      if (id.startsWith('temp-')) {
-        const fid = id.replace('temp-', '');
-        return friends.some((f: any) => f.id === fid);
-      }
-      return friends.some((f: any) => f.friend?.id === id);
-    })
+    isEditMode
+      ? (editData?.tagged_friends || []).filter((id: string) => {
+          if (id.startsWith('temp-')) {
+            const fid = id.replace('temp-', '');
+            return friends.some((f: any) => f.id === fid);
+          }
+          return friends.some((f: any) => f.friend?.id === id);
+        })
+      : (initialDraft?.selectedFriends || [])
   );
-  const [photos, setPhotos] = useState<string[]>(editData?.photos || []);
-  const [videos, setVideos] = useState<string[]>(editData?.videos || []);
-  const [audios, setAudios] = useState<string[]>(editData?.audios || []);
-  const [enableLedger, setEnableLedger] = useState(editData?.has_ledger || false);
+  const [photos, setPhotos] = useState<string[]>(isEditMode ? (editData?.photos || []) : (initialDraft?.photos || []));
+  const [videos, setVideos] = useState<string[]>(isEditMode ? (editData?.videos || []) : (initialDraft?.videos || []));
+  const [audios, setAudios] = useState<string[]>(isEditMode ? (editData?.audios || []) : (initialDraft?.audios || []));
+  const [enableLedger, setEnableLedger] = useState(isEditMode ? (editData?.has_ledger || false) : (initialDraft?.enableLedger || false));
   const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>([{ id: '1', category: '🍜 饮食', note: '', amount: '' }]);
-  const [splitType, setSplitType] = useState<'personal' | 'equal'>('personal');
+  const [splitType, setSplitType] = useState<'personal' | 'equal'>(isEditMode ? 'personal' : (initialDraft?.splitType || 'personal'));
   const [existingLedgerId, setExistingLedgerId] = useState<string | null>(null);
   const [activeCalcId, setActiveCalcId] = useState<string | null>(null);
   const ledgerPrefilledRef = useRef(false);
 
-  const [memoryDate, setMemoryDate] = useState(() => {
-    if (editData?.memory_date || editData?.created_at) {
-      const d = new Date(editData.memory_date || editData.created_at);
-      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-      return d.toISOString().slice(0, 16);
-    }
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  });
+  const [memoryDate, setMemoryDate] = useState(() =>
+    isEditMode
+      ? getLocalDateTimeValue(editData?.memory_date || editData?.created_at)
+      : (initialDraft?.memoryDate || getLocalDateTimeValue())
+  );
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isEditMode) {
-      setEnableLedger(false);
+      setEnableLedger(initialDraft?.enableLedger || false);
       setLedgerItems([{ id: '1', category: '🍜 饮食', note: '', amount: '' }]);
-      setSplitType('personal');
+      setSplitType(initialDraft?.splitType || 'personal');
       setExistingLedgerId(null);
       ledgerPrefilledRef.current = true;
       return;
@@ -837,6 +854,41 @@ const CreateMemoryModal = ({
     setExistingLedgerId(null);
     ledgerPrefilledRef.current = false;
   }, [isEditMode, editData?.id]);
+
+  useEffect(() => {
+    if (isEditMode || !onDraftChange) return;
+    onDraftChange({
+      content,
+      weather,
+      mood,
+      route,
+      locationName,
+      selectedLocation,
+      selectedFriends,
+      photos,
+      videos,
+      audios,
+      enableLedger,
+      splitType,
+      memoryDate,
+    });
+  }, [
+    isEditMode,
+    onDraftChange,
+    content,
+    weather,
+    mood,
+    route,
+    locationName,
+    selectedLocation,
+    selectedFriends,
+    photos,
+    videos,
+    audios,
+    enableLedger,
+    splitType,
+    memoryDate,
+  ]);
 
   useEffect(() => {
     if (!isEditMode || !isOpen || !currentUser?.id || !editData?.id || ledgerPrefilledRef.current) return;
@@ -960,6 +1012,7 @@ const CreateMemoryModal = ({
           await useLedgerStore.getState().fetchLedgers();
         }
         await useMemoryStore.getState().fetchMemories();
+        onClearDraft?.();
       }
       
       onSuccess();
@@ -1199,15 +1252,26 @@ const CreateMemoryModal = ({
 export default function MemoryStreamPage() {
   const { memories, fetchMemories, deleteMemory } = useMemoryStore();
   const { friends } = useUserStore();
+  const {
+    memoryStreamSearchQuery: searchQuery,
+    memoryStreamFilterFriendIds: filterFriendIds,
+    memoryStreamGroupBy: groupBy,
+    memoryStreamDraft,
+    scrollPositions,
+    setMemoryStreamSearchQuery,
+    setMemoryStreamFilterFriendIds,
+    setMemoryStreamGroupBy,
+    setMemoryStreamDraft,
+    clearMemoryStreamDraft,
+    setScrollPosition,
+  } = useUIStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   // 在原有的 useState 旁边加上这两个：
   const { currentUser } = useUserStore(); // 获取当前用户，用来判断是不是自己发的回忆
   const [editingMemory, setEditingMemory] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterFriendIds, setFilterFriendIds] = useState<string[]>([]);
-  const [groupBy, setGroupBy] = useState<'date' | 'city'>('date');
+  const scrollRestoredRef = useRef(false);
 
   // 点赞 + 吐槽互动（本地持久化到 localStorage）
   const [reactions, setReactions] = useState<Record<string, { liked: boolean; likes: number; roastOpen: boolean; roasts: { text: string; author: string }[] }>>(() => {
@@ -1301,6 +1365,32 @@ export default function MemoryStreamPage() {
     };
     loadData();
   }, [fetchMemories]);
+
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrollPosition('memory-stream', window.scrollY || 0);
+        ticking = false;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [setScrollPosition]);
+
+  useEffect(() => {
+    if (isLoading || scrollRestoredRef.current) return;
+    const savedY = scrollPositions['memory-stream'] || 0;
+    scrollRestoredRef.current = true;
+    if (savedY > 0) {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedY);
+      });
+    }
+  }, [isLoading, scrollPositions]);
   
   return (
     <div className="relative min-h-screen bg-[#121212]">
@@ -1336,18 +1426,18 @@ export default function MemoryStreamPage() {
               type="text"
               placeholder="搜索内容、地点..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setMemoryStreamSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-white/20"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+              <button onClick={() => setMemoryStreamSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
                 <FaTimes className="text-xs" />
               </button>
             )}
           </div>
           {/* 分组方式切换 */}
           <button
-            onClick={() => setGroupBy(g => g === 'date' ? 'city' : 'date')}
+            onClick={() => setMemoryStreamGroupBy(groupBy === 'date' ? 'city' : 'date')}
             className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
               groupBy === 'city' ? 'bg-[#00FFB3]/20 text-[#00FFB3] border-[#00FFB3]/40' : 'bg-white/5 text-white/50 border-white/10 hover:border-white/25'
             }`}
@@ -1360,7 +1450,7 @@ export default function MemoryStreamPage() {
         {friends.length > 0 && (
           <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
             <button
-              onClick={() => setFilterFriendIds([])}
+              onClick={() => setMemoryStreamFilterFriendIds([])}
               className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
                 filterFriendIds.length === 0 ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
               }`}
@@ -1370,8 +1460,10 @@ export default function MemoryStreamPage() {
               return (
                 <button
                   key={f.friend.id}
-                  onClick={() => setFilterFriendIds(prev =>
-                    isSelected ? prev.filter(id => id !== f.friend.id) : [...prev, f.friend.id]
+                  onClick={() => setMemoryStreamFilterFriendIds(
+                    isSelected
+                      ? filterFriendIds.filter(id => id !== f.friend.id)
+                      : [...filterFriendIds, f.friend.id]
                   )}
                   className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
                     isSelected ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
@@ -1715,6 +1807,9 @@ export default function MemoryStreamPage() {
             onClose={() => setIsCreateOpen(false)}
             onSuccess={fetchMemories}
             friends={friends}
+            initialDraft={memoryStreamDraft}
+            onDraftChange={setMemoryStreamDraft}
+            onClearDraft={clearMemoryStreamDraft}
           />
         )}
       </AnimatePresence>

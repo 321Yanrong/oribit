@@ -41,12 +41,19 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs = UPLOAD_TIMEOUT_MS
   return Promise.race([promise, timeoutPromise])
 }
 
+const ensureOnlineForWrite = (action: string) => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error(`当前离线，暂时无法${action}。请联网后重试。`)
+  }
+}
+
 // ==================== 照片上传 ====================
 
 export const uploadPhoto = async (
   userId: string,
   file: File
 ): Promise<string> => {
+  ensureOnlineForWrite('上传图片')
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
   
@@ -99,6 +106,7 @@ export const uploadVideo = async (
   userId: string,
   file: File
 ): Promise<string> => {
+  ensureOnlineForWrite('上传视频')
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
   
@@ -136,6 +144,7 @@ export const uploadAudio = async (
   userId: string,
   blob: Blob
 ): Promise<string> => {
+  ensureOnlineForWrite('上传语音')
   const mimeType = blob.type || 'audio/webm'
   const ext = mimeType.includes('mp4') || mimeType.includes('aac') ? 'm4a' : 'webm'
   const fileName = `${userId}/${Date.now()}-voice.${ext}`
@@ -174,6 +183,7 @@ export const uploadAvatar = async (
   userId: string,
   file: File
 ): Promise<string> => {
+  ensureOnlineForWrite('上传头像')
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/avatar.${fileExt}`
   
@@ -208,6 +218,7 @@ export const uploadAvatar = async (
 // ==================== 认证相关 ====================
 
 export const signUp = async (email: string, password: string, username: string) => {
+  ensureOnlineForWrite('注册账号')
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -227,6 +238,7 @@ export const signUp = async (email: string, password: string, username: string) 
 }
 
 export const signIn = async (email: string, password: string) => {
+  ensureOnlineForWrite('登录')
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -244,6 +256,7 @@ export const signOut = async () => {
 
 // 发送重置密码邮件
 export const sendPasswordReset = async (email: string) => {
+  ensureOnlineForWrite('发送重置邮件')
   const redirectTo = window?.location?.origin || undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo,
@@ -260,6 +273,7 @@ export const getCurrentUser = async () => {
 // ==================== 邀请码 & 虚拟好友绑定 ====================
 
 export const saveInviteCode = async (userId: string, inviteCode: string): Promise<void> => {
+  ensureOnlineForWrite('保存邀请码')
   console.log('[saveInviteCode] 尝试保存邀请码', { userId, inviteCode });
   const { data, error } = await supabase
     .from('profiles')
@@ -331,6 +345,7 @@ export const bindVirtualFriend = async (
   friendshipId: string,
   realUserId: string
 ): Promise<{ syncedCount: number }> => {
+  ensureOnlineForWrite('绑定好友')
   // 0. 先查出发起方（A 的 user_id），用于创建反向记录
   const { data: existing, error: fetchErr } = await supabase
     .from('friendships')
@@ -406,6 +421,32 @@ export const getProfile = async (userId: string, userEmail?: string) => {
   } as import('../types').User
 }
 
+export const updateProfileUsername = async (userId: string, username: string) => {
+  ensureOnlineForWrite('修改昵称')
+  const cleanName = username.trim()
+  if (!cleanName) {
+    throw new Error('昵称不能为空')
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ username: cleanName })
+    .eq('id', userId)
+    .select('id, username, avatar_url, created_at, invite_code')
+    .single()
+
+  if (error) throw error
+
+  // 同步 auth user metadata，避免 profile 临时不可读时回退到旧昵称
+  try {
+    await supabase.auth.updateUser({ data: { username: cleanName } })
+  } catch (metaError) {
+    console.warn('同步 auth metadata 失败（已忽略，不影响 profile 保存）:', metaError)
+  }
+
+  return data
+}
+
 // ==================== 好友相关 ====================
 
 export const getFriends = async (userId: string) => {
@@ -427,6 +468,7 @@ export const getFriends = async (userId: string) => {
 }
 
 export const addFriend = async (userId: string, friendId: string) => {
+  ensureOnlineForWrite('添加好友')
   const { error } = await supabase
     .from('friendships')
     .insert({
@@ -507,6 +549,7 @@ export const createMemory = async (
   audios?: string[],
   hasLedger?: boolean
 ) => {
+  ensureOnlineForWrite('发布记忆')
   // 创建记忆
   const { data: memory, error: memoryError } = await supabase
     .from('memories')
@@ -557,6 +600,7 @@ export const createLocation = async (
   category?: string,
   userId?: string // ✨ 1. 接收从前端传来的 userId
 ) => {
+  ensureOnlineForWrite('创建地点')
   const { data, error } = await supabase
     .from('locations')
     .insert({
@@ -583,6 +627,7 @@ export const createLedger = async (
   memoryId?: string,
   expenseType: 'shared' | 'personal' = 'shared'
 ) => {
+  ensureOnlineForWrite('创建账单')
   // 创建账单
   const { data: ledger, error: ledgerError } = await supabase
     .from('ledgers')
@@ -658,6 +703,7 @@ export const updateLedger = async (
   memoryId?: string,
   expenseType: 'shared' | 'personal' = 'shared'
 ) => {
+  ensureOnlineForWrite('更新账单')
   // 1. 更新账单主表
   const { error: ledgerError } = await supabase
     .from('ledgers')
@@ -685,6 +731,7 @@ export const updateLedger = async (
 }
 
 export const deleteLedger = async (ledgerId: string): Promise<void> => {
+  ensureOnlineForWrite('删除账单')
   const { error } = await supabase.from('ledgers').delete().eq('id', ledgerId)
   if (error) throw error
 }
@@ -707,6 +754,7 @@ export const getSettlements = async (userId: string) => {
 }
 
 export const settlePayment = async (settlementId: string) => {
+  ensureOnlineForWrite('结清账单')
   const { error } = await supabase
     .from('settlements')
     .update({
@@ -722,6 +770,7 @@ export const settlePayment = async (settlementId: string) => {
 // 更新记忆内容 (编辑功能)
 // ==========================================
 export const updateMemoryContent = async (memoryId: string, newContent: string) => {
+  ensureOnlineForWrite('更新记忆')
   const { data, error } = await supabase
     .from('memories')
     .update({ content: newContent })
@@ -738,6 +787,7 @@ export const updateMemoryContent = async (memoryId: string, newContent: string) 
 
 // ==================== 好友删除 ====================
 export const deleteFriendship = async (friendshipId: string): Promise<void> => {
+  ensureOnlineForWrite('删除好友')
   const { error } = await supabase
     .from('friendships')
     .delete()
@@ -747,6 +797,7 @@ export const deleteFriendship = async (friendshipId: string): Promise<void> => {
 
 // 好友备注更新
 export const updateFriendRemark = async (friendshipId: string, remark: string): Promise<void> => {
+  ensureOnlineForWrite('更新好友备注')
   const { error } = await supabase
     .from('friendships')
     .update({ remark: remark || null } as any)
@@ -756,29 +807,45 @@ export const updateFriendRemark = async (friendshipId: string, remark: string): 
 
 // 通过邀请码发送好友申请（对方需要接受）
 export const addRealFriendByCode = async (currentUserId: string, inviteCode: string): Promise<any> => {
+  ensureOnlineForWrite('发送好友申请')
   const profile = await lookupProfileByInviteCode(inviteCode);
 
   if (profile.id === currentUserId) throw new Error('不能添加自己为好友');
 
-  // 检查是否已经是好友或已发过申请
+  // 检查是否已经是好友或已发过申请（拉全量，避免重复脏数据导致误判）
   const { data: existingRows, error: existingError } = await supabase
     .from('friendships')
     .select('id, status, user_id, friend_id')
     .or(`and(user_id.eq.${currentUserId},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${currentUserId})`)
-    .limit(1);
+    .order('created_at', { ascending: true });
 
   if (existingError) throw existingError;
 
-  const existing = existingRows?.[0];
-  if (existing) {
-    if (existing.status === 'accepted' || existing.status === 'virtual') {
+  if (existingRows && existingRows.length > 0) {
+    const hasAccepted = existingRows.some((row: any) => row.status === 'accepted' || row.status === 'virtual');
+    const pendingFromMe = existingRows.filter((row: any) => row.status === 'pending' && row.user_id === currentUserId && row.friend_id === profile.id);
+    const pendingFromOther = existingRows.filter((row: any) => row.status === 'pending' && row.user_id === profile.id && row.friend_id === currentUserId);
+
+    if (hasAccepted) {
       throw new Error(`已经和 ${profile.username} 建立好友关系，无需重复添加`);
     }
-    if (existing.status === 'pending') {
-      if (existing.user_id === currentUserId) {
-        throw new Error('好友申请已发送，等待对方确认');
+
+    // 我方已经发过申请：清理重复后直接提示
+    if (pendingFromMe.length > 0) {
+      if (pendingFromMe.length > 1) {
+        const duplicateIds = pendingFromMe.slice(1).map((row: any) => row.id);
+        if (duplicateIds.length > 0) {
+          await supabase.from('friendships').delete().in('id', duplicateIds);
+        }
       }
-      throw new Error(`${profile.username} 已经向你发送过申请，去「我的」页处理即可`);
+      throw new Error('好友申请已发送，等待对方确认');
+    }
+
+    // 对方已向我发过申请：自动互加，避免双方重复点击
+    if (pendingFromOther.length > 0) {
+      await ensureAcceptedFriendship(currentUserId, profile.id);
+      await ensureAcceptedFriendship(profile.id, currentUserId);
+      return profile;
     }
   }
 
@@ -822,7 +889,13 @@ export const getPendingFriendRequests = async (userId: string): Promise<any[]> =
 
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
-  return data.map((r: any) => ({
+  const deduped = data.reduce((acc: any[], row: any) => {
+    if (acc.some((item) => item.user_id === row.user_id)) return acc;
+    acc.push(row);
+    return acc;
+  }, []);
+
+  return deduped.map((r: any) => ({
     ...r,
     requester: profileMap.get(r.user_id) || null,
   }));
@@ -835,26 +908,36 @@ export const acceptFriendRequest = async (
   currentUserId: string,
   bindVirtualFriendshipId?: string,
 ): Promise<void> => {
-  // 1. 先尝试按 id 更新（兼容旧调用）
-  const { error: e1ById } = await supabase
+  ensureOnlineForWrite('处理好友申请')
+
+  // 1) 先按 id 更新（兼容旧调用；即便 0 行也不阻断后续幂等修复）
+  await supabase
     .from('friendships')
     .update({ status: 'accepted' })
     .eq('id', friendshipId);
-  if (e1ById) throw e1ById;
 
-  // 1.1 再按双方关系批量兜底更新，清理潜在重复 pending 记录
-  const { error: e1ByPair } = await supabase
+  // 2) 双向都做幂等修复，确保“同意一次”后双方都能立即看到彼此
+  await ensureAcceptedFriendship(requesterId, currentUserId);
+  await ensureAcceptedFriendship(currentUserId, requesterId);
+
+  // 3) 清理残留 pending，避免同一个人出现第二条可同意申请
+  const { error: cleanRequesterPendingError } = await supabase
     .from('friendships')
-    .update({ status: 'accepted' })
+    .delete()
     .eq('user_id', requesterId)
     .eq('friend_id', currentUserId)
     .eq('status', 'pending');
-  if (e1ByPair) throw e1ByPair;
+  if (cleanRequesterPendingError) throw cleanRequesterPendingError;
 
-  // 2. 确保反向记录（让双方都能在自己的好友列表看到对方）且不重复
-  await ensureAcceptedFriendship(currentUserId, requesterId);
+  const { error: cleanCurrentPendingError } = await supabase
+    .from('friendships')
+    .delete()
+    .eq('user_id', currentUserId)
+    .eq('friend_id', requesterId)
+    .eq('status', 'pending');
+  if (cleanCurrentPendingError) throw cleanCurrentPendingError;
 
-  // 3. 可选：把已存在的马甲好友绑定到此真实用户
+  // 4) 可选：把已存在的马甲好友绑定到此真实用户
   if (bindVirtualFriendshipId) {
     // 利用现有的绑定逻辑（会同步 memory_tags 并创建反向关系，重复插入会被 23505 吃掉）
     await bindVirtualFriend(bindVirtualFriendshipId, requesterId);
@@ -863,6 +946,7 @@ export const acceptFriendRequest = async (
 
 // 拒绝 / 忽略好友申请
 export const rejectFriendRequest = async (friendshipId: string): Promise<void> => {
+  ensureOnlineForWrite('拒绝好友申请')
   const { error } = await supabase
     .from('friendships')
     .delete()
@@ -872,6 +956,7 @@ export const rejectFriendRequest = async (friendshipId: string): Promise<void> =
 
 // ==================== 记忆删除 ====================
 export const deleteMemory = async (memoryId: string): Promise<void> => {
+  ensureOnlineForWrite('删除记忆')
   // 先删关联标签，再删记忆本体
   await supabase.from('memory_tags').delete().eq('memory_id', memoryId);
   const { error } = await supabase.from('memories').delete().eq('id', memoryId);

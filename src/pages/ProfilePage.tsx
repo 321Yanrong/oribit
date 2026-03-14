@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest } from '../api/supabase';
+import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername } from '../api/supabase';
 
 // 1. 添加好友弹窗（支持：临时好友 + 已注册真实好友）
 const AddFriendModal = ({
@@ -31,6 +31,7 @@ const AddFriendModal = ({
   const [bindTarget, setBindTarget] = useState<string>('new'); // 'new' or friendshipId
 
   const handleAdd = async () => {
+    if (loading) return;
     if (tab === 'virtual') {
       if (!name.trim()) return;
       setLoading(true);
@@ -506,10 +507,17 @@ export default function ProfilePage() {
       setIsEditingName(false);
       return;
     }
-    // 这里调用 supabase 更新 profile，同时更新本地 store
-    // await updateProfile(currentUser.id, { username: newName }); 
-    setCurrentUser({ ...currentUser, username: newName } as any);
-    setIsEditingName(false);
+    if (!currentUser?.id) return;
+    try {
+      const updated = await updateProfileUsername(currentUser.id, newName);
+      setCurrentUser({
+        ...currentUser,
+        username: updated.username,
+      } as any);
+      setIsEditingName(false);
+    } catch (e: any) {
+      alert(e?.message || '昵称保存失败，请重试');
+    }
   };
   // 生成邀请码
   const generateInviteCode = (userId: string) => {

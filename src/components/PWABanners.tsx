@@ -7,10 +7,13 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const INSTALL_DISMISSED_KEY = 'orbit_pwa_install_dismissed';
+const IOS_GUIDE_DISMISSED_KEY = 'orbit_pwa_ios_guide_dismissed';
 
 export default function PWABanners() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIosSafari, setIsIosSafari] = useState(false);
+  const [iosGuideDismissed, setIosGuideDismissed] = useState(false);
   const [needRefresh, setNeedRefresh] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -31,6 +34,12 @@ export default function PWABanners() {
   }, []);
 
   useEffect(() => {
+    const userAgent = window.navigator.userAgent || '';
+    const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+    const isSafari = /safari/i.test(userAgent) && !/crios|fxios|edgios|chrome|android/i.test(userAgent);
+    setIsIosSafari(isIOS && isSafari);
+    setIosGuideDismissed(localStorage.getItem(IOS_GUIDE_DISMISSED_KEY) === '1');
+
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
@@ -81,6 +90,10 @@ export default function PWABanners() {
   }, []);
 
   const canInstall = useMemo(() => Boolean(deferredPrompt && !isInstalled), [deferredPrompt, isInstalled]);
+  const canShowIosGuide = useMemo(
+    () => Boolean(isIosSafari && !isInstalled && !deferredPrompt && !iosGuideDismissed),
+    [deferredPrompt, iosGuideDismissed, isInstalled, isIosSafari]
+  );
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -95,6 +108,11 @@ export default function PWABanners() {
   const handleDismissInstall = () => {
     localStorage.setItem(INSTALL_DISMISSED_KEY, '1');
     setDeferredPrompt(null);
+  };
+
+  const handleDismissIosGuide = () => {
+    localStorage.setItem(IOS_GUIDE_DISMISSED_KEY, '1');
+    setIosGuideDismissed(true);
   };
 
   const handleRefresh = async () => {
@@ -112,6 +130,15 @@ export default function PWABanners() {
               <button onClick={handleDismissInstall} className="text-xs text-white/40 hover:text-white/70">稍后</button>
               <button onClick={handleInstall} className="rounded-lg bg-[#00FFB3] px-3 py-1.5 text-xs font-semibold text-black">安装</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {canShowIosGuide && (
+        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#4DA3FF]/30 bg-[#0f1420]/95 p-3 shadow-xl">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-white/90">🍎 iPhone 安装引导：Safari 底部点「分享」→ 选「添加到主屏幕」→ 点「添加」</p>
+            <button onClick={handleDismissIosGuide} className="shrink-0 text-xs text-white/45 hover:text-white/70">知道了</button>
           </div>
         </div>
       )}
