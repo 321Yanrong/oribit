@@ -113,7 +113,26 @@ export const useUserStore = create<UserState>((set, get) => ({
     }
 
     if (data) {
-      set({ friends: data.map(mapFriendRecord) });
+      const mapped = data.map(mapFriendRecord);
+      const dedupedMap = new Map<string, Friend>();
+
+      mapped.forEach((item) => {
+        const key = item.friend?.id || item.friend_id || item.id;
+        const prev = dedupedMap.get(key);
+        if (!prev) {
+          dedupedMap.set(key, item);
+          return;
+        }
+
+        // 优先保留有备注的记录，避免把用户手动备注丢掉
+        const prevHasRemark = Boolean(prev.remark && prev.remark.trim());
+        const currHasRemark = Boolean(item.remark && item.remark.trim());
+        if (!prevHasRemark && currHasRemark) {
+          dedupedMap.set(key, item);
+        }
+      });
+
+      set({ friends: Array.from(dedupedMap.values()) });
     }
   },
   addFriend: async (friendshipData) => {

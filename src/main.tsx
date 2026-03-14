@@ -1,6 +1,8 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
+import { supabase } from "./api/supabase";
+import { clearOrbitStorage, isLikelyInvalidSession } from "./utils/auth";
 
 if (import.meta.env.DEV && typeof window !== "undefined" && "serviceWorker" in navigator) {
 	navigator.serviceWorker
@@ -16,10 +18,40 @@ if (import.meta.env.DEV && typeof window !== "undefined" && "serviceWorker" in n
 	}
 }
 
-// 🚧 Important: Avoid React.StrictMode here because Supabase's auth client uses
-// the Web Locks API internally. StrictMode's intentional double-mount pattern
-// was causing locks to be "stolen" mid-flight, which surfaced as
-// "AbortError: Lock broken by another request with the 'steal' option" in dev
-// tools. Rendering the app once prevents orphaned locks while keeping the rest
-// of the app unchanged.
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+
+const renderApp = () => {
+	if (!rootElement) {
+		throw new Error("Root container #root not found");
+	}
+
+	// 🚧 Important: Avoid React.StrictMode here because Supabase's auth client uses
+	// the Web Locks API internally. StrictMode's intentional double-mount pattern
+	// was causing locks to be "stolen" mid-flight, which surfaced as
+	// "AbortError: Lock broken by another request with the 'steal' option" in dev
+	// tools. Rendering the app once prevents orphaned locks while keeping the rest
+	// of the app unchanged.
+	createRoot(rootElement).render(<App />);
+};
+
+const bootstrapAuthThenRender = async () => {
+	try {
+		// 关键：先让 Supabase 从 localStorage 完成会话恢复，再挂载应用
+		const { error } = await supabase.auth.getSession();
+
+		if (error && isLikelyInvalidSession(error.message)) {
+			try {
+				await supabase.auth.signOut({ scope: "local" });
+			} catch {
+				// ignore
+			}
+			clearOrbitStorage();
+		}
+	} catch {
+		// 启动阶段不能因为鉴权预热失败而阻断渲染
+	} finally {
+		renderApp();
+	}
+};
+
+void bootstrapAuthThenRender();

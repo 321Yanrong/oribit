@@ -286,6 +286,47 @@ export const lookupProfileByInviteCode = async (inviteCode: string) => {
   return data
 }
 
+const ensureAcceptedFriendship = async (userId: string, friendId: string): Promise<void> => {
+  const { data: existingRows, error: fetchError } = await supabase
+    .from('friendships')
+    .select('id, status, created_at')
+    .eq('user_id', userId)
+    .eq('friend_id', friendId)
+    .order('created_at', { ascending: true });
+
+  if (fetchError) throw fetchError;
+
+  if (!existingRows || existingRows.length === 0) {
+    const { error: insertError } = await supabase
+      .from('friendships')
+      .insert({ user_id: userId, friend_id: friendId, status: 'accepted' });
+
+    if (insertError && (insertError as any).code !== '23505') {
+      throw insertError;
+    }
+    return;
+  }
+
+  const ids = existingRows.map((row: any) => row.id);
+
+  // 全部统一为 accepted
+  const { error: updateError } = await supabase
+    .from('friendships')
+    .update({ status: 'accepted' })
+    .in('id', ids);
+  if (updateError) throw updateError;
+
+  // 如果历史上已经有重复关系，保留最早一条，其余清理，避免列表出现重复好友
+  if (ids.length > 1) {
+    const [, ...duplicateIds] = ids;
+    const { error: dedupeError } = await supabase
+      .from('friendships')
+      .delete()
+      .in('id', duplicateIds);
+    if (dedupeError) throw dedupeError;
+  }
+};
+
 export const bindVirtualFriend = async (
   friendshipId: string,
   realUserId: string
@@ -306,12 +347,11 @@ export const bindVirtualFriend = async (
     .eq('id', friendshipId)
   if (e1) throw e1
 
-  // 2. 为真实用户 B 创建反向记录（B → A），让 B 的好友列表也能看到 A
-  const { error: e3 } = await supabase
-    .from('friendships')
-    .insert({ user_id: realUserId, friend_id: ownerUserId, status: 'accepted' });
-  if (e3 && (e3 as any).code !== '23505') {
-    const message = (e3 as any)?.message || '创建反向好友关系失败';
+  // 2. 为真实用户 B 确保反向记录（B → A）且不重复
+  try {
+    await ensureAcceptedFriendship(realUserId, ownerUserId);
+  } catch (e3: any) {
+    const message = e3?.message || '创建反向好友关系失败';
     if (/row-level security|new row violates/i.test(message)) {
       throw new Error('Supabase 拒绝创建反向好友关系，请在 SQL Editor 中运行 friend-requests-migration.sql 后重试。');
     }
@@ -795,18 +835,24 @@ export const acceptFriendRequest = async (
   currentUserId: string,
   bindVirtualFriendshipId?: string,
 ): Promise<void> => {
-  // 1. 更新申请方那条记录
-  const { error: e1 } = await supabase
+  // 1. 先尝试按 id 更新（兼容旧调用）
+  const { error: e1ById } = await supabase
     .from('friendships')
     .update({ status: 'accepted' })
     .eq('id', friendshipId);
-  if (e1) throw e1;
+  if (e1ById) throw e1ById;
 
-  // 2. 创建反向记录（让双方都能在自己的好友列表看到对方）
-  const { error: e2 } = await supabase
+  // 1.1 再按双方关系批量兜底更新，清理潜在重复 pending 记录
+  const { error: e1ByPair } = await supabase
     .from('friendships')
-    .insert({ user_id: currentUserId, friend_id: requesterId, status: 'accepted' });
-  if (e2 && e2.code !== '23505') throw e2; // 23505 = unique violation → already exists, OK
+    .update({ status: 'accepted' })
+    .eq('user_id', requesterId)
+    .eq('friend_id', currentUserId)
+    .eq('status', 'pending');
+  if (e1ByPair) throw e1ByPair;
+
+  // 2. 确保反向记录（让双方都能在自己的好友列表看到对方）且不重复
+  await ensureAcceptedFriendship(currentUserId, requesterId);
 
   // 3. 可选：把已存在的马甲好友绑定到此真实用户
   if (bindVirtualFriendshipId) {

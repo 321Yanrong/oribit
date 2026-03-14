@@ -595,8 +595,10 @@ const handleAddFriend = async (name: string, remark: string) => {
       }
 
       await acceptFriendRequest(req.id, req.user_id, currentUser!.id, bindVirtualFriendshipId);
-      // 本地先移除 pending，防重点击导致重复接受
-      useUserStore.setState((state) => ({ pendingRequests: state.pendingRequests.filter((p: any) => p.id !== req.id) }));
+      // 本地先移除 pending，防重点击导致重复接受；同时按 user_id 兜底清理重复申请
+      useUserStore.setState((state) => ({
+        pendingRequests: state.pendingRequests.filter((p: any) => p.id !== req.id && p.user_id !== req.user_id)
+      }));
       await useUserStore.getState().fetchFriends();
       await useUserStore.getState().fetchPendingRequests();
       await useMemoryStore.getState().fetchMemories();
