@@ -1124,12 +1124,8 @@ const handleAddFriend = async (name: string, remark: string) => {
       {/* 顶部个人卡片 */}
       <div className="relative z-10 safe-top mx-4 mt-4">
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card rounded-3xl p-6 relative overflow-hidden">
-          <div className="mb-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <img src="/icons/orbit-logo.svg" alt="Orbit Logo" className="w-8 h-8 rounded-lg object-contain" />
-              <img src="/icons/orbit-wordmark.svg" alt="Orbit Wordmark" className="h-6 w-auto object-contain" />
-            </div>
-            <span className="text-white/40 text-xs shrink-0">我的页面</span>
+          <div className="mb-5 flex justify-end">
+            <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-white/40 text-xs shrink-0">我的页面</span>
           </div>
           <div className="flex items-center gap-4 mb-6 relative">
             <div className="relative">
@@ -1438,6 +1434,13 @@ const handleAddFriend = async (name: string, remark: string) => {
           {deletingAccount ? <FaSpinner className="w-5 h-5 animate-spin" /> : <FaTrash className="w-5 h-5" />}
           {deletingAccount ? '注销中...' : '注销邮箱账号'}
         </button>
+      </div>
+
+      <div className="fixed left-4 z-20 pointer-events-none" style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
+        <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.28)]">
+          <img src="/icons/orbit-logo.svg" alt="Orbit Logo" className="w-8 h-8 rounded-lg object-contain" />
+          <img src="/icons/orbit-wordmark.svg" alt="Orbit Wordmark" className="h-5 w-auto object-contain opacity-95" />
+        </div>
       </div>
       
       {/* 弹窗挂载区 */}

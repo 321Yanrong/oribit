@@ -1538,6 +1538,7 @@ export default function MemoryStreamPage() {
   const { currentUser } = useUserStore(); // 获取当前用户，用来判断是不是自己发的回忆
   const [editingMemory, setEditingMemory] = useState<any>(null);
   const scrollRestoredRef = useRef(false);
+  const albumSectionRef = useRef<HTMLDivElement>(null);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1852,6 +1853,11 @@ export default function MemoryStreamPage() {
       });
     }
   }, [isLoading, scrollPositions]);
+
+  const scrollToAlbumSection = () => {
+    if (!albumSectionRef.current) return;
+    albumSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   
   return (
     <div className="relative min-h-screen bg-[#121212]">
@@ -1880,11 +1886,21 @@ export default function MemoryStreamPage() {
               )}
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={() => setIsCreateOpen(true)}
-            className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold text-sm shrink-0"
-          >记录此刻</motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={scrollToAlbumSection}
+              className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 text-white/80 font-semibold text-sm shrink-0 flex items-center gap-2 hover:border-white/30"
+            >
+              <FaBookOpen className="text-xs" />
+              回忆相册
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={() => setIsCreateOpen(true)}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold text-sm shrink-0"
+            >记录此刻</motion.button>
+          </div>
         </div>
 
         {/* 搜索框 + 分组切换 */}
@@ -1950,7 +1966,9 @@ export default function MemoryStreamPage() {
       
       {/* 记忆列表 */}
       <div className="relative px-4 pb-32">
-        <SharedMemoryAlbumBook memories={filteredMemories} />
+        <div ref={albumSectionRef} className="scroll-mt-20">
+          <SharedMemoryAlbumBook memories={filteredMemories} />
+        </div>
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FaSpinner className="text-[#00FFB3] text-3xl animate-spin mb-4" />
