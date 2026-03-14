@@ -1,10 +1,36 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '../types/database'
+import { clearOrbitStorage, emitInvalidAuthEvent, isLikelyInvalidSession } from '../utils/auth'
 
 const supabaseUrl = 'https://qoaqmbepnsqymxzpncyf.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYXFtYmVwbnNxeW14enBuY3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQ5NTMsImV4cCI6MjA4ODUzMDk1M30.dmQ5kVi2dGQHJ8QM7gDSRx8nNSSIfZ5jVbh22NLeBIc'
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+const authAwareFetch: typeof fetch = async (input, init) => {
+  const response = await fetch(input, init)
+
+  try {
+    if (response.status === 401 || response.status === 403) {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      const errorCode = response.headers.get('x-sb-error-code') || ''
+      const authRelatedEndpoint = /\/auth\/v1\//.test(url) || /\/rest\/v1\//.test(url)
+
+      if (authRelatedEndpoint && isLikelyInvalidSession(errorCode || `http_${response.status}`)) {
+        clearOrbitStorage()
+        emitInvalidAuthEvent(errorCode || `http_${response.status}`)
+      }
+    }
+  } catch (e) {
+    console.warn('authAwareFetch inspect failed:', e)
+  }
+
+  return response
+}
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: authAwareFetch,
+  },
+})
 
 const UPLOAD_TIMEOUT_MS = 45000
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore } from './store';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
+import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import MapPage from './pages/MapPage';
@@ -30,56 +31,10 @@ const generateInviteCode = (userId: string): string => {
   return `ORBIT${code.slice(0, 6)}`;
 };
 
-const ORBIT_STORAGE_PREFIXES = ['orbit_', 'orbit-', 'sb-', 'supabase.auth', 'supabase-auth-token', 'supabase'];
-const ORBIT_STORAGE_CONTAINS = ['supabase', 'orbit'];
-
-const clearOrbitStorage = () => {
-  const clearByPrefixes = (storage?: Storage | null) => {
-    if (!storage) return;
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < storage.length; i++) {
-      const key = storage.key(i);
-      if (!key) continue;
-      if (ORBIT_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix)) || ORBIT_STORAGE_CONTAINS.some((keyword) => key.includes(keyword))) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((k) => {
-      try {
-        storage.removeItem(k);
-      } catch (e) {
-        console.warn('Failed to remove cached item', k, e);
-      }
-    });
-  };
-
-  try {
-    clearByPrefixes(typeof window !== 'undefined' ? window.localStorage : undefined);
-    clearByPrefixes(typeof window !== 'undefined' ? window.sessionStorage : undefined);
-  } catch (err) {
-    console.warn('Orbit cache clear error:', err);
-  }
-};
-
 const resetClientData = () => {
   useMemoryStore.setState({ memories: [] });
   useLedgerStore.setState({ ledgers: [] });
   useUserStore.setState({ friends: [], pendingRequests: [] });
-};
-
-const isLikelyInvalidSession = (message?: string) => {
-  if (!message) return false;
-  const lower = message.toLowerCase();
-  return [
-    'invalid jwt',
-    'invalid token',
-    'jwt expired',
-    'token has expired',
-    'expired token',
-    'refresh_token_not_found',
-    'session not found',
-    'auth session missing',
-  ].some((fragment) => lower.includes(fragment));
 };
 
 function App() {
@@ -227,8 +182,11 @@ function App() {
 
 useEffect(() => {
     let isMounted = true;
+    let invalidSessionHandled = false;
 
     const handleInvalidSession = async (reason?: string) => {
+      if (invalidSessionHandled) return;
+      invalidSessionHandled = true;
       console.warn('Detected invalid auth/session token, clearing Orbit caches.', reason);
       try {
         await supabase.auth.signOut({ scope: 'local' });
@@ -238,11 +196,22 @@ useEffect(() => {
       clearOrbitStorage();
       resetClientData();
       if (isMounted) {
+        setIsDemoMode(false);
+        useNavStore.setState({ currentPage: 'map' });
         setCurrentUser(null);
         setShowAuth(true);
         setLoading(false);
       }
     };
+
+    const onInvalidAuthEvent = (event: Event) => {
+      const detail = (event as CustomEvent<{ reason?: string }>).detail;
+      void handleInvalidSession(detail?.reason || 'interceptor-invalid-token');
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener(ORBIT_AUTH_INVALID_EVENT, onInvalidAuthEvent as EventListener);
+    }
 
     // 检查用户登录状态
     const checkAuth = async () => {
@@ -403,6 +372,9 @@ useEffect(() => {
 
     return () => {
       isMounted = false; // 组件卸载时，关掉开关
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(ORBIT_AUTH_INVALID_EVENT, onInvalidAuthEvent as EventListener);
+      }
       subscription.unsubscribe();
     };
   }, [setCurrentUser]);
