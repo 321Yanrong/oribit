@@ -5,6 +5,7 @@ import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav from './components/BottomNav';
 import AuthModal from './components/AuthModal';
+import PWABanners from './components/PWABanners';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
@@ -434,6 +435,7 @@ useEffect(() => {
       </AnimatePresence>
       
       <BottomNav />
+      <PWABanners />
       
       {/* 认证模态框 */}
       <AnimatePresence>

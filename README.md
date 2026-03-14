@@ -216,14 +216,14 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
 - [x] Service Worker 自动更新（`registerType: autoUpdate`）
 - [x] 旧缓存清理（`cleanupOutdatedCaches`）
 - [x] 离线兜底页（`public/offline.html`）
-- [ ] 增加“可安装提示”UI（`beforeinstallprompt`）
+- [x] 增加“可安装提示”UI（`beforeinstallprompt`）
 - [ ] 首屏性能指标基线（LCP/CLS/INP）并记录
 
 ### P1（下个迭代）
 
 - [ ] 将核心业务 API（好友/记忆列表）设置为 `NetworkFirst + fallback` 策略
 - [ ] 对上传与写操作（发记忆、改资料）给出“离线不可用”明确提示
-- [ ] 统一更新提示条（新版本可用时提醒“点击刷新”）
+- [x] 统一更新提示条（新版本可用时提醒“点击刷新”）
 - [ ] 增加 iOS 安装引导文案（Safari “添加到主屏幕”）
 - [ ] 设计离线模式信息架构（哪些页面可看、哪些操作禁用）
 
