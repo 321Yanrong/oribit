@@ -52,7 +52,7 @@ export const MemoryStoryEntry = ({
             linear-gradient(135deg, rgba(8,12,24,0.88), rgba(12,7,28,0.82)),
             url(${memoryFlowBackground})`,
           backgroundBlendMode: 'screen, screen, screen, normal, soft-light',
-          backgroundSize: '140% 140%, 140% 140%, cover, cover',
+          backgroundSize: '140% 140%, 140% 140%, 140% 140%, cover, cover',
           backgroundPosition: 'center',
         }}
       >
@@ -161,6 +161,8 @@ export const MemoryStoryDrawer = ({
   }, [selectedTrack]);
 
   const currentItem = playlist[activeIndex];
+  // Keep a loaded blur background to avoid a black flash when switching photos
+  const [blurBgUrl, setBlurBgUrl] = useState(currentItem?.photoUrl || '');
   const shareThumb = playlist[activeIndex + 1]?.photoUrl || currentItem?.photoUrl;
   const { text: mText, weather, mood } = decodeMemoryContent(currentItem?.memory?.content || '');
 
@@ -184,6 +186,18 @@ export const MemoryStoryDrawer = ({
       }
     };
   }, [memories]);
+
+  // Preload next blur background and only swap when loaded to avoid flashing to black
+  useEffect(() => {
+    const nextUrl = currentItem?.photoUrl;
+    if (!nextUrl) return;
+    // Optimistically set to当前图，避免与上层主图不同步慢一拍
+    setBlurBgUrl(nextUrl);
+    const img = new Image();
+    img.onload = () => setBlurBgUrl(nextUrl);
+    img.onerror = () => setBlurBgUrl(nextUrl);
+    img.src = nextUrl;
+  }, [currentItem?.photoUrl]);
 
   // 同步播放/暂停
   useEffect(() => {
@@ -522,23 +536,18 @@ export const MemoryStoryDrawer = ({
           onTouchStart={handlePointerDown}
           onTouchEnd={handlePointerUp}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`blur-${currentItem.memory?.id || currentItem.memory?.created_at || 'm'}-${activeIndex}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `url(${currentItem.photoUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'blur(10px)',
-                transform: 'scale(1.03)',
-              }}
-            />
-          </AnimatePresence>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: blurBgUrl ? `url(${blurBgUrl})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(10px)',
+              transform: 'scale(1.03)',
+              transition: 'opacity 120ms ease-out',
+              opacity: blurBgUrl ? 1 : 0,
+            }}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/35 to-transparent pointer-events-none" />
 
           {stackedPhotos.length > 0 && (
