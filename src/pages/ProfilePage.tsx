@@ -15,7 +15,7 @@ const AddFriendModal = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onAddVirtual: (name: string, remark: string) => void;
+  onAddVirtual: (name: string, remark: string) => Promise<void>;
   onAddReal: (code: string) => Promise<void>;
   virtualFriends: any[];
   onBindExisting: (friendId: string, code: string) => Promise<void>;
@@ -33,9 +33,17 @@ const AddFriendModal = ({
   const handleAdd = async () => {
     if (tab === 'virtual') {
       if (!name.trim()) return;
-      onAddVirtual(name.trim(), remark.trim());
-      setName(''); setRemark('');
-      onClose();
+      setLoading(true);
+      try {
+        await onAddVirtual(name.trim(), remark.trim());
+        setName('');
+        setRemark('');
+        onClose();
+      } catch (err: any) {
+        alert(err?.message || '添加失败');
+      } finally {
+        setLoading(false);
+      }
     } else {
       if (realStep === 'input') {
         if (code.length < 11) return;
@@ -516,13 +524,8 @@ const handleAddFriend = async (name: string, remark: string) => {
     remark: remark || null,
     status: 'virtual',
   };
-  try {
-    await addFriend(friendshipData);
-    setShowAddFriend(false);
-  } catch (error) {
-    console.error('添加失败:', error);
-    alert('添加失败');
-  }
+  await addFriend(friendshipData);
+  setShowAddFriend(false);
 };
 
   // 通过邀请码发送好友申请
@@ -537,18 +540,36 @@ const handleAddFriend = async (name: string, remark: string) => {
   const handleBindExisting = async (friendshipId: string, inviteCode: string) => {
     const code = inviteCode.trim().toUpperCase();
     const realProfile = await lookupProfileByInviteCode(code);
-    await bindVirtualFriend(friendshipId, realProfile.id);
+    const { syncedCount } = await bindVirtualFriend(friendshipId, realProfile.id);
     await useUserStore.getState().fetchFriends();
     await useMemoryStore.getState().fetchMemories();
-    alert(`🎉 绑定成功！与 ${realProfile.username} 的历史回忆已同步。`);
+    if (syncedCount > 0) {
+      alert(`🎉 绑定成功！已经把 ${syncedCount} 条与 ${realProfile.username} 的共同记忆同步给 TA，TA 下次打开 Orbit 就能看到。`);
+    } else {
+      alert('绑定成功！不过在绑定之前你还没有用这个马甲 @ 过任何记忆，以后新记录的内容会立即同步给对方。');
+    }
   };
 
-  // 接受好友申请
+  // 接受好友申请（可选绑定现有马甲）
   const handleAcceptRequest = async (req: any) => {
     try {
-      await acceptFriendRequest(req.id, req.user_id, currentUser!.id);
+      let bindVirtualFriendshipId: string | undefined;
+      const virtualFriends = friends.filter((f: any) => f.status === 'virtual');
+      if (virtualFriends.length > 0) {
+        const choice = window.prompt(
+          `是否把这位好友绑定到已有马甲？输入序号绑定，留空直接接受：\n` +
+          virtualFriends.map((f: any, idx: number) => `${idx + 1}. ${f.username || f.friend_name || f.remark || '马甲好友'}`).join('\n')
+        );
+        const idx = choice ? parseInt(choice, 10) - 1 : -1;
+        if (!Number.isNaN(idx) && idx >= 0 && idx < virtualFriends.length) {
+          bindVirtualFriendshipId = virtualFriends[idx].id?.replace('temp-', '') || virtualFriends[idx].id;
+        }
+      }
+
+      await acceptFriendRequest(req.id, req.user_id, currentUser!.id, bindVirtualFriendshipId);
       await useUserStore.getState().fetchFriends();
       await useUserStore.getState().fetchPendingRequests();
+      await useMemoryStore.getState().fetchMemories();
     } catch (err: any) {
       alert('接受失败：' + err.message);
     }
@@ -589,14 +610,18 @@ const handleAddFriend = async (name: string, remark: string) => {
       const realProfile = await lookupProfileByInviteCode(code);
 
       // 2. 更新数据库：friendships + memory_tags
-      await bindVirtualFriend(friendshipId, realProfile.id);
+      const { syncedCount } = await bindVirtualFriend(friendshipId, realProfile.id);
 
       // 3. 刷新好友列表 + 记忆流
       await useUserStore.getState().fetchFriends();
       await useMemoryStore.getState().fetchMemories();
 
       setBindingFriend(null);
-      alert(`🎉 绑定成功！与 ${realProfile.username} 的历史回忆已同步。`);
+      if (syncedCount > 0) {
+        alert(`🎉 绑定成功！已同步 ${syncedCount} 条与 ${realProfile.username} 的共同记忆，对方上线即可看到。`);
+      } else {
+        alert('绑定成功，但之前还没有把任何记忆 @ 给这个马甲，所以目前没有历史内容可以同步。之后的新回忆会直接推送给对方。');
+      }
     } catch (error: any) {
       alert(`绑定失败：${error.message}`);
     }
@@ -980,20 +1005,6 @@ const handleAddFriend = async (name: string, remark: string) => {
       
       {/* 退出按钮 */}
       <div className="relative z-10 px-4 mt-6 pb-20 space-y-3">
-        <button
-          onClick={async () => {
-            // 先退出 Supabase session，再清空本地 store，让 AuthModal 弹出
-            try { await signOut(); } catch {}
-            useMemoryStore.setState({ memories: [] });
-            useLedgerStore.setState({ ledgers: [] });
-            useUserStore.setState({ friends: [], pendingRequests: [] });
-            setCurrentUser(null);
-          }}
-          className="w-full p-4 glass-card rounded-2xl flex items-center justify-center gap-2 text-[#00D9FF] hover:bg-[#00D9FF]/5"
-        >
-          <FaUsers className="w-5 h-5" />
-          切换账号
-        </button>
         <button onClick={handleLogout} disabled={loggingOut} className="w-full p-4 glass-card rounded-2xl flex items-center justify-center gap-2 text-red-400 disabled:opacity-50">
           {loggingOut ? <FaSpinner className="w-5 h-5 animate-spin" /> : <FaSignOutAlt className="w-5 h-5" />}
           {loggingOut ? '退出中...' : '退出登录'}

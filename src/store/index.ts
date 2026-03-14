@@ -118,7 +118,12 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
   addFriend: async (friendshipData) => {
     const { currentUser } = get();
-    if (!currentUser || !isRealUUID(currentUser.id)) return;
+    if (!currentUser) {
+      throw new Error('请先登录后再添加好友');
+    }
+    if (!isRealUUID(currentUser.id)) {
+      throw new Error('当前是演示模式，演示数据不会保存，请先登录真实账号');
+    }
     const { data, error } = await supabase
       .from('friendships')
       .insert([friendshipData])
@@ -133,7 +138,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       .single();
     if (error) {
       console.error('添加好友失败:', error.message);
-      return;
+      throw new Error(error.message || '添加好友失败');
     }
     const formatted = mapFriendRecord(data);
     set((state) => ({ friends: [formatted, ...state.friends] }));
@@ -189,6 +194,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
         photos: updatedData.photos,
         videos: updatedData.videos || [],
         audios: updatedData.audios || [],
+        has_ledger: !!updatedData.has_ledger,
       })
       .eq('id', id);
     if (error) throw error;
@@ -196,13 +202,14 @@ export const useMemoryStore = create<MemoryState>((set) => ({
     // 2. 同步 memory_tags：先删除旧的，再插入新的
     await supabase.from('memory_tags').delete().eq('memory_id', id);
 
+    const ownerId = useUserStore.getState().currentUser?.id;
     const taggedFriends: string[] = updatedData.tagged_friends || [];
     const realTags = taggedFriends
       .filter((fid: string) => !fid.startsWith('temp-'))
-      .map((fid: string) => ({ memory_id: id, user_id: fid }));
+      .map((fid: string) => ({ memory_id: id, user_id: fid, owner_id: ownerId }));
     const virtualTags = taggedFriends
       .filter((fid: string) => fid.startsWith('temp-'))
-      .map((fid: string) => ({ memory_id: id, virtual_friend_id: fid.replace('temp-', '') }));
+      .map((fid: string) => ({ memory_id: id, virtual_friend_id: fid.replace('temp-', ''), owner_id: ownerId }));
     const allTags = [...realTags, ...virtualTags];
     if (allTags.length > 0) {
       await supabase.from('memory_tags').insert(allTags);

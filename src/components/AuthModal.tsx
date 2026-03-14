@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons/fa';
-import { supabase, signUp, signIn } from '../api/supabase';
+import { supabase, signUp, signIn, sendPasswordReset } from '../api/supabase';
 import { useUserStore } from '../store';
 
 interface AuthModalProps {
@@ -16,6 +16,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
   
   const { setCurrentUser } = useUserStore();
   
@@ -65,6 +66,28 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('请输入邮箱后再点“忘记密码”');
+      return;
+    }
+    setResetting(true);
+    setError(null);
+    try {
+      await sendPasswordReset(email);
+      setError('📧 已发送重置邮件，请查收邮箱并按指引设置新密码');
+    } catch (err: any) {
+      const msg: string = err.message || '';
+      if (msg.includes('Email rate limit exceeded')) {
+        setError('邮件发送太频繁，请稍后再试');
+      } else {
+        setError(msg || '发送失败，请稍后再试');
+      }
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -206,6 +229,18 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           >
             {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
           </button>
+          {isLogin && (
+            <div className="mt-3 text-sm">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetting}
+                className="text-white/40 hover:text-white/70 disabled:opacity-50"
+              >
+                {resetting ? '发送中…' : '忘记密码？发送重置邮件'}
+              </button>
+            </div>
+          )}
         </div>
         
         {/* 演示模式 */}

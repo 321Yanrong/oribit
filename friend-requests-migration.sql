@@ -45,3 +45,26 @@ BEGIN
       FOR SELECT USING (true);
   END IF;
 END $$;
+
+-- 5. 去重 + 唯一约束：同一 user_id → friend_id 只保留一条记录
+WITH ranked_friendships AS (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, friend_id ORDER BY created_at) AS rn
+  FROM friendships
+  WHERE friend_id IS NOT NULL
+)
+DELETE FROM friendships
+WHERE id IN (
+  SELECT id FROM ranked_friendships WHERE rn > 1
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'friendships_user_friend_unique'
+      AND table_name = 'friendships'
+  ) THEN
+    ALTER TABLE friendships
+      ADD CONSTRAINT friendships_user_friend_unique UNIQUE (user_id, friend_id);
+  END IF;
+END $$;

@@ -213,6 +213,16 @@ export const signOut = async () => {
   if (error) throw error
 }
 
+// 发送重置密码邮件
+export const sendPasswordReset = async (email: string) => {
+  const redirectTo = window?.location?.origin || undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+  if (error) throw error;
+  return true;
+}
+
 export const getCurrentUser = async () => {
   const { data: { user } } = await supabase.auth.getUser()
   return user
@@ -247,7 +257,10 @@ export const lookupProfileByInviteCode = async (inviteCode: string) => {
   return data
 }
 
-export const bindVirtualFriend = async (friendshipId: string, realUserId: string): Promise<void> => {
+export const bindVirtualFriend = async (
+  friendshipId: string,
+  realUserId: string
+): Promise<{ syncedCount: number }> => {
   // 0. 先查出发起方（A 的 user_id），用于创建反向记录
   const { data: existing, error: fetchErr } = await supabase
     .from('friendships')
@@ -269,24 +282,36 @@ export const bindVirtualFriend = async (friendshipId: string, realUserId: string
     .from('friendships')
     .insert({ user_id: realUserId, friend_id: ownerUserId, status: 'accepted' });
   if (e3 && (e3 as any).code !== '23505') {
-    // 23505 = unique violation（已存在），可忽略；其余报错也只警告不中断
-    console.warn('[bindVirtualFriend] 创建反向关系失败:', (e3 as any).message);
+    const message = (e3 as any)?.message || '创建反向好友关系失败';
+    if (/row-level security|new row violates/i.test(message)) {
+      throw new Error('Supabase 拒绝创建反向好友关系，请在 SQL Editor 中运行 friend-requests-migration.sql 后重试。');
+    }
+    throw new Error(message);
   }
 
   // 3. 将所有打了该马甲标签的 memory_tags 更新为真实用户 ID
   // virtual_friend_id 存的是 friendships.id
-  const { error: e2 } = await supabase
+  const { data: syncedRows, error: e2 } = await supabase
     .from('memory_tags')
     .update({ user_id: realUserId, virtual_friend_id: null })
     .eq('virtual_friend_id', friendshipId)
-    .select()
+    .select('id');
   if (e2) {
-    // virtual_friend_id 列不存在时会报错 — 说明需要先运行 SQL进行数据库升级
-    console.error('[bindVirtualFriend] memory_tags 同步失败（可能缺 virtual_friend_id 列）:', e2.message);
-    // 不抛出，允许 friendships 绑定步骤已成功
-  } else {
-    console.log(`[bindVirtualFriend] memory_tags 同步完成`);
+    const msg = e2.message || 'memory_tags 同步失败';
+    if (/virtual_friend_id/i.test(msg)) {
+      throw new Error('memory_tags 表缺少 virtual_friend_id 列，请运行 supabase-setup.sql 中的最新版本后重试。');
+    }
+    throw new Error(msg);
   }
+
+  // 4. 防重：清理仍残留的虚拟标签行，避免卡片上出现“马甲+真实”双重 @
+  await supabase
+    .from('memory_tags')
+    .delete()
+    .eq('virtual_friend_id', friendshipId);
+
+  const syncedCount = syncedRows?.length ?? 0;
+  return { syncedCount };
 }
 
 export const getProfile = async (userId: string, userEmail?: string) => {
@@ -433,14 +458,14 @@ export const createMemory = async (
   
   if ((taggedFriends || []).length > 0 && memory) {
     // 真实好友：直接存 user_id
-    const realTags = (taggedFriends || [])
-      .filter(id => !id.startsWith('temp-'))
-      .map(friendId => ({ memory_id: memory.id, user_id: friendId }))
+      const realTags = (taggedFriends || [])
+        .filter(id => !id.startsWith('temp-'))
+        .map(friendId => ({ memory_id: memory.id, user_id: friendId, owner_id: userId }));
 
     // 虚拟好友：存 virtual_friend_id = friendships.id（去掉 temp- 前缀）
     const virtualTags = (taggedFriends || [])
       .filter(id => id.startsWith('temp-'))
-      .map(id => ({ memory_id: memory.id, virtual_friend_id: id.replace('temp-', '') }))
+        .map(id => ({ memory_id: memory.id, virtual_friend_id: id.replace('temp-', ''), owner_id: userId }));
 
     const allTags = [...realTags, ...virtualTags]
     if (allTags.length > 0) {
@@ -537,6 +562,23 @@ export const getLedgers = async (userId: string) => {
   
   if (error) throw error
   return data
+}
+
+export const getLedgerByMemory = async (memoryId: string, userId: string) => {
+  const { data, error } = await supabase
+    .from('ledgers')
+    .select(`
+      *,
+      participants:ledger_participants(*)
+    `)
+    .eq('memory_id', memoryId)
+    .eq('creator_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error && error.code !== 'PGRST116') throw error
+  return data || null
 }
 
 export const updateLedger = async (
@@ -650,15 +692,25 @@ export const addRealFriendByCode = async (currentUserId: string, inviteCode: str
   if (profile.id === currentUserId) throw new Error('不能添加自己为好友');
 
   // 检查是否已经是好友或已发过申请
-  const { data: existing } = await supabase
+  const { data: existingRows, error: existingError } = await supabase
     .from('friendships')
-    .select('id, status')
+    .select('id, status, user_id, friend_id')
     .or(`and(user_id.eq.${currentUserId},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${currentUserId})`)
-    .maybeSingle();
+    .limit(1);
 
+  if (existingError) throw existingError;
+
+  const existing = existingRows?.[0];
   if (existing) {
-    if (existing.status === 'accepted') throw new Error(`已经是 ${profile.username} 的好友了`);
-    if (existing.status === 'pending') throw new Error('好友申请已发送，等待对方确认');
+    if (existing.status === 'accepted' || existing.status === 'virtual') {
+      throw new Error(`已经和 ${profile.username} 建立好友关系，无需重复添加`);
+    }
+    if (existing.status === 'pending') {
+      if (existing.user_id === currentUserId) {
+        throw new Error('好友申请已发送，等待对方确认');
+      }
+      throw new Error(`${profile.username} 已经向你发送过申请，去「我的」页处理即可`);
+    }
   }
 
   const { error } = await supabase
@@ -668,7 +720,12 @@ export const addRealFriendByCode = async (currentUserId: string, inviteCode: str
       friend_id: profile.id,
       status: 'pending',
     });
-  if (error) throw error;
+  if (error) {
+    if ((error as any).code === '23505') {
+      throw new Error(`已经和 ${profile.username} 建立好友关系，无需再次发送申请`);
+    }
+    throw error;
+  }
   return profile;
 };
 
@@ -703,7 +760,12 @@ export const getPendingFriendRequests = async (userId: string): Promise<any[]> =
 };
 
 // 接受好友申请：把发起方记录改为 accepted，再插一条反向记录
-export const acceptFriendRequest = async (friendshipId: string, requesterId: string, currentUserId: string): Promise<void> => {
+export const acceptFriendRequest = async (
+  friendshipId: string,
+  requesterId: string,
+  currentUserId: string,
+  bindVirtualFriendshipId?: string,
+): Promise<void> => {
   // 1. 更新申请方那条记录
   const { error: e1 } = await supabase
     .from('friendships')
@@ -716,6 +778,12 @@ export const acceptFriendRequest = async (friendshipId: string, requesterId: str
     .from('friendships')
     .insert({ user_id: currentUserId, friend_id: requesterId, status: 'accepted' });
   if (e2 && e2.code !== '23505') throw e2; // 23505 = unique violation → already exists, OK
+
+  // 3. 可选：把已存在的马甲好友绑定到此真实用户
+  if (bindVirtualFriendshipId) {
+    // 利用现有的绑定逻辑（会同步 memory_tags 并创建反向关系，重复插入会被 23505 吃掉）
+    await bindVirtualFriend(bindVirtualFriendshipId, requesterId);
+  }
 };
 
 // 拒绝 / 忽略好友申请

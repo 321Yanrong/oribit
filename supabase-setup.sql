@@ -3,6 +3,31 @@
 -- Run this in Supabase SQL Editor
 -- =============================================
 
+-- =============================================
+-- Cleanup: drop existing objects (this will REMOVE DATA)
+-- Run with caution in production
+-- =============================================
+DROP TABLE IF EXISTS ledger_participants CASCADE;
+DROP TABLE IF EXISTS ledgers CASCADE;
+DROP TABLE IF EXISTS settlements CASCADE;
+DROP TABLE IF EXISTS memory_tags CASCADE;
+DROP TABLE IF EXISTS memories CASCADE;
+DROP TABLE IF EXISTS locations CASCADE;
+DROP TABLE IF EXISTS friendships CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
+-- Functions/triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.sync_memory_tag_owner() CASCADE;
+
+-- Storage policies (table is managed by Supabase)
+DROP POLICY IF EXISTS "Avatar upload policy" ON storage.objects;
+DROP POLICY IF EXISTS "Avatar update policy" ON storage.objects;
+DROP POLICY IF EXISTS "Photo upload policy" ON storage.objects;
+DROP POLICY IF EXISTS "Photo update policy" ON storage.objects;
+DROP POLICY IF EXISTS "Video upload policy" ON storage.objects;
+
 -- Enable Row Level Security
 ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 
@@ -32,6 +57,14 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Backfill profiles for any existing auth.users (idempotent)
+INSERT INTO public.profiles (id, username, avatar_url)
+SELECT u.id,
+       u.raw_user_meta_data->>'username',
+       u.raw_user_meta_data->>'avatar_url'
+FROM auth.users u
+ON CONFLICT (id) DO NOTHING;
+
 -- Enable RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
@@ -49,8 +82,8 @@ CREATE POLICY "Users can update own profile" ON profiles
 -- =============================================
 CREATE TABLE IF NOT EXISTS friendships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  friend_id UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- nullable for virtual friends
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  friend_id UUID REFERENCES profiles(id) ON DELETE SET NULL, -- nullable for virtual friends
   friend_name TEXT, -- name for virtual/offline friends
   remark TEXT, -- user-defined nickname/note
   status TEXT DEFAULT 'accepted',
@@ -62,7 +95,9 @@ ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own friendships" ON friendships
   FOR SELECT USING (auth.uid() = user_id OR auth.uid() = friend_id);
 CREATE POLICY "Users can create friendships" ON friendships
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id OR auth.uid() = friend_id
+  );
 CREATE POLICY "Users can update own friendships" ON friendships
   FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own friendships" ON friendships
@@ -101,22 +136,16 @@ CREATE TABLE IF NOT EXISTS memories (
   photos TEXT[] DEFAULT '{}',
   videos TEXT[] DEFAULT '{}',
   audios TEXT[] DEFAULT '{}',
+  has_ledger BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
 
--- Owner sees own memories; tagged friends also see memories they're @-mentioned in
+-- Temporary owner-only policies (replace after memory_tags exists)
 DROP POLICY IF EXISTS "Users can view own memories" ON memories;
-CREATE POLICY "Users can view own or tagged memories" ON memories
-  FOR SELECT USING (
-    auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM memory_tags
-      WHERE memory_tags.memory_id = memories.id
-        AND memory_tags.user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Users can view own memories" ON memories
+  FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create memories" ON memories
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own memories" ON memories
@@ -132,33 +161,70 @@ CREATE TABLE IF NOT EXISTS memory_tags (
   memory_id UUID REFERENCES memories(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   virtual_friend_id UUID REFERENCES friendships(id) ON DELETE SET NULL,
+  owner_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE memory_tags ENABLE ROW LEVEL SECURITY;
+
+-- 同步 memory_tags.owner_id = memory.creator
+UPDATE memory_tags mt
+SET owner_id = m.user_id
+FROM memories m
+WHERE mt.owner_id IS NULL AND mt.memory_id = m.id;
+
+CREATE OR REPLACE FUNCTION public.sync_memory_tag_owner()
+RETURNS TRIGGER AS $$
+DECLARE
+  creator UUID;
+BEGIN
+  SELECT user_id INTO creator FROM memories WHERE id = NEW.memory_id;
+  IF creator IS NULL THEN
+    RAISE EXCEPTION 'memory_id % not found when syncing tag owner', NEW.memory_id;
+  END IF;
+  NEW.owner_id := creator;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS sync_memory_tag_owner ON memory_tags;
+CREATE TRIGGER sync_memory_tag_owner
+  BEFORE INSERT OR UPDATE OF memory_id ON memory_tags
+  FOR EACH ROW EXECUTE FUNCTION public.sync_memory_tag_owner();
 
 -- Tagged user sees own tags; memory creator sees all tags on their memories
 DROP POLICY IF EXISTS "Users can view memory tags" ON memory_tags;
 CREATE POLICY "Users can view memory tags" ON memory_tags
   FOR SELECT USING (
     auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM memories
-      WHERE memories.id = memory_tags.memory_id
-        AND memories.user_id = auth.uid()
-    )
+    OR auth.uid() = owner_id
   );
 
--- ALL operations for the memory creator (insert/delete/update tags on their own memories)
--- ⚠️ IMPORTANT: Run this DROP + CREATE in Supabase SQL Editor if you hit duplicate-tag bugs
-DROP POLICY IF EXISTS "Users can create memory tags" ON memory_tags;
-CREATE POLICY "Memory creators can manage tags" ON memory_tags
-  FOR ALL
-  USING (
-    EXISTS (SELECT 1 FROM memories WHERE memories.id = memory_tags.memory_id AND memories.user_id = auth.uid())
-  )
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM memories WHERE memories.id = memory_tags.memory_id AND memories.user_id = auth.uid())
+DROP POLICY IF EXISTS "Memory owners insert tags" ON memory_tags;
+CREATE POLICY "Memory owners insert tags" ON memory_tags
+  FOR INSERT
+  WITH CHECK (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Memory owners update tags" ON memory_tags;
+CREATE POLICY "Memory owners update tags" ON memory_tags
+  FOR UPDATE
+  USING (auth.uid() = owner_id)
+  WITH CHECK (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Memory owners delete tags" ON memory_tags;
+CREATE POLICY "Memory owners delete tags" ON memory_tags
+  FOR DELETE USING (auth.uid() = owner_id);
+
+-- After memory_tags exists, widen memory visibility to tagged users too
+DROP POLICY IF EXISTS "Users can view own memories" ON memories;
+CREATE POLICY "Users can view own or tagged memories" ON memories
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM memory_tags
+      WHERE memory_tags.memory_id = memories.id
+        AND memory_tags.user_id = auth.uid()
+    )
   );
 
 -- =============================================

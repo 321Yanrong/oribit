@@ -292,12 +292,12 @@ export default function LedgerPage() {
   
   // 按记忆分组（日历风格）
   const groupedByMemory = useMemo(() => {
-    const groups: Record<string, { memory: any; ledgers: any[] }> = {};
+    const groups: Record<string, { key: string; memory: any; ledgers: any[] }> = {};
     ledgers.forEach(ledger => {
       const key = ledger.memory_id || 'uncategorized';
       if (!groups[key]) {
         const memory = memories.find(m => m.id === key);
-        groups[key] = { memory, ledgers: [] };
+        groups[key] = { key, memory, ledgers: [] };
       }
       groups[key].ledgers.push(ledger);
     });
@@ -431,7 +431,7 @@ export default function LedgerPage() {
               }, 0);
 
               return (
-                <motion.div key={memory?.id || 'uncategorized'} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }} className="glass-card rounded-3xl p-5 border border-white/5">
+                <motion.div key={group.key || memory?.id || 'uncategorized'} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }} className="glass-card rounded-3xl p-5 border border-white/5">
                   <div className="flex gap-4 mb-4 pb-4 border-b border-white/10">
                     {date ? (
                       <div className="flex flex-col items-center justify-center w-12 h-14 rounded-2xl bg-[#00FFB3]/10 border border-[#00FFB3]/20 shrink-0">

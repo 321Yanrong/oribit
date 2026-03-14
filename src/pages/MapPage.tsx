@@ -18,6 +18,19 @@ const getCityFromMemory = (memory: any): string => {
 };
 const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
 
+const META_PREFIX = '[orbit_meta:';
+const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
+  if (!content?.startsWith(META_PREFIX)) return { text: content || '', weather: '', mood: '', route: '' };
+  const end = content.indexOf(']\n');
+  if (end === -1) return { text: content, weather: '', mood: '', route: '' };
+  try {
+    const meta = JSON.parse(content.slice(META_PREFIX.length, end));
+    return { text: content.slice(end + 2), weather: meta.weather || '', mood: meta.mood || '', route: meta.route || '' };
+  } catch {
+    return { text: content, weather: '', mood: '', route: '' };
+  }
+};
+
 (window as any)._AMapSecurityConfig = {
   securityJsCode: AMAP_SECURITY_CODE,
 };
@@ -468,10 +481,22 @@ export default function MapPage() {
                   {new Date(selectedMemory.memory_date || selectedMemory.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
                 </div>
 
-                {/* Content */}
-                {selectedMemory.content && (
-                  <p className="text-white/90 leading-relaxed mb-4 text-base">{selectedMemory.content}</p>
-                )}
+                {/* Content with meta decode */}
+                {(() => {
+                  const { text, weather, mood, route } = decodeMemoryContent(selectedMemory.content || '');
+                  return (
+                    <div className="space-y-2 mb-4">
+                      {text && <p className="text-white/90 leading-relaxed text-base">{text}</p>}
+                      {(weather || mood || route) && (
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          {weather && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">天气：{weather}</span>}
+                          {mood && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">心情：{mood}</span>}
+                          {route && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">路线：{route}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Tagged friends */}
                 {selectedMemory.tagged_friends?.length > 0 && (

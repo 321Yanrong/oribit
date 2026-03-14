@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
-import { createMemory, createLocation, createLedger } from '../api/supabase';
+import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 
 // 高德地图 API 配置
@@ -803,13 +803,11 @@ const CreateMemoryModal = ({
   const [videos, setVideos] = useState<string[]>(editData?.videos || []);
   const [audios, setAudios] = useState<string[]>(editData?.audios || []);
   const [enableLedger, setEnableLedger] = useState(editData?.has_ledger || false);
-  const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>(() =>
-    editData?.ledger?.total_amount
-      ? [{ id: '1', category: '🍜 饮食', note: '', amount: String(editData.ledger.total_amount) }]
-      : [{ id: '1', category: '🍜 饮食', note: '', amount: '' }]
-  );
+  const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>([{ id: '1', category: '🍜 饮食', note: '', amount: '' }]);
   const [splitType, setSplitType] = useState<'personal' | 'equal'>('personal');
+  const [existingLedgerId, setExistingLedgerId] = useState<string | null>(null);
   const [activeCalcId, setActiveCalcId] = useState<string | null>(null);
+  const ledgerPrefilledRef = useRef(false);
 
   const [memoryDate, setMemoryDate] = useState(() => {
     if (editData?.memory_date || editData?.created_at) {
@@ -823,6 +821,48 @@ const CreateMemoryModal = ({
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setEnableLedger(false);
+      setLedgerItems([{ id: '1', category: '🍜 饮食', note: '', amount: '' }]);
+      setSplitType('personal');
+      setExistingLedgerId(null);
+      ledgerPrefilledRef.current = true;
+      return;
+    }
+    setEnableLedger(!!editData?.has_ledger);
+    setLedgerItems([{ id: '1', category: '🍜 饮食', note: '', amount: '' }]);
+    setSplitType('personal');
+    setExistingLedgerId(null);
+    ledgerPrefilledRef.current = false;
+  }, [isEditMode, editData?.id]);
+
+  useEffect(() => {
+    if (!isEditMode || !isOpen || !currentUser?.id || !editData?.id || ledgerPrefilledRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const ledger = await getLedgerByMemory(editData.id, currentUser.id);
+        if (cancelled) return;
+        if (ledger) {
+          setEnableLedger(true);
+          setExistingLedgerId(ledger.id);
+          const expenseType = (ledger as any)?.expense_type === 'shared' ? 'equal' : 'personal';
+          const ledgerAmount = String(((ledger as any)?.total_amount || 0));
+          setSplitType(expenseType);
+          setLedgerItems([{ id: '1', category: '🍜 饮食', note: '', amount: ledgerAmount }]);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('[CreateMemoryModal] 加载顺便记账失败:', error);
+        }
+      } finally {
+        if (!cancelled) ledgerPrefilledRef.current = true;
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isEditMode, isOpen, currentUser?.id, editData?.id]);
 
   const totalAmount = ledgerItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
   const addLedgerItem = () => setLedgerItems(prev => [...prev, { id: Date.now().toString(), category: '💊 其他', note: '', amount: '' }]);
@@ -858,8 +898,20 @@ const CreateMemoryModal = ({
       // 编码天气/心情/路线元数据
       const finalContent = encodeMemoryContent(content.trim(), { weather, mood, route });
       
+      const realFriendIds = selectedFriends.filter(id => !id.startsWith('temp-'));
+      const isShared = splitType === 'equal' && realFriendIds.length > 0;
+      const participants = isShared
+        ? [currentUser.id, ...realFriendIds].map(uid => ({ userId: uid, amount: parseFloat((totalAmount / (realFriendIds.length + 1)).toFixed(2)) }))
+        : [{ userId: currentUser.id, amount: totalAmount }];
+      const expenseType = isShared ? 'shared' : 'personal';
+
       if (isEditMode) {
-        // 编辑模式：传入 location_id 以便 store 写入数据库
+        if (enableLedger && totalAmount === 0) {
+          alert('已开启顺便记账，请先输入金额');
+          setIsSubmitting(false);
+          return;
+        }
+
         await useMemoryStore.getState().editMemory(editData.id, {
           content: finalContent,
           memory_date: new Date(memoryDate).toISOString(),
@@ -872,6 +924,22 @@ const CreateMemoryModal = ({
           has_ledger: enableLedger,
           ledger: enableLedger ? { total_amount: totalAmount } : null
         });
+
+        if (enableLedger && totalAmount > 0) {
+          if (existingLedgerId) {
+            await updateLedger(existingLedgerId, currentUser.id, totalAmount, participants, editData.id, expenseType);
+          } else {
+            const ledger = await createLedger(currentUser.id, totalAmount, participants, editData.id, expenseType);
+            setExistingLedgerId(ledger.id);
+          }
+          await useLedgerStore.getState().fetchLedgers();
+        } else if (!enableLedger && existingLedgerId) {
+          await deleteLedger(existingLedgerId);
+          setExistingLedgerId(null);
+          await useLedgerStore.getState().fetchLedgers();
+        }
+
+        await useMemoryStore.getState().fetchMemories();
         onSuccess();
         onClose();
         return;
@@ -887,13 +955,6 @@ const CreateMemoryModal = ({
           currentUser.id, finalContent, new Date(memoryDate).toISOString(), locationId, photos, selectedFriends, videos, audios, enableLedger
         );
         if (enableLedger && totalAmount > 0) {
-          // 过滤虚拟好友（temp- 前缀），他们没有真实 auth UUID，不能存入 ledger_participants
-          const realFriendIds = selectedFriends.filter(id => !id.startsWith('temp-'));
-          const isShared = splitType === 'equal' && realFriendIds.length > 0;
-          const participants = isShared
-            ? [currentUser.id, ...realFriendIds].map(uid => ({ userId: uid, amount: totalAmount / (realFriendIds.length + 1) }))
-            : [{ userId: currentUser.id, amount: totalAmount }];
-          const expenseType = isShared ? 'shared' : 'personal';
           await createLedger(currentUser.id, totalAmount, participants, memory.id, expenseType);
           // 同步刷新账单列表
           await useLedgerStore.getState().fetchLedgers();
