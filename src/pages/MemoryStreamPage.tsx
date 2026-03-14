@@ -2148,6 +2148,7 @@ export default function MemoryStreamPage() {
               .join('|') || 'memory-drawer'}
             memories={activeStoryMemories}
             onClose={() => setActiveStoryMemories(null)}
+            onShare={(memory) => handleShareMemory(memory)}
           />
         )}
       </AnimatePresence>

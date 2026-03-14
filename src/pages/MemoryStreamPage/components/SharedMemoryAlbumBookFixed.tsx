@@ -287,11 +287,17 @@ export const MemoryStoryDrawer = ({
   };
 
   const loadImage = (src: string) =>
-    new Promise<HTMLImageElement>((resolve, reject) => {
+    new Promise<HTMLImageElement>((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
-      img.onerror = reject;
+      img.onerror = () => {
+        // Fallback to a tiny transparent pixel so poster绘制不中断
+        const fallback = new Image();
+        fallback.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAr8B9SdPNnwAAAAASUVORK5CYII=';
+        fallback.onload = () => resolve(fallback);
+        fallback.onerror = () => resolve(fallback);
+      };
       img.src = src;
     });
 
@@ -611,7 +617,15 @@ export const MemoryStoryDrawer = ({
                         className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-sm border border-white/10"
                       >返回</button>
                       <button
-                        onClick={() => onShare && onShare(currentItem.memory)}
+                        onClick={() => {
+                          if (onShare) {
+                            onShare(currentItem.memory);
+                            return;
+                          }
+                          // 内建兜底：生成海报并弹出预览，避免父组件未传 onShare 时按钮无反应
+                          if (!posterDataUrl) generatePoster();
+                          setShowPosterPreview(true);
+                        }}
                         className="flex-[1.6] py-3.5 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold text-sm hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,179,0.3)]"
                       >
                         去微信分享回忆
