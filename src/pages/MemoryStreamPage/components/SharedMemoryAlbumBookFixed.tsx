@@ -11,7 +11,7 @@ const MUSIC_TRACKS = [
   { label: '本地音乐 · bgm3', url: '/music/bgm3.mp3' },
   { label: '本地音乐 · bgm4', url: '/music/bgm4.mp3' },
 ];
-
+const [pendingPosterDataUrl, setPendingPosterDataUrl] = useState<string | null>(null);
 type FriendChip = { id: string; name: string; avatar?: string };
 
 // ==========================================
@@ -53,7 +53,7 @@ export const MemoryStoryEntry = ({
             linear-gradient(135deg, rgba(8,12,24,0.88), rgba(12,7,28,0.82)),
             url(${memoryFlowBackground})`,
           backgroundBlendMode: 'screen, screen, screen, normal, soft-light',
-          backgroundSize: '140% 140%, 140% 140%, 140% 140%, cover, cover',
+          backgroundSize: '140% 140%, 140% 140%, cover, cover',
           backgroundPosition: 'center',
         }}
       >
@@ -144,6 +144,8 @@ export const MemoryStoryDrawer = ({
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState(0);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
+    // 海报预览弹窗开关
+    const [showPosterPreview, setShowPosterPreview] = useState(false);
   const [posterLoading, setPosterLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Always use a single audio element, update src/volume as needed
@@ -381,19 +383,40 @@ export const MemoryStoryDrawer = ({
         ctx.globalAlpha = 0.95;
         ctx.drawImage(qrImg, w - 180, h - 220, 120, 120);
         ctx.restore();
-        setPosterDataUrl(canvas.toDataURL('image/png'));
+        setPendingPosterDataUrl(canvas.toDataURL('image/png'));
       };
-      qrImg.onerror = () => setPosterDataUrl(canvas.toDataURL('image/png'));
+      qrImg.onerror = () => setPendingPosterDataUrl(canvas.toDataURL('image/png'));
       qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://orbit.yanrong.fun';
     } catch (e) {
       console.error(e);
-      setPosterDataUrl(null);
+      setPendingPosterDataUrl(null);
     } finally {
       setPosterLoading(false);
     }
   }, [activeIndex, currentItem, playlist, weather, mood]);
 
-  if (!currentItem) return null;
+  // 先保留上一帧 posterDataUrl，等新图生成好再替换，避免闪黑
+  useEffect(() => {
+    setPendingPosterDataUrl(null); // 触发新一轮生成
+    generatePoster();
+    // eslint-disable-next-line
+  }, [generatePoster]);
+
+  // 监听 pendingPosterDataUrl，生成好后再替换 posterDataUrl
+  useEffect(() => {
+    if (pendingPosterDataUrl) {
+      setPosterDataUrl(pendingPosterDataUrl);
+    }
+  }, [pendingPosterDataUrl]);
+
+  if (!currentItem) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-white/70 py-20">
+        <div className="text-2xl mb-2">暂无可展示的回忆内容</div>
+        <div className="text-base">请检查数据是否已保存，或刷新页面重试。</div>
+      </div>
+    );
+  }
 
   const stackedPhotos = useMemo(() => {
     const list: string[] = [];
@@ -571,7 +594,7 @@ export const MemoryStoryDrawer = ({
                         className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-sm border border-white/10"
                       >返回</button>
                       <button
-                        onClick={() => onShare && onShare({ memory: currentItem.memory, thumbUrl: shareThumb })}
+                        onClick={() => onShare && onShare(currentItem.memory)}
                         className="flex-[1.6] py-3.5 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold text-sm hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,179,0.3)]"
                       >
                         去微信分享回忆
@@ -602,20 +625,43 @@ export const MemoryStoryDrawer = ({
                     )}
                     <div className="mt-3 flex flex-col sm:flex-row gap-3 pointer-events-auto">
                       <button
-                        onClick={generatePoster}
+                        onClick={() => {
+                          if (!posterDataUrl) generatePoster();
+                          setShowPosterPreview(true);
+                        }}
                         className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-sm border border-white/10 hover:border-white/30 backdrop-blur"
                       >
-                        {posterLoading ? '生成海报中…' : '生成分享海报（含下一张）'}
+                        {posterLoading ? '生成海报中…' : '查看/保存分享海报'}
                       </button>
-                      {posterDataUrl && (
-                        <a
-                          href={posterDataUrl}
-                          download={`memory-poster-${activeIndex + 1}.png`}
-                          className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-[#FF9F5F] to-[#FF5F8F] text-white font-bold text-sm text-center hover:scale-[1.01] shadow-[0_0_20px_rgba(255,111,144,0.35)]"
-                        >
-                          保存分享海报
-                        </a>
-                      )}
+                        {/* 💥 解决长按保存的海报预览弹窗 💥 */}
+                        <AnimatePresence>
+                          {showPosterPreview && posterDataUrl && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="fixed inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-6 backdrop-blur-md"
+                              onClick={() => setShowPosterPreview(false)}
+                            >
+                              <p className="text-white/80 text-sm font-medium mb-4 tracking-wide animate-pulse pointer-events-none">
+                                👇 长按下方海报保存，或发送给微信好友
+                              </p>
+                              <img
+                                src={posterDataUrl}
+                                alt="分享海报"
+                                className="w-full max-w-[320px] rounded-2xl shadow-2xl pointer-events-auto"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ WebkitTouchCallout: 'default' }}
+                              />
+                              <button
+                                onClick={() => setShowPosterPreview(false)}
+                                className="mt-8 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20 pointer-events-auto"
+                              >
+                                <FaTimes />
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                     </div>
                   </div>
                 )}

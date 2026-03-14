@@ -1608,6 +1608,19 @@ export default function MemoryStreamPage() {
       setIsLoading(false);
     };
     loadData();
+
+    // ✨ 新增：监听手机切换 App 后切回来的事件
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('手机切回页面，重新同步数据');
+        useUserStore.getState().fetchFriends(); // 重新拉取好友，防止丢失
+        fetchMemories(); // 重新拉取记忆
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchMemories]);
 
   useEffect(() => {
