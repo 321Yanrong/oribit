@@ -205,6 +205,51 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
 
 ---
 
+## PWA 完整度清单（含优先级实施）
+
+> 目标：把 Orbit 做成“接近 App”的体验（可安装、快启动、可离线、可推送、低原生成本）。
+
+### P0（本周建议完成）
+
+- [x] `manifest` 基础字段（`name` / `short_name` / `display` / `theme_color`）
+- [x] 关键图标资源（192/512）
+- [x] Service Worker 自动更新（`registerType: autoUpdate`）
+- [x] 旧缓存清理（`cleanupOutdatedCaches`）
+- [x] 离线兜底页（`public/offline.html`）
+- [ ] 增加“可安装提示”UI（`beforeinstallprompt`）
+- [ ] 首屏性能指标基线（LCP/CLS/INP）并记录
+
+### P1（下个迭代）
+
+- [ ] 将核心业务 API（好友/记忆列表）设置为 `NetworkFirst + fallback` 策略
+- [ ] 对上传与写操作（发记忆、改资料）给出“离线不可用”明确提示
+- [ ] 统一更新提示条（新版本可用时提醒“点击刷新”）
+- [ ] 增加 iOS 安装引导文案（Safari “添加到主屏幕”）
+- [ ] 设计离线模式信息架构（哪些页面可看、哪些操作禁用）
+
+### P2（后续增强）
+
+- [ ] 推送通知闭环（订阅、保存订阅、好友申请/账单提醒推送）
+- [ ] 后台同步（Background Sync）与失败重试队列
+- [ ] Web App 截图（manifest screenshots）用于商店/安装体验优化
+- [ ] PWA 质量巡检（Lighthouse PWA 目标 >= 90）
+
+### 实施顺序（推荐）
+
+1. 先做 **安装提示 + 更新提示 + 离线提示**（用户立刻感知）
+2. 再做 **业务 API 缓存策略分层**（稳定性与速度提升）
+3. 最后做 **推送通知与后台同步**（增强留存）
+
+### 验收标准（Definition of Done）
+
+- 首次安装路径清晰：用户 3 步内可完成“添加到主屏幕”
+- 刷新与重启不出现登录态卡死或白屏
+- 断网时进入离线页且不崩溃
+- 新版本发布后 1 次刷新可完成升级
+- Lighthouse：PWA 关键项全部通过
+
+---
+
 ## License
 
 本项目当前未声明开源协议；如需开源，建议补充 `MIT` 或 `Apache-2.0`。
