@@ -164,16 +164,19 @@ export const uploadAvatar = async (
   const { data: { publicUrl } } = supabase.storage
     .from('avatars')
     .getPublicUrl(fileName)
+
+  // 加上时间戳防浏览器缓存
+  const finalUrl = `${publicUrl}?v=${Date.now()}`
   
   // 更新用户 profile
   const { error: updateError } = await supabase
     .from('profiles')
-    .update({ avatar_url: publicUrl })
+    .update({ avatar_url: finalUrl })
     .eq('id', userId)
   
   if (updateError) throw updateError
   
-  return publicUrl
+  return finalUrl
 }
 
 // ==================== 认证相关 ====================

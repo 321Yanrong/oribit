@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orbit-static-v2';
+const CACHE_NAME = 'orbit-static-v3-20260314';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE_URLS = ['/', '/index.html', OFFLINE_URL];
 

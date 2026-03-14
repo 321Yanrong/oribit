@@ -575,7 +575,11 @@ const handleAddFriend = async (name: string, remark: string) => {
   };
 
   // 接受好友申请（可选绑定现有马甲）
+  const [processingRequests, setProcessingRequests] = useState<Record<string, boolean>>({});
+
   const handleAcceptRequest = async (req: any) => {
+    if (processingRequests[req.id]) return;
+    setProcessingRequests((s) => ({ ...s, [req.id]: true }));
     try {
       let bindVirtualFriendshipId: string | undefined;
       const virtualFriends = friends.filter((f: any) => f.status === 'virtual');
@@ -591,11 +595,19 @@ const handleAddFriend = async (name: string, remark: string) => {
       }
 
       await acceptFriendRequest(req.id, req.user_id, currentUser!.id, bindVirtualFriendshipId);
+      // 本地先移除 pending，防重点击导致重复接受
+      useUserStore.setState((state) => ({ pendingRequests: state.pendingRequests.filter((p: any) => p.id !== req.id) }));
       await useUserStore.getState().fetchFriends();
       await useUserStore.getState().fetchPendingRequests();
       await useMemoryStore.getState().fetchMemories();
     } catch (err: any) {
       alert('接受失败：' + err.message);
+    } finally {
+      setProcessingRequests((s) => {
+        const copy = { ...s };
+        delete copy[req.id];
+        return copy;
+      });
     }
   };
 
@@ -663,7 +675,26 @@ const handleAddFriend = async (name: string, remark: string) => {
     }
   };
   const handleAvatarClick = () => { if (!uploadingAvatar) fileInputRef.current?.click(); };
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => { /* avatar upload */ };
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser || uploadingAvatar) return;
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadAvatar(currentUser.id, file);
+      // 同步到本地 state，避免刷新前不更新
+      setCurrentUser({ ...currentUser, avatar_url: url });
+    } catch (err: any) {
+      console.error('头像上传失败', err);
+      alert(err?.message || '上传失败，请重试');
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleRandomMemory = () => {
     if (memories.length === 0) return;
@@ -824,11 +855,12 @@ const handleAddFriend = async (name: string, remark: string) => {
                       <FaTimes className="text-sm" />
                     </button>
                     <button
+                      disabled={processingRequests[req.id]}
                       onClick={() => handleAcceptRequest(req)}
-                      className="w-9 h-9 rounded-xl bg-[#00FFB3]/20 flex items-center justify-center text-[#00FFB3] hover:bg-[#00FFB3]/30 transition-colors"
+                      className={`w-9 h-9 rounded-xl bg-[#00FFB3]/20 flex items-center justify-center text-[#00FFB3] hover:bg-[#00FFB3]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                       title="接受"
                     >
-                      <FaCheck className="text-sm" />
+                      {processingRequests[req.id] ? <FaSpinner className="text-sm animate-spin" /> : <FaCheck className="text-sm" />}
                     </button>
                   </div>
                 </div>

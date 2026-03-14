@@ -30,6 +30,58 @@ const generateInviteCode = (userId: string): string => {
   return `ORBIT${code.slice(0, 6)}`;
 };
 
+const ORBIT_STORAGE_PREFIXES = ['orbit_', 'orbit-', 'sb-', 'supabase.auth', 'supabase-auth-token', 'supabase'];
+const ORBIT_STORAGE_CONTAINS = ['supabase', 'orbit'];
+
+const clearOrbitStorage = () => {
+  const clearByPrefixes = (storage?: Storage | null) => {
+    if (!storage) return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (!key) continue;
+      if (ORBIT_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix)) || ORBIT_STORAGE_CONTAINS.some((keyword) => key.includes(keyword))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => {
+      try {
+        storage.removeItem(k);
+      } catch (e) {
+        console.warn('Failed to remove cached item', k, e);
+      }
+    });
+  };
+
+  try {
+    clearByPrefixes(typeof window !== 'undefined' ? window.localStorage : undefined);
+    clearByPrefixes(typeof window !== 'undefined' ? window.sessionStorage : undefined);
+  } catch (err) {
+    console.warn('Orbit cache clear error:', err);
+  }
+};
+
+const resetClientData = () => {
+  useMemoryStore.setState({ memories: [] });
+  useLedgerStore.setState({ ledgers: [] });
+  useUserStore.setState({ friends: [], pendingRequests: [] });
+};
+
+const isLikelyInvalidSession = (message?: string) => {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return [
+    'invalid jwt',
+    'invalid token',
+    'jwt expired',
+    'token has expired',
+    'expired token',
+    'refresh_token_not_found',
+    'session not found',
+    'auth session missing',
+  ].some((fragment) => lower.includes(fragment));
+};
+
 function App() {
   const { currentPage } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
@@ -176,13 +228,40 @@ function App() {
 useEffect(() => {
     let isMounted = true;
 
+    const handleInvalidSession = async (reason?: string) => {
+      console.warn('Detected invalid auth/session token, clearing Orbit caches.', reason);
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (e) {
+        console.warn('Sign out while clearing stale session failed:', e);
+      }
+      clearOrbitStorage();
+      resetClientData();
+      if (isMounted) {
+        setCurrentUser(null);
+        setShowAuth(true);
+        setLoading(false);
+      }
+    };
+
     // 检查用户登录状态
     const checkAuth = async () => {
       try {
+        // 先检查 Session 状态，出现无效/过期 Token 时自动清除缓存，避免“清浏览器缓存才能进”的情况
+        const { error: sessionError } = await supabase.auth.getSession();
+        if (sessionError && isLikelyInvalidSession(sessionError.message)) {
+          await handleInvalidSession('getSession error');
+          return;
+        }
+
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         // 过滤掉原生的获取用户时的 AbortError
         if (authError?.message?.includes('AbortError')) return;
+        if (authError && isLikelyInvalidSession(authError.message)) {
+          await handleInvalidSession('getUser invalid');
+          return;
+        }
 
         if (user) {
           try {
@@ -219,6 +298,10 @@ useEffect(() => {
             if (profileError.message?.includes('AbortError') || profileError.name === 'AbortError') {
               return; 
             }
+            if (isLikelyInvalidSession(profileError.message)) {
+              await handleInvalidSession('profile fetch invalid');
+              return;
+            }
             
             if (isMounted) {
               // Profile不存在，创建临时用户数据
@@ -237,6 +320,10 @@ useEffect(() => {
         }
       } catch (error: any) {
         if (error.message?.includes('AbortError') || error.name === 'AbortError') return;
+        if (isLikelyInvalidSession(error.message)) {
+          await handleInvalidSession('checkAuth outer invalid');
+          return;
+        }
         
         if (isMounted) {
           console.error('Auth check failed:', error);
@@ -306,9 +393,7 @@ useEffect(() => {
             setCurrentUser(null);
             setShowAuth(true);
             // Clear all data so next user starts fresh
-            useMemoryStore.setState({ memories: [] });
-            useLedgerStore.setState({ ledgers: [] });
-            useUserStore.setState({ friends: [] });
+            resetClientData();
           }
         }
       }
