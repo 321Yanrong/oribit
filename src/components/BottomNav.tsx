@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaMap, FaImages, FaWallet, FaUser, FaGamepad } from 'react-icons/fa';
 import { useNavStore, useUserStore } from '../store';
+import { useUIStore } from '../store/ui';
 import { PageType } from '../types';
 
 // 简笔画开心表情 SVG 组件
@@ -51,6 +52,7 @@ const navItems: { id: PageType; icon: typeof FaMap; label: string }[] = [
 export default function BottomNav() {
   const { currentPage, setCurrentPage } = useNavStore();
   const pendingCount = useUserStore((s) => s.pendingRequests.length);
+  const unreadCommentCount = useUIStore((s) => s.memoryCommentUnreadCount);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
@@ -111,6 +113,12 @@ export default function BottomNav() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                    {/* 记忆评论红点 */}
+                    {item.id === 'memory' && unreadCommentCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                        {unreadCommentCount > 99 ? '99+' : unreadCommentCount}
+                      </span>
+                    )}
                     {/* 好友申请红点 */}
                     {item.id === 'profile' && pendingCount > 0 && (
                       <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">

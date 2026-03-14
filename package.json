@@ -6,10 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:copy": "npm run build && npx cap copy",
+    "ios:open": "npx cap open ios",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
     "@headlessui/react": "^1.7.18",
     "@supabase/supabase-js": "^2.98.0",
     "cannon-es": "^0.20.0",

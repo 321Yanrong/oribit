@@ -260,13 +260,73 @@ export default function MediaUploader({
   const [dragOver, setDragOver] = useState(false);
   const [activeTab, setActiveTab] = useState<'photo' | 'video' | 'live'>('photo');
   const [livePhotos, setLivePhotos] = useState<string[]>([]);
+  const [liveBindings, setLiveBindings] = useState<Array<{ photoUrl: string; liveUrl: string }>>([]);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [linkingLive, setLinkingLive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const liveVideoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLiveChange = (urls: string[]) => {
+  const livePhotoUrlSet = new Set(liveBindings.map(binding => binding.photoUrl));
+
+  const syncLiveUrls = (urls: string[]) => {
     setLivePhotos(urls);
+    setLiveBindings(prev => prev.filter(binding => urls.includes(binding.liveUrl)));
     const nonLive = videos.filter(v => !livePhotos.includes(v));
     onVideosChange([...nonLive, ...urls]);
+  };
+
+  const handleLiveChange = (urls: string[]) => {
+    syncLiveUrls(urls);
+  };
+
+  const handleAttachLiveToPhoto = async (files: FileList | null, sourcePhotoUrl: string | null) => {
+    if (!files || linkingLive) return;
+    const validFiles = Array.from(files).filter(file => file.type.startsWith('video/') || file.name.match(/\.(mov|mp4|webm)$/i));
+    if (!validFiles.length) {
+      alert('请选择 Live 视频文件（.mov / .mp4 / .webm）');
+      return;
+    }
+
+    const oversize = validFiles.find(file => file.size > LIVE_MAX_SIZE_MB * 1024 * 1024);
+    if (oversize) {
+      alert(`Live 文件不能超过 ${LIVE_MAX_SIZE_MB}MB`);
+      return;
+    }
+
+    setLinkingLive(true);
+    try {
+      const { uploadVideo } = await import('../api/supabase');
+      const uploadedUrls = await Promise.all(validFiles.map(file => withTimeout(uploadVideo(userId, file))));
+      const nextLiveUrls = [...livePhotos, ...uploadedUrls];
+      syncLiveUrls(nextLiveUrls);
+
+      if (sourcePhotoUrl) {
+        setLiveBindings(prev => {
+          const filtered = prev.filter(binding => binding.photoUrl !== sourcePhotoUrl);
+          return [...filtered, ...uploadedUrls.map(liveUrl => ({ photoUrl: sourcePhotoUrl, liveUrl }))];
+        });
+      }
+
+      alert(sourcePhotoUrl ? '已为这张照片附加 Live 效果' : 'Live 上传成功');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '未知错误';
+      alert(`Live 上传失败：${msg}`);
+    } finally {
+      setLinkingLive(false);
+      if (liveVideoInputRef.current) liveVideoInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = (photoUrl: string) => {
+    const relatedLiveUrls = liveBindings.filter(binding => binding.photoUrl === photoUrl).map(binding => binding.liveUrl);
+    onPhotosChange(photos.filter(url => url !== photoUrl));
+    if (relatedLiveUrls.length > 0) {
+      const nextLiveUrls = livePhotos.filter(url => !relatedLiveUrls.includes(url));
+      syncLiveUrls(nextLiveUrls);
+      setLiveBindings(prev => prev.filter(binding => binding.photoUrl !== photoUrl));
+    }
+    if (previewPhoto === photoUrl) setPreviewPhoto(null);
   };
 
   const handleFileSelect = async (files: FileList | null, type: 'photo' | 'video') => {
@@ -337,8 +397,22 @@ export default function MediaUploader({
             <div className="grid grid-cols-3 gap-2">
               {photos.map((url, i) => (
                 <div key={url} className="relative aspect-square rounded-xl overflow-hidden group shadow-lg">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                  <button onClick={() => onPhotosChange(photos.filter((_, j) => j !== i))} className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-all"><FaTimes className="w-3 h-3" /></button>
+                  <button type="button" onClick={() => setPreviewPhoto(url)} className="absolute inset-0 z-0">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                  {livePhotoUrlSet.has(url) && (
+                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 text-[#FFD700] text-[10px] font-bold flex items-center gap-0.5 z-10">
+                      <FaBolt className="text-[8px]" /> LIVE
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPhoto(url)}
+                    className="absolute bottom-1.5 left-1.5 px-2 py-1 rounded-full bg-black/55 text-white/80 text-[10px] opacity-0 group-hover:opacity-100 transition-all z-10"
+                  >
+                    放大查看
+                  </button>
+                  <button onClick={() => handleRemovePhoto(url)} className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-all z-10"><FaTimes className="w-3 h-3" /></button>
                 </div>
               ))}
             </div>
@@ -391,6 +465,65 @@ export default function MediaUploader({
       {activeTab === 'live' && (
         <LivePhotoUploader userId={userId} livePhotos={livePhotos} onLivePhotosChange={handleLiveChange} />
       )}
+
+      <input
+        ref={liveVideoInputRef}
+        type="file"
+        accept="video/*,.mov,.mp4,.webm"
+        multiple={false}
+        className="hidden"
+        onChange={e => handleAttachLiveToPhoto(e.target.files, previewPhoto)}
+      />
+
+      <AnimatePresence>
+        {previewPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+            onClick={() => setPreviewPhoto(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-md rounded-3xl bg-[#1a1a1a] border border-white/10 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                <div>
+                  <p className="text-white font-semibold">照片预览</p>
+                  <p className="text-white/35 text-xs mt-0.5">可以直接为这张照片勾选 Live</p>
+                </div>
+                <button onClick={() => setPreviewPhoto(null)} className="p-2 rounded-full hover:bg-white/10 text-white/60">
+                  <FaTimes className="text-sm" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                <div className="rounded-2xl overflow-hidden bg-black/40 border border-white/5">
+                  <img src={previewPhoto} alt="预览照片" className="w-full max-h-[60vh] object-contain" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => liveVideoInputRef.current?.click()}
+                  disabled={linkingLive}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-semibold transition-all ${livePhotoUrlSet.has(previewPhoto) ? 'bg-[#FFD700]/15 text-[#FFD700] border border-[#FFD700]/30' : 'bg-white/5 text-white/80 border border-white/10 hover:border-[#FFD700]/40 hover:text-[#FFD700]'} disabled:opacity-50`}
+                >
+                  {linkingLive ? <FaSpinner className="animate-spin" /> : <FaBolt />}
+                  <span>{livePhotoUrlSet.has(previewPhoto) ? '重新选择这张图的 Live 视频' : '勾选为 Live 并选择视频'}</span>
+                </button>
+
+                <p className="text-white/35 text-xs leading-relaxed">
+                  说明：先选照片，再在这里为它补一段 Live 视频，这样用户不需要单独切到 Live 标签再上传。
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

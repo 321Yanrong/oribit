@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile } from '../api/supabase';
+import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -738,6 +738,7 @@ export default function ProfilePage() {
   const { memories } = useMemoryStore();
   const { ledgers } = useLedgerStore();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(currentUser?.username || '');
@@ -956,6 +957,39 @@ const handleAddFriend = async (name: string, remark: string) => {
     } finally {
       setCurrentUser(null);
       setLoggingOut(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser?.email) {
+      alert('当前账号未绑定邮箱，暂时无法执行邮箱注销');
+      return;
+    }
+
+    const confirmEmail = window.prompt(`为避免误操作，请输入当前登录邮箱确认注销：\n${currentUser.email}`)?.trim();
+    if (!confirmEmail) return;
+
+    if (confirmEmail.toLowerCase() !== currentUser.email.toLowerCase()) {
+      alert('输入邮箱不一致，已取消注销');
+      return;
+    }
+
+    if (!window.confirm('⚠️ 注销后账号、回忆、账单、评论等数据将被永久删除，且无法恢复。确定继续吗？')) {
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await deleteMyAccount(confirmEmail);
+      setCurrentUser(null);
+      useMemoryStore.setState({ memories: [] });
+      useLedgerStore.setState({ ledgers: [] });
+      useUserStore.setState({ friends: [], pendingRequests: [] });
+      alert('账号已注销完成');
+    } catch (error: any) {
+      alert(error?.message || '注销失败，请稍后重试');
+    } finally {
+      setDeletingAccount(false);
     }
   };
   const handleAvatarClick = () => { if (!uploadingAvatar) fileInputRef.current?.click(); };
@@ -1394,6 +1428,15 @@ const handleAddFriend = async (name: string, remark: string) => {
         <button onClick={handleLogout} disabled={loggingOut} className="w-full p-4 glass-card rounded-2xl flex items-center justify-center gap-2 text-red-400 disabled:opacity-50">
           {loggingOut ? <FaSpinner className="w-5 h-5 animate-spin" /> : <FaSignOutAlt className="w-5 h-5" />}
           {loggingOut ? '退出中...' : '退出登录'}
+        </button>
+
+        <button
+          onClick={handleDeleteAccount}
+          disabled={deletingAccount || loggingOut}
+          className="w-full p-4 rounded-2xl border border-red-400/30 bg-red-500/10 flex items-center justify-center gap-2 text-red-300 disabled:opacity-50"
+        >
+          {deletingAccount ? <FaSpinner className="w-5 h-5 animate-spin" /> : <FaTrash className="w-5 h-5" />}
+          {deletingAccount ? '注销中...' : '注销邮箱账号'}
         </button>
       </div>
       

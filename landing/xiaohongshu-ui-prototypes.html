@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbit × 小红书发布视觉样图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+      .glass { backdrop-filter: blur(14px); background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.52)); }
+      .phone-shadow { box-shadow: 0 32px 70px rgba(9,16,35,.24), 0 12px 30px rgba(9,16,35,.14); }
+      .bg-grid {
+        background-image:
+          radial-gradient(circle at 20% 10%, rgba(255, 72, 124, 0.18), transparent 34%),
+          radial-gradient(circle at 82% 8%, rgba(90, 98, 255, 0.18), transparent 36%),
+          linear-gradient(180deg, #fafcff 0%, #f4f7ff 100%);
+      }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      .memory-flow-bg {
+        background-image:
+          linear-gradient(130deg, rgba(25, 26, 42, 0.72), rgba(95, 53, 141, 0.56), rgba(255, 94, 143, 0.45)),
+          url('../回忆流.jpg');
+        background-size: cover;
+        background-position: center;
+      }
+      .poker-stack { position: relative; height: 220px; }
+      .poker-card {
+        position: absolute;
+        width: 78%;
+        height: 205px;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,.55);
+        background: rgba(255,255,255,.1);
+        overflow: hidden;
+        box-shadow: 0 18px 28px rgba(12, 16, 28, .28);
+      }
+      .poker-card.back {
+        transform: rotate(-7deg);
+        left: 3%;
+        top: 10px;
+      }
+      .poker-card.front {
+        transform: rotate(6deg);
+        right: 5%;
+        top: 22px;
+      }
+      .book-spread {
+        perspective: 1800px;
+      }
+      .book-page {
+        position: relative;
+        transform-style: preserve-3d;
+        transition: transform 720ms cubic-bezier(.2,.7,.2,1);
+      }
+      .book-page.is-flipping {
+        transform: rotateY(-18deg) scale(0.985);
+      }
+      .album-control-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,.24);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body class="bg-grid text-slate-900">
+    <main class="max-w-[1480px] mx-auto px-6 py-10 space-y-10">
+      <section id="frame-cover" class="rounded-[32px] overflow-hidden border border-white/70 bg-white/70 phone-shadow">
+        <div class="grid md:grid-cols-2 gap-8 p-10">
+          <div class="space-y-6">
+            <span class="inline-flex items-center gap-2 rounded-full bg-[#ff4f7d]/10 text-[#ff4f7d] px-4 py-2 text-sm font-semibold">
+              <i class="fa-solid fa-route"></i>
+              Orbit 核心闭环场景提案
+            </span>
+            <h1 class="text-5xl leading-tight font-extrabold tracking-tight text-slate-900">
+              朋友聚会 / 旅行全流程
+              <span class="block text-transparent bg-clip-text bg-gradient-to-r from-[#ff4f7d] via-[#ff8645] to-[#6f66ff]">从出发前到回忆沉淀，一站完成</span>
+            </h1>
+            <p class="text-slate-600 text-lg leading-relaxed">
+              不再平均发力做四散模块，聚焦最高频场景：行程规划 → 地点推荐 → 打卡记录 → 实时分账 → 互动游戏 → 回忆沉淀 → 照片共享。
+            </p>
+            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200"><i class="fa-solid fa-compass"></i>出行前可规划</span>
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200"><i class="fa-solid fa-receipt"></i>过程可协作分账</span>
+              <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200"><i class="fa-solid fa-lock"></i>全程隐私可控</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <img class="rounded-3xl h-56 w-full object-cover" src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80" alt="friends" />
+            <img class="rounded-3xl h-56 w-full object-cover" src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=900&q=80" alt="travel" />
+            <img class="rounded-3xl h-56 w-full object-cover" src="https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=80" alt="trip planning" />
+            <img class="rounded-3xl h-56 w-full object-cover" src="https://images.unsplash.com/photo-1472653525502-f9c3c37b8a56?auto=format&fit=crop&w=900&q=80" alt="memory photo" />
+          </div>
+        </div>
+      </section>
+
+      <section id="frame-journey" class="rounded-[32px] border border-white/70 bg-white/70 p-8 phone-shadow">
+        <h2 class="text-2xl font-bold mb-2">样图 A · 出发前到进行中：一个旅程看全链路</h2>
+        <p class="text-slate-500 mb-6">核心目标：让用户形成“和朋友出去玩，就用 Orbit”的动作记忆。</p>
+        <div class="grid lg:grid-cols-3 gap-7">
+          <article class="w-[360px] mx-auto rounded-[34px] border border-slate-200 bg-[#f9fbff] overflow-hidden phone-shadow">
+            <header class="p-4 bg-white border-b border-slate-100">
+              <p class="font-semibold">1）行程规划</p>
+              <p class="text-xs text-slate-500 mt-1">多人协同日程 + 待办 + 预算上限</p>
+            </header>
+            <div class="p-4 space-y-3">
+              <div class="rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-semibold">上海两天一夜</p>
+                  <p class="text-xs text-slate-500">4人 · 预算 ¥2800 · 3月15-16日</p>
+                </div>
+                <span class="text-xs px-2 py-1 rounded-full bg-[#6f66ff]/10 text-[#6f66ff]">进行中</span>
+              </div>
+              <div class="space-y-2 text-sm">
+                <div class="rounded-xl bg-white border border-slate-200 px-3 py-2 flex justify-between"><span>交通</span><span class="text-slate-500">高铁去程已订</span></div>
+                <div class="rounded-xl bg-white border border-slate-200 px-3 py-2 flex justify-between"><span>午餐店铺</span><span class="text-slate-500">3 选 1 投票中</span></div>
+                <div class="rounded-xl bg-white border border-slate-200 px-3 py-2 flex justify-between"><span>酒店</span><span class="text-slate-500">待确认</span></div>
+              </div>
+              <button class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-[#6f66ff] to-[#8b7dff] text-white font-semibold text-sm">拉群共创行程</button>
+            </div>
+          </article>
+
+          <article class="w-[360px] mx-auto rounded-[34px] border border-slate-200 bg-[#f9fbff] overflow-hidden phone-shadow">
+            <header class="p-4 bg-white border-b border-slate-100">
+              <p class="font-semibold">2）地点推荐 + 打卡</p>
+              <p class="text-xs text-slate-500 mt-1">附近高评分 + 好友偏好实时匹配</p>
+            </header>
+            <img class="w-full h-44 object-cover" src="https://images.unsplash.com/photo-1557499305-8f40f8f479f7?auto=format&fit=crop&w=900&q=80" alt="map" />
+            <div class="p-4 space-y-3">
+              <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <p class="text-sm font-semibold">Orbit 推荐：弄堂本帮菜（步行 8 分钟）</p>
+                <p class="text-xs text-slate-500 mt-1">人均 ¥89 · 朋友历史满意度 94%</p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between">
+                <span class="text-sm">已打卡 2/5 地点</span>
+                <span class="text-xs font-semibold text-[#ff4f7d]">今日进度 40%</span>
+              </div>
+              <button class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-[#ff4f7d] to-[#ff8645] text-white font-semibold text-sm">一键打卡并记录照片</button>
+            </div>
+          </article>
+
+          <article class="w-[360px] mx-auto rounded-[34px] border border-slate-200 bg-[#f9fbff] overflow-hidden phone-shadow">
+            <header class="p-4 bg-white border-b border-slate-100">
+              <p class="font-semibold">3）实时分账 + 互动游戏</p>
+              <p class="text-xs text-slate-500 mt-1">避免尴尬算账，让现场更轻松</p>
+            </header>
+            <div class="p-4 space-y-3">
+              <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="flex items-center justify-between text-sm">
+                  <span>晚餐总额</span>
+                  <span class="font-bold">¥428</span>
+                </div>
+                <div class="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full w-3/4 bg-gradient-to-r from-[#00b894] to-[#58d6b1]"></div></div>
+                <p class="text-xs text-slate-500 mt-2">3/4 人已确认，阿杰待支付 ¥107</p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <p class="text-sm font-semibold">小游戏：真心话闪卡（3分钟）</p>
+                <p class="text-xs text-slate-500 mt-1">让现场破冰，自动沉淀为“高光回忆”</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <button class="py-2.5 rounded-xl bg-slate-900 text-white">发起分账</button>
+                <button class="py-2.5 rounded-xl bg-white border border-slate-200">开始游戏</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="frame-memory" class="rounded-[32px] border border-white/70 bg-white/70 p-8 phone-shadow">
+        <h2 class="text-2xl font-bold mb-2">样图 B · 事后沉淀：回忆共享 + 隐私安全成为卖点</h2>
+        <p class="text-slate-500 mb-6">核心宣传语：你的回忆，只有你和朋友能看到。</p>
+        <div class="grid lg:grid-cols-2 gap-8">
+          <article class="rounded-[30px] border border-slate-200 bg-[#f9fbff] overflow-hidden phone-shadow">
+            <div class="p-5 bg-white border-b border-slate-100 flex items-center justify-between">
+              <p class="font-semibold">回忆时间线（自动生成）</p>
+              <span class="text-xs px-2 py-1 rounded-full bg-[#ff4f7d]/10 text-[#ff4f7d]">聚会已结束</span>
+            </div>
+            <img class="w-full h-64 object-cover" src="https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=1200&q=80" alt="memory" />
+            <div class="p-5 space-y-4">
+              <h3 class="text-xl font-bold leading-snug">周末旅程已沉淀为 1 条回忆卡、24 张照片、6 条互动评论</h3>
+              <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                <div class="rounded-xl bg-white border border-slate-200 p-2"><p class="font-bold text-[#6f66ff]">24</p><p class="text-xs text-slate-500">照片</p></div>
+                <div class="rounded-xl bg-white border border-slate-200 p-2"><p class="font-bold text-[#ff8645]">6</p><p class="text-xs text-slate-500">评论</p></div>
+                <div class="rounded-xl bg-white border border-slate-200 p-2"><p class="font-bold text-[#00b894]">1</p><p class="text-xs text-slate-500">分账单</p></div>
+              </div>
+              <div class="rounded-2xl bg-white border border-slate-200 p-3">
+                <p class="text-xs text-slate-500 mb-1">共享相册</p>
+                <p class="text-sm text-slate-700">@Yuki 上传 8 张，@阿杰 上传 5 张，重复照片已自动去重。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="rounded-[30px] border border-slate-200 bg-[#0f1322] text-white overflow-hidden phone-shadow">
+            <div class="p-5 border-b border-white/10">
+              <p class="font-semibold">Orbit 隐私安全中心</p>
+              <p class="text-xs text-white/60 mt-1">把合规与安全前置为产品核心竞争力</p>
+            </div>
+            <div class="p-5 space-y-3">
+              <div class="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-start gap-3">
+                <i class="fa-solid fa-shield-halved text-[#4ae3b5] mt-1"></i>
+                <div>
+                  <p class="text-sm font-semibold">端到端加密（E2EE）</p>
+                  <p class="text-xs text-white/60 mt-1">回忆内容、评论、共享相册仅参与好友可解密查看。</p>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-start gap-3">
+                <i class="fa-solid fa-mobile-screen-button text-[#7f8cff] mt-1"></i>
+                <div>
+                  <p class="text-sm font-semibold">本地存储可选</p>
+                  <p class="text-xs text-white/60 mt-1">敏感回忆可仅保存在本机，不上云，支持 Face ID 解锁。</p>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-white/5 border border-white/10 p-3 flex items-start gap-3">
+                <i class="fa-solid fa-file-arrow-down text-[#ff9c6b] mt-1"></i>
+                <div>
+                  <p class="text-sm font-semibold">数据一键导出</p>
+                  <p class="text-xs text-white/60 mt-1">可导出个人回忆、相册与账单记录，支持随时迁移与备份。</p>
+                </div>
+              </div>
+              <div class="rounded-2xl bg-[#4ae3b5]/15 border border-[#4ae3b5]/30 p-3 text-sm text-[#8ff5d1]">
+                宣传主文案：你的回忆，只有你和朋友能看到。
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="frame-album-book" class="rounded-[32px] overflow-hidden border border-white/20 memory-flow-bg phone-shadow">
+        <div class="p-8 lg:p-10 text-white">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div>
+              <h2 class="text-2xl font-bold">样图 D · 共同回忆相册（像一本会翻页的书）</h2>
+              <p class="text-white/75 mt-1 text-sm">支持自动翻页 / 手动翻页 / 暂停，沉浸式回看共同回忆。</p>
+            </div>
+            <span class="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs border border-white/25">
+              <i class="fa-solid fa-lock"></i>
+              仅你与好友可见
+            </span>
+          </div>
+
+          <div class="grid lg:grid-cols-[1.3fr_0.7fr] gap-6">
+            <article class="rounded-[26px] border border-white/25 bg-white/10 backdrop-blur-xl overflow-hidden">
+              <div class="px-5 py-4 border-b border-white/20 flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-semibold">《上海两天一夜》共同回忆相册</p>
+                  <p id="album-page-indicator" class="text-xs text-white/65 mt-1">第 01 页 / 共 24 页 · 自动翻页已开启</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="album-prev-btn" class="album-control-btn bg-white/15"><i class="fa-solid fa-backward-step"></i></button>
+                  <button id="album-toggle-btn" class="album-control-btn bg-[#ff4f7d] border-[#ff9fbb]/50"><i id="album-toggle-icon" class="fa-solid fa-pause"></i></button>
+                  <button id="album-next-btn" class="album-control-btn bg-white/15"><i class="fa-solid fa-forward-step"></i></button>
+                </div>
+              </div>
+
+              <div id="book-spread" class="book-spread grid md:grid-cols-2 gap-4 p-4">
+                <div id="book-left-page" class="book-page rounded-2xl bg-[#121428]/65 border border-white/20 p-3">
+                  <p class="text-xs text-white/65 mb-2">左页 · 完整展示（不裁切）</p>
+                  <div class="h-72 rounded-xl bg-black/25 border border-white/15 overflow-hidden flex items-center justify-center">
+                    <img id="album-left-img" class="w-full h-full object-contain" src="https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=1200&q=80" alt="memory-full-left" />
+                  </div>
+                </div>
+                <div id="book-right-page" class="book-page rounded-2xl bg-[#121428]/65 border border-white/20 p-3">
+                  <p class="text-xs text-white/65 mb-2">右页 · 完整展示（不裁切）</p>
+                  <div class="h-72 rounded-xl bg-black/25 border border-white/15 overflow-hidden flex items-center justify-center">
+                    <img id="album-right-img" class="w-full h-full object-contain" src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80" alt="memory-full-right" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="px-4 pb-4">
+                <div id="album-caption" class="rounded-2xl border border-white/20 bg-white/10 p-3 text-sm text-white/90">
+                  本页文字：我们在夜色里走了很久，笑着把今天的照片都存进同一本回忆书。下一页会自动翻到晚餐账单与小游戏高光时刻。
+                </div>
+              </div>
+            </article>
+
+            <aside class="rounded-[26px] border border-white/25 bg-white/10 backdrop-blur-xl p-5 space-y-4">
+              <div>
+                <p class="text-sm font-semibold">多图时的展示规则</p>
+                <p class="text-xs text-white/65 mt-1">如果有很多张，仅展示前两张，像扑克叠放。</p>
+              </div>
+
+              <div class="poker-stack rounded-2xl bg-black/20 border border-white/15">
+                <div class="poker-card back">
+                  <img class="w-full h-full object-contain bg-black/35" src="https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=80" alt="photo-1" />
+                </div>
+                <div class="poker-card front">
+                  <img class="w-full h-full object-contain bg-black/35" src="https://images.unsplash.com/photo-1472653525502-f9c3c37b8a56?auto=format&fit=crop&w=900&q=80" alt="photo-2" />
+                </div>
+                <span class="absolute right-3 bottom-3 px-2 py-1 rounded-full text-xs bg-[#ff4f7d] text-white">+12</span>
+              </div>
+
+              <div class="rounded-2xl border border-white/20 bg-white/10 p-3 space-y-2">
+                <p class="text-xs text-white/65">交互状态</p>
+                <div class="flex items-center justify-between text-sm"><span>自动翻页</span><span id="album-state-text" class="text-[#8ff5d1]">开启</span></div>
+                <div class="flex items-center justify-between text-sm"><span>翻页速度</span><span>每 4 秒</span></div>
+                <div class="flex items-center justify-between text-sm"><span>暂停按钮</span><span>可随时暂停</span></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section id="frame-mindshare" class="rounded-[32px] border border-white/70 bg-white/70 p-8 phone-shadow">
+        <h2 class="text-2xl font-bold mb-6">样图 C · 用户心智与增长闭环</h2>
+        <div class="grid lg:grid-cols-3 gap-7">
+          <article class="rounded-[30px] overflow-hidden border border-slate-200 bg-[#f9fbff] phone-shadow p-5 space-y-3">
+            <p class="text-sm font-semibold text-[#6f66ff]">产品北极星场景</p>
+            <h3 class="text-xl font-bold">和朋友出去玩，就用 Orbit</h3>
+            <p class="text-sm text-slate-600">不只记录结果，而是把“出发前、旅途中、结束后”全部打通，减少切 App 和沟通成本。</p>
+          </article>
+
+          <article class="rounded-[30px] overflow-hidden border border-slate-200 bg-[#f9fbff] phone-shadow p-5">
+            <p class="text-sm font-semibold text-[#ff4f7d] mb-3">小红书内容切片建议</p>
+            <ul class="space-y-2 text-sm text-slate-600">
+              <li class="flex gap-2"><i class="fa-solid fa-circle-check text-[#00b894] mt-1"></i><span>封面：朋友合照 + “全流程一个 App 搞定”</span></li>
+              <li class="flex gap-2"><i class="fa-solid fa-circle-check text-[#00b894] mt-1"></i><span>第二张：实时分账 + 打卡进度条（最能共鸣）</span></li>
+              <li class="flex gap-2"><i class="fa-solid fa-circle-check text-[#00b894] mt-1"></i><span>第三张：端到端加密与本地存储（建立信任）</span></li>
+            </ul>
+          </article>
+
+          <article class="rounded-[30px] overflow-hidden border border-slate-200 bg-[#14151b] text-white phone-shadow p-5 space-y-4">
+            <p class="text-sm font-semibold text-[#8ff5d1]">传播口号</p>
+            <h3 class="text-2xl font-bold leading-snug">玩在当下，记在 Orbit，
+              <span class="text-[#ff9c6b]">只给你和朋友看。</span>
+            </h3>
+            <button class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-[#ff4f7d] to-[#ff8645] text-white font-semibold">导出小红书 3:4 样图</button>
+          </article>
+        </div>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const pages = [
+          {
+            leftImage: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=1200&q=80',
+            rightImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
+            caption: '本页文字：我们在夜色里走了很久，笑着把今天的照片都存进同一本回忆书。下一页会自动翻到晚餐账单与小游戏高光时刻。'
+          },
+          {
+            leftImage: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80',
+            rightImage: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80',
+            caption: '本页文字：第二页记录了我们临时改路线的决定，Orbit 根据好友偏好推荐了命中率最高的餐厅。'
+          },
+          {
+            leftImage: 'https://images.unsplash.com/photo-1557499305-8f40f8f479f7?auto=format&fit=crop&w=1200&q=80',
+            rightImage: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=1200&q=80',
+            caption: '本页文字：第三页是打卡与分账完成时刻，所有人都确认后，账单自动沉淀到共同回忆里。'
+          },
+          {
+            leftImage: 'https://images.unsplash.com/photo-1472653525502-f9c3c37b8a56?auto=format&fit=crop&w=1200&q=80',
+            rightImage: 'https://images.unsplash.com/photo-1511988617509-a57c8a288659?auto=format&fit=crop&w=1200&q=80',
+            caption: '本页文字：最后一页定格在返程路上的合照，自动翻页暂停后可以慢慢回看每一张完整照片。'
+          }
+        ];
+
+        const leftImage = document.getElementById('album-left-img');
+        const rightImage = document.getElementById('album-right-img');
+        const caption = document.getElementById('album-caption');
+        const indicator = document.getElementById('album-page-indicator');
+        const stateText = document.getElementById('album-state-text');
+        const toggleBtn = document.getElementById('album-toggle-btn');
+        const toggleIcon = document.getElementById('album-toggle-icon');
+        const prevBtn = document.getElementById('album-prev-btn');
+        const nextBtn = document.getElementById('album-next-btn');
+        const leftPage = document.getElementById('book-left-page');
+        const rightPage = document.getElementById('book-right-page');
+
+        if (!leftImage || !rightImage || !caption || !indicator || !stateText || !toggleBtn || !toggleIcon || !prevBtn || !nextBtn || !leftPage || !rightPage) {
+          return;
+        }
+
+        let currentIndex = 0;
+        let isPlaying = true;
+        let timer = null;
+        const totalPagesLabel = 24;
+        const intervalMs = 4000;
+
+        const animateFlip = () => {
+          leftPage.classList.add('is-flipping');
+          rightPage.classList.add('is-flipping');
+          setTimeout(() => {
+            leftPage.classList.remove('is-flipping');
+            rightPage.classList.remove('is-flipping');
+          }, 740);
+        };
+
+        const updateView = () => {
+          const current = pages[currentIndex];
+          leftImage.src = current.leftImage;
+          rightImage.src = current.rightImage;
+          caption.textContent = current.caption;
+          indicator.textContent = `第 ${String(currentIndex + 1).padStart(2, '0')} 页 / 共 ${totalPagesLabel} 页 · 自动翻页${isPlaying ? '已开启' : '已暂停'}`;
+          stateText.textContent = isPlaying ? '开启' : '暂停';
+          stateText.classList.toggle('text-[#8ff5d1]', isPlaying);
+          stateText.classList.toggle('text-[#ff9c6b]', !isPlaying);
+          toggleIcon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+        };
+
+        const nextPage = () => {
+          animateFlip();
+          currentIndex = (currentIndex + 1) % pages.length;
+          setTimeout(updateView, 240);
+        };
+
+        const prevPage = () => {
+          animateFlip();
+          currentIndex = (currentIndex - 1 + pages.length) % pages.length;
+          setTimeout(updateView, 240);
+        };
+
+        const stopAuto = () => {
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+        };
+
+        const startAuto = () => {
+          stopAuto();
+          timer = setInterval(() => {
+            if (isPlaying) {
+              nextPage();
+            }
+          }, intervalMs);
+        };
+
+        toggleBtn.addEventListener('click', () => {
+          isPlaying = !isPlaying;
+          updateView();
+          if (isPlaying) {
+            startAuto();
+          } else {
+            stopAuto();
+          }
+        });
+
+        prevBtn.addEventListener('click', () => {
+          prevPage();
+        });
+
+        nextBtn.addEventListener('click', () => {
+          nextPage();
+        });
+
+        updateView();
+        startAuto();
+      })();
+    </script>
+  </body>
+</html>

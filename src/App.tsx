@@ -44,6 +44,20 @@ function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hostname = window.location.hostname.toLowerCase();
+    const referrer = (document.referrer || '').toLowerCase();
+    const fromWehihiHost = hostname === 'wehihi.com' || hostname.endsWith('.wehihi.com');
+    const fromWehihiReferrer = referrer.includes('://wehihi.com') || referrer.includes('.wehihi.com');
+
+    if (fromWehihiHost || fromWehihiReferrer) {
+      setShowEarlyAccessBanner(true);
+    }
+  }, []);
 
   const handleDemo = () => {
     // 演示用户
@@ -421,7 +435,16 @@ useEffect(() => {
           >退出演示</button>
         </div>
       )}
-      <div className={isDemoMode ? 'pt-7' : ''}>
+      {showEarlyAccessBanner && (
+        <div className={`fixed left-0 right-0 ${isDemoMode ? 'top-7' : 'top-0'} z-[998] bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-[#06231c] text-xs font-semibold py-1.5 text-center flex items-center justify-center gap-2`}>
+          <span>🎉 欢迎参与 Orbit 早期内测</span>
+          <button
+            onClick={() => setShowEarlyAccessBanner(false)}
+            className="underline opacity-80 hover:opacity-100"
+          >知道了</button>
+        </div>
+      )}
+      <div className={isDemoMode && showEarlyAccessBanner ? 'pt-14' : (isDemoMode || showEarlyAccessBanner ? 'pt-7' : '')}>
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPage}

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt } from 'react-icons/fa';
+import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory } from '../api/supabase';
+import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
+import memoryFlowBackground from '../../回忆流.jpg';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -23,6 +24,30 @@ interface AMapPoi {
   location: string; // "lng,lat"
   type: string;
 }
+
+interface MemoryCommentItem {
+  id: string;
+  memory_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+}
+
+interface MemoryReactionState {
+  liked: boolean;
+  likes: number;
+  roastOpen: boolean;
+}
+
+const encodeSharePayload = (payload: Record<string, any>) => {
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+};
 
 // 格式化日期分组
 const formatDateGroup = (dateStr: string) => {
@@ -1011,7 +1036,23 @@ const CreateMemoryModal = ({
           // 同步刷新账单列表
           await useLedgerStore.getState().fetchLedgers();
         }
-        await useMemoryStore.getState().fetchMemories();
+        useMemoryStore.getState().addMemory({
+          ...memory,
+          tagged_friends: memory.tagged_friends || selectedFriends,
+          location: memory.location || (selectedLocation
+            ? {
+                id: locationId,
+                name: selectedLocation.name,
+                address: selectedLocation.address,
+                lng: Number(selectedLocation.location.split(',')[0]),
+                lat: Number(selectedLocation.location.split(',')[1]),
+              }
+            : null),
+          has_ledger: enableLedger,
+          ledger: enableLedger ? { total_amount: totalAmount } : null,
+          is_owner: true,
+        } as any);
+        void useMemoryStore.getState().fetchMemories();
         onClearDraft?.();
       }
       
@@ -1249,6 +1290,227 @@ const CreateMemoryModal = ({
     </motion.div>
   );
 };
+
+interface AlbumBookPage {
+  id: string;
+  memoryId: string;
+  leftPhoto: string;
+  rightPhoto: string;
+  caption: string;
+  dateLabel: string;
+  locationLabel: string;
+  previewPhotos: string[];
+  totalPhotos: number;
+}
+
+const buildAlbumBookPages = (memories: any[]): AlbumBookPage[] => {
+  const sorted = [...memories].sort((a, b) => {
+    const da = new Date(a.memory_date || a.created_at).getTime();
+    const db = new Date(b.memory_date || b.created_at).getTime();
+    return db - da;
+  });
+
+  const pages: AlbumBookPage[] = [];
+
+  sorted.forEach((memory: any) => {
+    const photos: string[] = memory.photos || [];
+    if (!photos.length) return;
+
+    const { text } = decodeMemoryContent(memory.content || '');
+    const caption = (text || '').trim() || '和朋友一起记录的这一天，值得慢慢翻看。';
+    const dateLabel = new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', {
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    });
+    const locationLabel = memory.location?.name || '共同回忆';
+
+    for (let i = 0; i < photos.length; i += 2) {
+      const leftPhoto = photos[i];
+      const rightPhoto = photos[i + 1] || photos[i];
+      pages.push({
+        id: `${memory.id}-${i}`,
+        memoryId: memory.id,
+        leftPhoto,
+        rightPhoto,
+        caption,
+        dateLabel,
+        locationLabel,
+        previewPhotos: photos.slice(0, 2),
+        totalPhotos: photos.length,
+      });
+    }
+  });
+
+  return pages;
+};
+
+const SharedMemoryAlbumBook = ({ memories }: { memories: any[] }) => {
+  const pages = useMemo(() => buildAlbumBookPages(memories), [memories]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isFlipping, setIsFlipping] = useState(false);
+  const flipIntervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (pages.length === 0) {
+      setPageIndex(0);
+      setIsPlaying(false);
+      return;
+    }
+    if (pageIndex > pages.length - 1) {
+      setPageIndex(0);
+    }
+  }, [pages.length, pageIndex]);
+
+  const triggerFlip = (nextIndex: number) => {
+    if (!pages.length) return;
+    setIsFlipping(true);
+    window.setTimeout(() => {
+      setPageIndex(nextIndex);
+    }, 180);
+    window.setTimeout(() => {
+      setIsFlipping(false);
+    }, 620);
+  };
+
+  const goNext = () => {
+    if (!pages.length) return;
+    const nextIndex = (pageIndex + 1) % pages.length;
+    triggerFlip(nextIndex);
+  };
+
+  const goPrev = () => {
+    if (!pages.length) return;
+    const prevIndex = (pageIndex - 1 + pages.length) % pages.length;
+    triggerFlip(prevIndex);
+  };
+
+  useEffect(() => {
+    if (flipIntervalRef.current) {
+      window.clearInterval(flipIntervalRef.current);
+      flipIntervalRef.current = null;
+    }
+    if (!isPlaying || pages.length <= 1) return;
+
+    flipIntervalRef.current = window.setInterval(() => {
+      goNext();
+    }, 4000);
+
+    return () => {
+      if (flipIntervalRef.current) {
+        window.clearInterval(flipIntervalRef.current);
+      }
+    };
+  }, [isPlaying, pages.length, pageIndex]);
+
+  if (pages.length === 0) return null;
+  const current = pages[pageIndex];
+  const extraCount = Math.max(0, current.totalPhotos - 2);
+
+  return (
+    <section
+      className="rounded-3xl overflow-hidden border border-white/10 mb-6"
+      style={{
+        backgroundImage: `linear-gradient(135deg, rgba(17,24,39,.82), rgba(76,29,149,.62), rgba(225,29,72,.52)), url(${memoryFlowBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="p-4 md:p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 text-white text-[11px] border border-white/20">
+              <FaBookOpen className="text-[10px]" />
+              共同回忆相册
+            </div>
+            <h3 className="text-white text-lg font-semibold mt-2">像一本书一样翻页回看你们的旅程</h3>
+            <p className="text-white/70 text-xs mt-1">自动翻页 / 手动翻页 / 随时暂停 · 只展示前两张扑克叠放预览</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] text-white/90">
+            <FaLock className="text-[10px]" />
+            仅好友可见
+          </span>
+        </div>
+
+        <div className="grid lg:grid-cols-[1.35fr_0.65fr] gap-4">
+          <article className="rounded-2xl border border-white/15 bg-black/25 backdrop-blur-md overflow-hidden">
+            <div className="px-3.5 py-3 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <p className="text-white text-sm font-medium">{current.locationLabel}</p>
+                <p className="text-white/60 text-xs">{current.dateLabel} · 第 {String(pageIndex + 1).padStart(2, '0')} 页 / 共 {String(pages.length).padStart(2, '0')} 页</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={goPrev} className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-white grid place-items-center"><FaStepBackward className="text-xs" /></button>
+                <button
+                  type="button"
+                  onClick={() => setIsPlaying((v) => !v)}
+                  className="w-8 h-8 rounded-lg bg-[#ff4f7d] border border-[#ff9fbb]/50 text-white grid place-items-center"
+                >
+                  {isPlaying ? <FaPause className="text-xs" /> : <FaPlay className="text-xs" />}
+                </button>
+                <button type="button" onClick={goNext} className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-white grid place-items-center"><FaStepForward className="text-xs" /></button>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3 p-3 [perspective:1800px]">
+              <div
+                className="rounded-xl bg-black/35 border border-white/15 p-2 transition-transform duration-700"
+                style={{ transform: isFlipping ? 'rotateY(-12deg) scale(0.985)' : 'rotateY(0deg) scale(1)' }}
+              >
+                <p className="text-white/60 text-[11px] mb-1.5">左页 · 完整展示</p>
+                <div className="h-64 rounded-lg bg-black/40 overflow-hidden flex items-center justify-center">
+                  <img src={current.leftPhoto} alt="album-left" className="w-full h-full object-contain" />
+                </div>
+              </div>
+              <div
+                className="rounded-xl bg-black/35 border border-white/15 p-2 transition-transform duration-700"
+                style={{ transform: isFlipping ? 'rotateY(-12deg) scale(0.985)' : 'rotateY(0deg) scale(1)' }}
+              >
+                <p className="text-white/60 text-[11px] mb-1.5">右页 · 完整展示</p>
+                <div className="h-64 rounded-lg bg-black/40 overflow-hidden flex items-center justify-center">
+                  <img src={current.rightPhoto} alt="album-right" className="w-full h-full object-contain" />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-3 pb-3">
+              <div className="rounded-xl border border-white/15 bg-white/10 p-3 text-xs text-white/90 leading-relaxed">
+                {current.caption}
+              </div>
+            </div>
+          </article>
+
+          <aside className="rounded-2xl border border-white/15 bg-black/25 backdrop-blur-md p-3.5">
+            <p className="text-white text-sm font-medium">多图预览规则</p>
+            <p className="text-white/65 text-xs mt-1">照片很多时，仅展示前两张，像扑克叠放。</p>
+            <div className="relative h-52 mt-3 rounded-xl border border-white/15 bg-black/30 overflow-hidden">
+              {current.previewPhotos[0] && (
+                <div className="absolute left-3 top-3 w-[72%] h-44 rounded-xl border border-white/40 overflow-hidden rotate-[-8deg] shadow-2xl">
+                  <img src={current.previewPhotos[0]} alt="preview-1" className="w-full h-full object-contain bg-black/50" />
+                </div>
+              )}
+              {current.previewPhotos[1] && (
+                <div className="absolute right-3 top-6 w-[72%] h-44 rounded-xl border border-white/40 overflow-hidden rotate-[7deg] shadow-2xl">
+                  <img src={current.previewPhotos[1]} alt="preview-2" className="w-full h-full object-contain bg-black/50" />
+                </div>
+              )}
+              {extraCount > 0 && (
+                <span className="absolute right-3 bottom-3 px-2 py-1 rounded-full bg-[#ff4f7d] text-white text-xs font-semibold">+{extraCount}</span>
+              )}
+            </div>
+            <div className="mt-3 rounded-xl border border-white/15 bg-white/10 p-2.5 text-[11px] text-white/80 space-y-1">
+              <div className="flex items-center justify-between"><span>自动翻页</span><span className={isPlaying ? 'text-[#8ff5d1]' : 'text-[#ffb58d]'}>{isPlaying ? '开启' : '暂停'}</span></div>
+              <div className="flex items-center justify-between"><span>翻页速度</span><span>4 秒/页</span></div>
+              <div className="flex items-center justify-between"><span>展示策略</span><span>完整图 + 前两张叠放</span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export default function MemoryStreamPage() {
   const { memories, fetchMemories, deleteMemory } = useMemoryStore();
   const { friends } = useUserStore();
@@ -1258,12 +1520,16 @@ export default function MemoryStreamPage() {
     memoryStreamGroupBy: groupBy,
     memoryStreamDraft,
     scrollPositions,
+    memoryCommentReadMarkers,
+    memoryCommentUnreadCount,
     setMemoryStreamSearchQuery,
     setMemoryStreamFilterFriendIds,
     setMemoryStreamGroupBy,
     setMemoryStreamDraft,
     clearMemoryStreamDraft,
     setScrollPosition,
+    markMemoryCommentsRead,
+    setMemoryCommentUnreadCount,
   } = useUIStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
@@ -1273,17 +1539,23 @@ export default function MemoryStreamPage() {
   const [editingMemory, setEditingMemory] = useState<any>(null);
   const scrollRestoredRef = useRef(false);
 
-  // 点赞 + 吐槽互动（本地持久化到 localStorage）
-  const [reactions, setReactions] = useState<Record<string, { liked: boolean; likes: number; roastOpen: boolean; roasts: { text: string; author: string }[] }>>(() => {
+  // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
+  const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
     try { return JSON.parse(localStorage.getItem('orbit_reactions') || '{}'); } catch { return {}; }
   });
+  const [commentsByMemory, setCommentsByMemory] = useState<Record<string, MemoryCommentItem[]>>({});
   const [roastInput, setRoastInput] = useState<Record<string, string>>({});
 
-  const getReaction = (id: string) => reactions[id] || { liked: false, likes: 0, roastOpen: false, roasts: [] };
+  const getReaction = (id: string) => ({
+    liked: reactions[id]?.liked || false,
+    likes: reactions[id]?.likes || 0,
+    roastOpen: reactions[id]?.roastOpen || false,
+    roasts: commentsByMemory[id] || [],
+  });
 
   const toggleLike = (memoryId: string) => {
     setReactions(prev => {
-      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false, roasts: [] };
+      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false };
       const next = { ...prev, [memoryId]: { ...r, liked: !r.liked, likes: r.liked ? Math.max(0, r.likes - 1) : r.likes + 1 } };
       try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch {}
       return next;
@@ -1292,23 +1564,45 @@ export default function MemoryStreamPage() {
 
   const toggleRoastOpen = (memoryId: string) => {
     setReactions(prev => {
-      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false, roasts: [] };
+      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false };
       const next = { ...prev, [memoryId]: { ...r, roastOpen: !r.roastOpen } };
       try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch {}
       return next;
     });
   };
 
-  const addRoast = (memoryId: string) => {
+  const addRoast = async (memoryId: string) => {
     const text = (roastInput[memoryId] || '').trim();
-    if (!text) return;
-    setReactions(prev => {
-      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: true, roasts: [] };
-      const next = { ...prev, [memoryId]: { ...r, roasts: [...r.roasts, { text, author: currentUser?.username || '我' }] } };
-      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch {}
-      return next;
-    });
+    if (!text || !currentUser?.id) return;
+
+    try {
+      const comment = await addMemoryComment(memoryId, currentUser.id, text);
+      setCommentsByMemory(prev => ({
+        ...prev,
+        [memoryId]: [...(prev[memoryId] || []), comment as MemoryCommentItem],
+      }));
+    } catch (error) {
+      console.error('发表评论失败:', error);
+      alert(`评论发送失败：${(error as any)?.message || '请稍后重试'}`);
+      return;
+    }
+
     setRoastInput(prev => ({ ...prev, [memoryId]: '' }));
+  };
+
+  const deleteRoast = async (memoryId: string, commentId: string) => {
+    if (!window.confirm('确定删除这条评论吗？')) return;
+
+    try {
+      await deleteMemoryComment(commentId);
+      setCommentsByMemory(prev => ({
+        ...prev,
+        [memoryId]: (prev[memoryId] || []).filter((item) => item.id !== commentId),
+      }));
+    } catch (error) {
+      console.error('删除评论失败:', error);
+      alert(`删除评论失败：${(error as any)?.message || '请稍后重试'}`);
+    }
   };
 
   const getFriendName = (friendId: string): string | null => {
@@ -1327,13 +1621,103 @@ export default function MemoryStreamPage() {
     return { name: f?.username || '好友', avatar: f?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest' };
   };
 
+  const getCommentAuthor = (memory: any, authorId: string) => {
+    if (authorId === memory.user_id) {
+      return getMemoryAuthor(memory.user_id);
+    }
+    if (authorId === currentUser?.id) {
+      return {
+        name: currentUser?.username || '我',
+        avatar: currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest',
+      };
+    }
+    const friend = friends.find((item: any) => item.friend?.id === authorId)?.friend;
+    if (friend) {
+      return {
+        name: friend.username || '好友',
+        avatar: friend.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest',
+      };
+    }
+    return {
+      name: '共同好友',
+      avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=shared-friend',
+    };
+  };
+
+  const getLatestCommentTime = (memoryId: string) => {
+    const comments = commentsByMemory[memoryId] || [];
+    return comments[comments.length - 1]?.created_at || null;
+  };
+
+  const isTaggedParticipantMemory = (memory: any) => {
+    if (!currentUser?.id) return false;
+    return memory.user_id !== currentUser.id && memory.tagged_friends?.includes(currentUser.id);
+  };
+
+  const hasUnreadComments = (memory: any) => {
+    if (!isTaggedParticipantMemory(memory)) return false;
+
+    const comments = commentsByMemory[memory.id] || [];
+    const latestOtherComment = [...comments].reverse().find((item) => item.author_id && item.author_id !== currentUser?.id);
+    if (!latestOtherComment) return false;
+
+    const lastReadAt = memoryCommentReadMarkers[memory.id];
+    if (!lastReadAt) return true;
+
+    return new Date(latestOtherComment.created_at).getTime() > new Date(lastReadAt).getTime();
+  };
+
+  const markCommentsAsRead = (memoryId: string) => {
+    const latestCommentAt = getLatestCommentTime(memoryId);
+    if (!latestCommentAt) return;
+    markMemoryCommentsRead(memoryId, latestCommentAt);
+  };
+
   const handleShareMemory = async (memory: any) => {
-    const { text: memoryText } = decodeMemoryContent(memory.content || '');
+    const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
     const raw = (memoryText || '').replace(/\s+/g, ' ').trim();
     const snippet = raw ? (raw.length > 30 ? `${raw.slice(0, 30)}...` : raw) : '我在 Orbit 记录了一段回忆';
     const locationText = memory.location?.name ? `📍${memory.location.name}` : '和好友的共同回忆';
     const dateText = new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-    const shareUrl = `https://wehihi.com/?from=memory_share&utm_source=wechat&utm_medium=social`;
+    const inviter = currentUser?.username || '好友';
+    const day = new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', {
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    });
+    const location = memory.location?.name || '';
+    const comments = (commentsByMemory[memory.id] || []).slice(-2).map((item) => {
+      const author = getCommentAuthor(memory, item.author_id);
+      return {
+        author: author.name,
+        content: item.content,
+      };
+    });
+    const taggedNames = (memory.tagged_friends || [])
+      .map((id: string) => getFriendName(id))
+      .filter(Boolean)
+      .slice(0, 8);
+    const payload = encodeSharePayload({
+      version: 1,
+      inviter,
+      author: getMemoryAuthor(memory.user_id).name,
+      authorAvatar: getMemoryAuthor(memory.user_id).avatar,
+      title: snippet,
+      content: raw,
+      day,
+      dateText,
+      location,
+      weather,
+      mood,
+      route,
+      taggedNames,
+      photos: (memory.photos || []).slice(0, 6),
+      videoCount: memory.videos?.length || 0,
+      audioCount: memory.audios?.length || 0,
+      hasLedger: !!memory.has_ledger,
+      comments,
+    });
+    const shareUrl = `https://wehihi.com/share-memory/?payload=${encodeURIComponent(payload)}&from=memory_share&utm_source=wechat&utm_medium=social`;
     const shareText = `【Orbit 回忆分享】\n${snippet}\n${locationText} · ${dateText}\n点这里下载并一起记录：${shareUrl}`;
 
     try {
@@ -1391,6 +1775,44 @@ export default function MemoryStreamPage() {
   const groupedMemories = useMemo(() => groupMemoriesByDate(filteredMemories), [filteredMemories]);
   // 按城市分组
   const cityGroupedMemories = useMemo(() => groupMemoriesByCity(filteredMemories), [filteredMemories]);
+
+  useEffect(() => {
+    const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
+    if (memoryIds.length === 0) {
+      setCommentsByMemory({});
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const comments = await getMemoryComments(memoryIds);
+        if (cancelled) return;
+
+        const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
+          const memoryId = item.memory_id;
+          if (!memoryId) return acc;
+          if (!acc[memoryId]) acc[memoryId] = [];
+          acc[memoryId].push(item as MemoryCommentItem);
+          return acc;
+        }, {});
+
+        setCommentsByMemory(grouped);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('加载评论失败:', error);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [memories]);
+
+  useEffect(() => {
+    const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
+    setMemoryCommentUnreadCount(unreadCount);
+  }, [memories, commentsByMemory, memoryCommentReadMarkers, currentUser?.id, setMemoryCommentUnreadCount]);
   
   // 获取记忆数据
   useEffect(() => {
@@ -1444,11 +1866,19 @@ export default function MemoryStreamPage() {
         <div className="px-4 pt-4 pb-2 flex items-center gap-3">
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white leading-tight">回忆流</h1>
-            <p className="text-white/40 text-xs mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-white/40 text-xs">
               {(searchQuery || filterFriendIds.length > 0) && filteredMemories.length !== memories.length
                 ? `找到 ${filteredMemories.length} / ${memories.length} 条`
                 : `共 ${memories.length} 条记忆`}
-            </p>
+              </p>
+              {memoryCommentUnreadCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/15 px-2 py-0.5 text-[10px] font-semibold text-[#FF8A8A] border border-[#FF6B6B]/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B]" />
+                  {memoryCommentUnreadCount} 条新评论
+                </span>
+              )}
+            </div>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -1520,6 +1950,7 @@ export default function MemoryStreamPage() {
       
       {/* 记忆列表 */}
       <div className="relative px-4 pb-32">
+        <SharedMemoryAlbumBook memories={filteredMemories} />
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FaSpinner className="text-[#00FFB3] text-3xl animate-spin mb-4" />
@@ -1622,7 +2053,11 @@ export default function MemoryStreamPage() {
                       <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
                         <div className="flex items-center gap-5">
                           <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1.5 text-sm transition-all ${reaction.liked ? 'text-red-400' : 'text-white/40 hover:text-red-300'}`}><FaHeart />{reaction.likes > 0 && <span className="text-xs">{reaction.likes}</span>}</button>
-                          <button onClick={() => toggleRoastOpen(memory.id)} className={`flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'}`}><FaComment /><span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
+                          <button onClick={() => {
+                            const willOpen = !reaction.roastOpen;
+                            toggleRoastOpen(memory.id);
+                            if (willOpen) markCommentsAsRead(memory.id);
+                          }} className={`relative flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'}`}><FaComment />{hasUnreadComments(memory) && <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#FF6B6B]" />}<span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
                           <button onClick={() => handleShareMemory(memory)} className="flex items-center gap-1.5 text-sm text-white/40 hover:text-[#5fd6ff]"><FaShareAlt /><span className="text-xs">分享微信</span></button>
                         </div>
                         <button onClick={() => setSelectedMemory(memory)} className="text-white/20 text-xs hover:text-white/50">查看全部 →</button>
@@ -1769,12 +2204,17 @@ export default function MemoryStreamPage() {
                             {reaction.likes > 0 && <span className="text-xs tabular-nums">{reaction.likes}</span>}
                           </button>
                           <button
-                            onClick={() => toggleRoastOpen(memory.id)}
+                            onClick={() => {
+                              const willOpen = !reaction.roastOpen;
+                              toggleRoastOpen(memory.id);
+                              if (willOpen) markCommentsAsRead(memory.id);
+                            }}
                             className={`flex items-center gap-1.5 text-sm transition-colors ${
                               reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'
                             }`}
                           >
                             <FaComment />
+                            {hasUnreadComments(memory) && <span className="w-2 h-2 rounded-full bg-[#FF6B6B]" />}
                             <span className="text-xs">
                               {reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}
                             </span>
@@ -1803,15 +2243,27 @@ export default function MemoryStreamPage() {
                             className="overflow-hidden bg-white/[0.02] border-t border-white/5"
                           >
                             <div className="p-4 space-y-3">
-                              {reaction.roasts.map((r: any, i: number) => (
-                                <div key={i} className="flex items-start gap-2">
-                                  <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                              {reaction.roasts.map((r: MemoryCommentItem) => {
+                                const commentAuthor = getCommentAuthor(memory, r.author_id);
+                                const canDeleteComment = currentUser?.id === r.author_id || currentUser?.id === memory.user_id;
+                                return (
+                                <div key={r.id} className="flex items-start gap-2">
+                                  <img src={commentAuthor.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
                                   <div className="flex-1 bg-white/5 rounded-2xl px-3 py-2">
-                                    <p className="text-[#00FFB3] text-xs font-medium mb-0.5">{r.author}</p>
-                                    <p className="text-white/70 text-sm">{r.text}</p>
+                                    <div className="flex items-start justify-between gap-3 mb-0.5">
+                                      <p className="text-[#00FFB3] text-xs font-medium">{commentAuthor.name}</p>
+                                      {canDeleteComment && (
+                                        <button
+                                          type="button"
+                                          onClick={() => void deleteRoast(memory.id, r.id)}
+                                          className="text-[11px] text-white/30 hover:text-red-300 transition-colors shrink-0"
+                                        >撤回</button>
+                                      )}
+                                    </div>
+                                    <p className="text-white/70 text-sm">{r.content}</p>
                                   </div>
                                 </div>
-                              ))}
+                              )})}
                               <div className="flex items-center gap-2">
                                 <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
                                 <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-2xl px-3 py-2 border border-white/10">
@@ -1820,11 +2272,11 @@ export default function MemoryStreamPage() {
                                     placeholder="留下你的吐槽..."
                                     value={roastInput[memory.id] || ''}
                                     onChange={(e) => setRoastInput(prev => ({ ...prev, [memory.id]: e.target.value }))}
-                                    onKeyDown={(e) => e.key === 'Enter' && addRoast(memory.id)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') void addRoast(memory.id); }}
                                     className="flex-1 bg-transparent text-white text-sm outline-none placeholder-white/30"
                                   />
                                   <button
-                                    onClick={() => addRoast(memory.id)}
+                                    onClick={() => void addRoast(memory.id)}
                                     disabled={!roastInput[memory.id]?.trim()}
                                     className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
                                   >发</button>

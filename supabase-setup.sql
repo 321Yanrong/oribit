@@ -10,6 +10,7 @@
 DROP TABLE IF EXISTS ledger_participants CASCADE;
 DROP TABLE IF EXISTS ledgers CASCADE;
 DROP TABLE IF EXISTS settlements CASCADE;
+DROP TABLE IF EXISTS memory_comments CASCADE;
 DROP TABLE IF EXISTS memory_tags CASCADE;
 DROP TABLE IF EXISTS memories CASCADE;
 DROP TABLE IF EXISTS locations CASCADE;
@@ -20,6 +21,7 @@ DROP TABLE IF EXISTS profiles CASCADE;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS public.sync_memory_tag_owner() CASCADE;
+DROP FUNCTION IF EXISTS public.delete_my_account() CASCADE;
 
 -- Storage policies (table is managed by Supabase)
 DROP POLICY IF EXISTS "Avatar upload policy" ON storage.objects;
@@ -228,7 +230,73 @@ CREATE POLICY "Users can view own or tagged memories" ON memories
   );
 
 -- =============================================
--- 6. LEDGERS TABLE (expense tracking)
+-- 6. MEMORY_COMMENTS TABLE
+-- =============================================
+CREATE TABLE IF NOT EXISTS memory_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  memory_id UUID REFERENCES memories(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE memory_comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view memory comments" ON memory_comments;
+CREATE POLICY "Users can view memory comments" ON memory_comments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1
+      FROM memories m
+      WHERE m.id = memory_comments.memory_id
+        AND (
+          m.user_id = auth.uid()
+          OR EXISTS (
+            SELECT 1 FROM memory_tags mt
+            WHERE mt.memory_id = m.id
+              AND mt.user_id = auth.uid()
+          )
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "Visible users can create memory comments" ON memory_comments;
+CREATE POLICY "Visible users can create memory comments" ON memory_comments
+  FOR INSERT WITH CHECK (
+    auth.uid() = author_id
+    AND EXISTS (
+      SELECT 1
+      FROM memories m
+      WHERE m.id = memory_comments.memory_id
+        AND (
+          m.user_id = auth.uid()
+          OR EXISTS (
+            SELECT 1 FROM memory_tags mt
+            WHERE mt.memory_id = m.id
+              AND mt.user_id = auth.uid()
+          )
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "Authors can update own memory comments" ON memory_comments;
+CREATE POLICY "Authors can update own memory comments" ON memory_comments
+  FOR UPDATE USING (auth.uid() = author_id)
+  WITH CHECK (auth.uid() = author_id);
+
+DROP POLICY IF EXISTS "Authors or owners can delete memory comments" ON memory_comments;
+CREATE POLICY "Authors or owners can delete memory comments" ON memory_comments
+  FOR DELETE USING (
+    auth.uid() = author_id
+    OR EXISTS (
+      SELECT 1 FROM memories m
+      WHERE m.id = memory_comments.memory_id
+        AND m.user_id = auth.uid()
+    )
+  );
+
+-- =============================================
+-- 7. LEDGERS TABLE (expense tracking)
 -- =============================================
 CREATE TABLE IF NOT EXISTS ledgers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -253,7 +321,7 @@ CREATE POLICY "Users can delete own ledgers" ON ledgers
   FOR DELETE USING (auth.uid() = creator_id);
 
 -- =============================================
--- 7. LEDGER_PARTICIPANTS TABLE
+-- 8. LEDGER_PARTICIPANTS TABLE
 -- =============================================
 CREATE TABLE IF NOT EXISTS ledger_participants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -286,7 +354,7 @@ CREATE POLICY "Ledger creator can delete participants" ON ledger_participants
   );
 
 -- =============================================
--- 8. SETTLEMENTS TABLE
+-- 9. SETTLEMENTS TABLE
 -- =============================================
 CREATE TABLE IF NOT EXISTS settlements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -327,6 +395,28 @@ CREATE POLICY "Photo update policy" ON storage.objects
 
 CREATE POLICY "Video upload policy" ON storage.objects
   FOR INSERT WITH CHECK (bucket_id = 'videos' AND auth.role() = 'authenticated');
+
+-- =============================================
+-- 10. ACCOUNT DELETION (self-service)
+-- =============================================
+CREATE OR REPLACE FUNCTION public.delete_my_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'not authenticated';
+  END IF;
+
+  DELETE FROM auth.users
+  WHERE id = auth.uid();
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
 
 -- =============================================
 -- DONE!

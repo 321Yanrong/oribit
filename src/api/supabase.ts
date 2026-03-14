@@ -255,6 +255,34 @@ export const signOut = async () => {
   if (error) throw error
 }
 
+export const deleteMyAccount = async (confirmEmail: string) => {
+  ensureOnlineForWrite('注销账号')
+
+  const email = (confirmEmail || '').trim().toLowerCase()
+  if (!email) {
+    throw new Error('请输入邮箱确认后再注销')
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+
+  const currentUser = userData.user
+  if (!currentUser) {
+    throw new Error('当前未登录，无法注销账号')
+  }
+
+  const currentEmail = (currentUser.email || '').trim().toLowerCase()
+  if (!currentEmail || currentEmail !== email) {
+    throw new Error('邮箱不匹配，请输入当前登录邮箱后重试')
+  }
+
+  const { error } = await (supabase as any).rpc('delete_my_account')
+  if (error) throw error
+
+  // 账号删除后清理本地会话
+  await supabase.auth.signOut({ scope: 'local' })
+}
+
 // 发送重置密码邮件
 export const sendPasswordReset = async (email: string) => {
   ensureOnlineForWrite('发送重置邮件')
@@ -514,6 +542,16 @@ export const addFriend = async (userId: string, friendId: string) => {
 
 // ==================== 记忆相关 ====================
 
+const formatMemoryRecord = (memory: any, userId: string) => ({
+  ...memory,
+  is_owner: memory.user_id === userId,
+  tagged_friends: [...new Set(
+    (memory.tags?.map((tag: any) =>
+      tag.user_id ? tag.user_id : (tag.virtual_friend_id ? `temp-${tag.virtual_friend_id}` : null)
+    ).filter(Boolean) || []) as string[]
+  )]
+})
+
 export const getMemories = async (userId: string) => {
   // 1. 自己创建的记忆
   const { data: ownMemories, error: ownError } = await supabase
@@ -557,15 +595,7 @@ export const getMemories = async (userId: string) => {
 
   const allMemories = [...(ownMemories || []), ...taggedMemories];
 
-  const formattedData = allMemories.map((memory: any) => ({
-    ...memory,
-    is_owner: memory.user_id === userId,
-    tagged_friends: [...new Set(
-      (memory.tags?.map((t: any) =>
-        t.user_id ? t.user_id : (t.virtual_friend_id ? `temp-${t.virtual_friend_id}` : null)
-      ).filter(Boolean) || []) as string[]
-    )]
-  }));
+  const formattedData = allMemories.map((memory: any) => formatMemoryRecord(memory, userId));
 
   return formattedData;
 }
@@ -617,8 +647,31 @@ export const createMemory = async (
       if (tagsError) throw tagsError
     }
   }
+
+  if (!memory) return memory
+
+  const { data: hydratedMemory, error: hydratedMemoryError } = await supabase
+    .from('memories')
+    .select(`
+      *,
+      location:locations(*),
+      tags:memory_tags(user_id, virtual_friend_id)
+    `)
+    .eq('id', memory.id)
+    .single()
+
+  if (hydratedMemoryError) {
+    console.warn('新记忆补全关联信息失败，先回退基础数据:', hydratedMemoryError)
+    return {
+      ...memory,
+      location: null,
+      tags: [],
+      tagged_friends: taggedFriends || [],
+      is_owner: true,
+    }
+  }
   
-  return memory
+  return formatMemoryRecord(hydratedMemory, userId)
 }
 
 // ==================== 地点相关 ====================
@@ -994,3 +1047,53 @@ export const deleteMemory = async (memoryId: string): Promise<void> => {
   const { error } = await supabase.from('memories').delete().eq('id', memoryId);
   if (error) throw error;
 };
+
+export const getMemoryComments = async (memoryIds: string[]) => {
+  if (!memoryIds.length) return [];
+
+  const { data, error } = await supabase
+    .from('memory_comments')
+    .select('id, memory_id, author_id, content, created_at')
+    .in('memory_id', memoryIds)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export const addMemoryComment = async (
+  memoryId: string,
+  authorId: string,
+  content: string,
+) => {
+  ensureOnlineForWrite('发表评论')
+
+  const cleanContent = content.trim()
+  if (!cleanContent) {
+    throw new Error('评论不能为空')
+  }
+
+  const { data, error } = await supabase
+    .from('memory_comments')
+    .insert({
+      memory_id: memoryId,
+      author_id: authorId,
+      content: cleanContent,
+    })
+    .select('id, memory_id, author_id, content, created_at')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const deleteMemoryComment = async (commentId: string) => {
+  ensureOnlineForWrite('删除评论')
+
+  const { error } = await supabase
+    .from('memory_comments')
+    .delete()
+    .eq('id', commentId)
+
+  if (error) throw error
+}

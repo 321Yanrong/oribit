@@ -31,6 +31,8 @@ interface UIState {
   memoryStreamGroupBy: MemoryGroupBy;
   memoryStreamDraft: MemoryStreamDraft | null;
   scrollPositions: Record<string, number>;
+  memoryCommentReadMarkers: Record<string, string>;
+  memoryCommentUnreadCount: number;
 
   setMemoryStreamSearchQuery: (value: string) => void;
   setMemoryStreamFilterFriendIds: (value: string[]) => void;
@@ -38,6 +40,8 @@ interface UIState {
   setMemoryStreamDraft: (value: MemoryStreamDraft) => void;
   clearMemoryStreamDraft: () => void;
   setScrollPosition: (pageKey: string, y: number) => void;
+  markMemoryCommentsRead: (memoryId: string, lastSeenAt: string) => void;
+  setMemoryCommentUnreadCount: (value: number) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -48,6 +52,8 @@ export const useUIStore = create<UIState>()(
       memoryStreamGroupBy: 'date',
       memoryStreamDraft: null,
       scrollPositions: {},
+      memoryCommentReadMarkers: {},
+      memoryCommentUnreadCount: 0,
 
       setMemoryStreamSearchQuery: (value) => set({ memoryStreamSearchQuery: value }),
       setMemoryStreamFilterFriendIds: (value) => set({ memoryStreamFilterFriendIds: value }),
@@ -61,15 +67,25 @@ export const useUIStore = create<UIState>()(
             [pageKey]: y,
           },
         })),
+      markMemoryCommentsRead: (memoryId, lastSeenAt) =>
+        set((state) => ({
+          memoryCommentReadMarkers: {
+            ...state.memoryCommentReadMarkers,
+            [memoryId]: lastSeenAt,
+          },
+        })),
+      setMemoryCommentUnreadCount: (value) => set({ memoryCommentUnreadCount: value }),
     }),
     {
-      name: 'orbit-ui-state-v1',
+      name: 'orbit-ui-state-v2',
       partialize: (state) => ({
         memoryStreamSearchQuery: state.memoryStreamSearchQuery,
         memoryStreamFilterFriendIds: state.memoryStreamFilterFriendIds,
         memoryStreamGroupBy: state.memoryStreamGroupBy,
         memoryStreamDraft: state.memoryStreamDraft,
         scrollPositions: state.scrollPositions,
+        memoryCommentReadMarkers: state.memoryCommentReadMarkers,
+        memoryCommentUnreadCount: state.memoryCommentUnreadCount,
       }),
     }
   )

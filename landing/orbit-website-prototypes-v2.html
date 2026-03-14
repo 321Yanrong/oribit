@@ -137,7 +137,7 @@
 
       .hero {
         display: grid;
-        grid-template-columns: 1.05fr 0.95fr;
+        grid-template-columns: 1.15fr 0.85fr;
         gap: 32px;
         align-items: center;
         min-height: calc(100vh - 68px);
@@ -159,20 +159,18 @@
       .btn-primary { background: linear-gradient(90deg, var(--brand), var(--brand-2)); color: #04251c; border: 0; }
       .btn-ghost { color: #e5ebff; background: rgba(255,255,255,0.03); }
 
-      .phones { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 14px; align-items: end; }
+      .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: end; }
       .phone {
         border: 2px solid #2f3547;
         border-radius: 24px;
         overflow: hidden;
         background: #0c0f15;
         box-shadow: 0 10px 24px rgba(0,0,0,0.26);
-        max-width: 210px;
-        margin: 0 auto;
       }
       .phone img {
         width: 100%;
-        height: 360px;
-        object-fit: cover;
+        height: 430px;
+        object-fit: contain;
         object-position: center top;
         display: block;
         background: #0c0f15;

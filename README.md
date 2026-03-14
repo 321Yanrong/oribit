@@ -122,6 +122,27 @@ npm run build
 npm run preview
 ```
 
+### Capacitor（iOS / Android 壳工程）
+
+已完成 Capacitor 接入并生成原生工程目录：
+
+- `ios/`
+- `android/`
+
+常用命令：
+
+```bash
+npm run cap:sync
+npm run ios:open
+npm run android:open
+```
+
+真机调试建议：
+
+1. 先执行 `npm run cap:sync` 同步最新前端产物。  
+2. iOS：执行 `npm run ios:open`，在 Xcode 里选择真机并运行。  
+3. Android：执行 `npm run android:open`，在 Android Studio 里选择真机并运行。
+
 ### Service Worker 开发排障（刷新后页面异常）
 
 如果你在开发环境遇到“刷新后页面打不开、必须去 Application 清缓存”的情况，通常是旧的 Service Worker + Cache 接管了页面。
