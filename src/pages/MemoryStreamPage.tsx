@@ -5,7 +5,7 @@ import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
 import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
-import memoryFlowBackground from '../../回忆流.jpg';
+import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -1291,226 +1291,6 @@ const CreateMemoryModal = ({
   );
 };
 
-interface AlbumBookPage {
-  id: string;
-  memoryId: string;
-  leftPhoto: string;
-  rightPhoto: string;
-  caption: string;
-  dateLabel: string;
-  locationLabel: string;
-  previewPhotos: string[];
-  totalPhotos: number;
-}
-
-const buildAlbumBookPages = (memories: any[]): AlbumBookPage[] => {
-  const sorted = [...memories].sort((a, b) => {
-    const da = new Date(a.memory_date || a.created_at).getTime();
-    const db = new Date(b.memory_date || b.created_at).getTime();
-    return db - da;
-  });
-
-  const pages: AlbumBookPage[] = [];
-
-  sorted.forEach((memory: any) => {
-    const photos: string[] = memory.photos || [];
-    if (!photos.length) return;
-
-    const { text } = decodeMemoryContent(memory.content || '');
-    const caption = (text || '').trim() || '和朋友一起记录的这一天，值得慢慢翻看。';
-    const dateLabel = new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', {
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long',
-    });
-    const locationLabel = memory.location?.name || '共同回忆';
-
-    for (let i = 0; i < photos.length; i += 2) {
-      const leftPhoto = photos[i];
-      const rightPhoto = photos[i + 1] || photos[i];
-      pages.push({
-        id: `${memory.id}-${i}`,
-        memoryId: memory.id,
-        leftPhoto,
-        rightPhoto,
-        caption,
-        dateLabel,
-        locationLabel,
-        previewPhotos: photos.slice(0, 2),
-        totalPhotos: photos.length,
-      });
-    }
-  });
-
-  return pages;
-};
-
-const SharedMemoryAlbumBook = ({ memories }: { memories: any[] }) => {
-  const pages = useMemo(() => buildAlbumBookPages(memories), [memories]);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isFlipping, setIsFlipping] = useState(false);
-  const flipIntervalRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (pages.length === 0) {
-      setPageIndex(0);
-      setIsPlaying(false);
-      return;
-    }
-    if (pageIndex > pages.length - 1) {
-      setPageIndex(0);
-    }
-  }, [pages.length, pageIndex]);
-
-  const triggerFlip = (nextIndex: number) => {
-    if (!pages.length) return;
-    setIsFlipping(true);
-    window.setTimeout(() => {
-      setPageIndex(nextIndex);
-    }, 180);
-    window.setTimeout(() => {
-      setIsFlipping(false);
-    }, 620);
-  };
-
-  const goNext = () => {
-    if (!pages.length) return;
-    const nextIndex = (pageIndex + 1) % pages.length;
-    triggerFlip(nextIndex);
-  };
-
-  const goPrev = () => {
-    if (!pages.length) return;
-    const prevIndex = (pageIndex - 1 + pages.length) % pages.length;
-    triggerFlip(prevIndex);
-  };
-
-  useEffect(() => {
-    if (flipIntervalRef.current) {
-      window.clearInterval(flipIntervalRef.current);
-      flipIntervalRef.current = null;
-    }
-    if (!isPlaying || pages.length <= 1) return;
-
-    flipIntervalRef.current = window.setInterval(() => {
-      goNext();
-    }, 4000);
-
-    return () => {
-      if (flipIntervalRef.current) {
-        window.clearInterval(flipIntervalRef.current);
-      }
-    };
-  }, [isPlaying, pages.length, pageIndex]);
-
-  if (pages.length === 0) return null;
-  const current = pages[pageIndex];
-  const extraCount = Math.max(0, current.totalPhotos - 2);
-
-  return (
-    <section
-      className="rounded-3xl overflow-hidden border border-white/10 mb-6"
-      style={{
-        backgroundImage: `linear-gradient(135deg, rgba(17,24,39,.82), rgba(76,29,149,.62), rgba(225,29,72,.52)), url(${memoryFlowBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div className="p-4 md:p-5">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 text-white text-[11px] border border-white/20">
-              <FaBookOpen className="text-[10px]" />
-              共同回忆相册
-            </div>
-            <h3 className="text-white text-lg font-semibold mt-2">像一本书一样翻页回看你们的旅程</h3>
-            <p className="text-white/70 text-xs mt-1">自动翻页 / 手动翻页 / 随时暂停 · 只展示前两张扑克叠放预览</p>
-          </div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] text-white/90">
-            <FaLock className="text-[10px]" />
-            仅好友可见
-          </span>
-        </div>
-
-        <div className="grid lg:grid-cols-[1.35fr_0.65fr] gap-4">
-          <article className="rounded-2xl border border-white/15 bg-black/25 backdrop-blur-md overflow-hidden">
-            <div className="px-3.5 py-3 border-b border-white/10 flex items-center justify-between">
-              <div>
-                <p className="text-white text-sm font-medium">{current.locationLabel}</p>
-                <p className="text-white/60 text-xs">{current.dateLabel} · 第 {String(pageIndex + 1).padStart(2, '0')} 页 / 共 {String(pages.length).padStart(2, '0')} 页</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button type="button" onClick={goPrev} className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-white grid place-items-center"><FaStepBackward className="text-xs" /></button>
-                <button
-                  type="button"
-                  onClick={() => setIsPlaying((v) => !v)}
-                  className="w-8 h-8 rounded-lg bg-[#ff4f7d] border border-[#ff9fbb]/50 text-white grid place-items-center"
-                >
-                  {isPlaying ? <FaPause className="text-xs" /> : <FaPlay className="text-xs" />}
-                </button>
-                <button type="button" onClick={goNext} className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-white grid place-items-center"><FaStepForward className="text-xs" /></button>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-3 p-3 [perspective:1800px]">
-              <div
-                className="rounded-xl bg-black/35 border border-white/15 p-2 transition-transform duration-700"
-                style={{ transform: isFlipping ? 'rotateY(-12deg) scale(0.985)' : 'rotateY(0deg) scale(1)' }}
-              >
-                <p className="text-white/60 text-[11px] mb-1.5">左页 · 完整展示</p>
-                <div className="h-64 rounded-lg bg-black/40 overflow-hidden flex items-center justify-center">
-                  <img src={current.leftPhoto} alt="album-left" className="w-full h-full object-contain" />
-                </div>
-              </div>
-              <div
-                className="rounded-xl bg-black/35 border border-white/15 p-2 transition-transform duration-700"
-                style={{ transform: isFlipping ? 'rotateY(-12deg) scale(0.985)' : 'rotateY(0deg) scale(1)' }}
-              >
-                <p className="text-white/60 text-[11px] mb-1.5">右页 · 完整展示</p>
-                <div className="h-64 rounded-lg bg-black/40 overflow-hidden flex items-center justify-center">
-                  <img src={current.rightPhoto} alt="album-right" className="w-full h-full object-contain" />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-3 pb-3">
-              <div className="rounded-xl border border-white/15 bg-white/10 p-3 text-xs text-white/90 leading-relaxed">
-                {current.caption}
-              </div>
-            </div>
-          </article>
-
-          <aside className="rounded-2xl border border-white/15 bg-black/25 backdrop-blur-md p-3.5">
-            <p className="text-white text-sm font-medium">多图预览规则</p>
-            <p className="text-white/65 text-xs mt-1">照片很多时，仅展示前两张，像扑克叠放。</p>
-            <div className="relative h-52 mt-3 rounded-xl border border-white/15 bg-black/30 overflow-hidden">
-              {current.previewPhotos[0] && (
-                <div className="absolute left-3 top-3 w-[72%] h-44 rounded-xl border border-white/40 overflow-hidden rotate-[-8deg] shadow-2xl">
-                  <img src={current.previewPhotos[0]} alt="preview-1" className="w-full h-full object-contain bg-black/50" />
-                </div>
-              )}
-              {current.previewPhotos[1] && (
-                <div className="absolute right-3 top-6 w-[72%] h-44 rounded-xl border border-white/40 overflow-hidden rotate-[7deg] shadow-2xl">
-                  <img src={current.previewPhotos[1]} alt="preview-2" className="w-full h-full object-contain bg-black/50" />
-                </div>
-              )}
-              {extraCount > 0 && (
-                <span className="absolute right-3 bottom-3 px-2 py-1 rounded-full bg-[#ff4f7d] text-white text-xs font-semibold">+{extraCount}</span>
-              )}
-            </div>
-            <div className="mt-3 rounded-xl border border-white/15 bg-white/10 p-2.5 text-[11px] text-white/80 space-y-1">
-              <div className="flex items-center justify-between"><span>自动翻页</span><span className={isPlaying ? 'text-[#8ff5d1]' : 'text-[#ffb58d]'}>{isPlaying ? '开启' : '暂停'}</span></div>
-              <div className="flex items-center justify-between"><span>翻页速度</span><span>4 秒/页</span></div>
-              <div className="flex items-center justify-between"><span>展示策略</span><span>完整图 + 前两张叠放</span></div>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </section>
-  );
-};
-
 export default function MemoryStreamPage() {
   const { memories, fetchMemories, deleteMemory } = useMemoryStore();
   const { friends } = useUserStore();
@@ -1534,6 +1314,8 @@ export default function MemoryStreamPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeStoryMemories, setActiveStoryMemories] = useState<any[] | null>(null);
+  const [showStoryEntry, setShowStoryEntry] = useState(false);
   // 在原有的 useState 旁边加上这两个：
   const { currentUser } = useUserStore(); // 获取当前用户，用来判断是不是自己发的回忆
   const [editingMemory, setEditingMemory] = useState<any>(null);
@@ -1860,7 +1642,7 @@ export default function MemoryStreamPage() {
   };
   
   return (
-    <div className="relative min-h-screen bg-[#121212]">
+    <div className="relative min-h-screen bg-[#121212] pt-[180px]">
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00FFB3]/5 rounded-full blur-3xl" />
@@ -1868,7 +1650,7 @@ export default function MemoryStreamPage() {
       </div>
       
       {/* 顶部标题 + 搜索筛选 */}
-      <div className="sticky top-0 z-20 bg-[#121212]/96 backdrop-blur-md border-b border-white/5">
+      <div className="fixed top-0 left-0 right-0 z-40 bg-[#121212]/96 backdrop-blur-md border-b border-white/5">
         <div className="px-4 pt-4 pb-2 flex items-center gap-3">
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white leading-tight">回忆流</h1>
@@ -1889,7 +1671,7 @@ export default function MemoryStreamPage() {
           <div className="flex items-center gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={scrollToAlbumSection}
+              onClick={() => setShowStoryEntry(true)}
               className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 text-white/80 font-semibold text-sm shrink-0 flex items-center gap-2 hover:border-white/30"
             >
               <FaBookOpen className="text-xs" />
@@ -1966,9 +1748,7 @@ export default function MemoryStreamPage() {
       
       {/* 记忆列表 */}
       <div className="relative px-4 pb-32">
-        <div ref={albumSectionRef} className="scroll-mt-20">
-          <SharedMemoryAlbumBook memories={filteredMemories} />
-        </div>
+        <div ref={albumSectionRef} className="scroll-mt-20" />
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FaSpinner className="text-[#00FFB3] text-3xl animate-spin mb-4" />
@@ -2311,8 +2091,54 @@ export default function MemoryStreamPage() {
             </motion.div>
           ))
         )}
+
+        <AnimatePresence>
+          {showStoryEntry && (
+            <motion.div
+              key="story-entry"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[180] bg-black/70 backdrop-blur-md flex items-center justify-center px-4"
+              onClick={() => setShowStoryEntry(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.96, y: 10, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.96, y: 10, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                className="w-full max-w-3xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MemoryStoryEntry
+                  memories={filteredMemories}
+                  onClick={(memories) => {
+                    setActiveStoryMemories(memories);
+                    setShowStoryEntry(false);
+                  }}
+                  friends={friends.map((f: any) => ({ id: f.friend.id, name: f.friend.username, avatar: f.friend.avatar_url }))}
+                  selectedFriendIds={filterFriendIds}
+                  onSelectFriend={(ids) => setMemoryStreamFilterFriendIds(ids)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
+      {/* Story Drawer：保持上下文，不跳页 */}
+      <AnimatePresence>
+        {activeStoryMemories && (
+          <MemoryStoryDrawer
+            key={activeStoryMemories
+              .map((m, idx) => m?.id || m?.created_at || `memory-${idx}`)
+              .join('|') || 'memory-drawer'}
+            memories={activeStoryMemories}
+            onClose={() => setActiveStoryMemories(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* 创建记忆弹窗 */}
       {/* ================= 弹窗区 ================= */}
       
