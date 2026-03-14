@@ -121,6 +121,21 @@ npm run build
 npm run preview
 ```
 
+### Service Worker 开发排障（刷新后页面异常）
+
+如果你在开发环境遇到“刷新后页面打不开、必须去 Application 清缓存”的情况，通常是旧的 Service Worker + Cache 接管了页面。
+
+推荐处理方式：
+
+1. 在浏览器 DevTools -> Application -> Service Workers，勾选 **Update on reload**（重新加载时更新）。
+2. 如果当前不需要离线能力，建议在代码中直接 **unregister** 或移除 Service Worker 相关逻辑。
+
+本项目当前已在开发模式做了防护：
+
+- 关闭了开发环境的 PWA Service Worker 注入；
+- 启动时自动注销历史 Service Worker 并清理缓存；
+- 兼容处理了历史 `public/sw.js` 的遗留缓存。
+
 ---
 
 ## 数据库与 Supabase 配置
