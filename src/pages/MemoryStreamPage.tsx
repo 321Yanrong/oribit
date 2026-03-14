@@ -1447,9 +1447,25 @@ export default function MemoryStreamPage() {
                         )}
                       </div>
                       {mText && <p className="px-4 pb-3 text-white/85 text-sm leading-relaxed">{mText}</p>}
-                      {photos.length === 1 && (<div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}><img src={photos[0]} alt="" className="w-full rounded-2xl object-cover max-h-80" /></div>)}
-                      {photos.length >= 2 && photos.length <= 4 && (<div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>{photos.slice(0,4).map((p: string, i: number) => <img key={i} src={p} alt="" className="w-full h-36 rounded-xl object-cover" />)}</div>)}
-                      {photos.length >= 5 && (<div className="px-4 pb-3 grid grid-cols-3 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>{photos.slice(0,6).map((p: string, i: number) => <div key={i} className="relative"><img src={p} alt="" className="w-full h-24 rounded-xl object-cover" />{i===5&&photos.length>6&&<div className="absolute inset-0 rounded-xl bg-black/60 flex items-center justify-center"><span className="text-white font-bold">+{photos.length-6}</span></div>}</div>)}</div>)}
+                      {photos.length === 1 && (
+                        <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
+                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-contain max-h-80 bg-black/30" />
+                        </div>
+                      )}
+                      {photos.length >= 2 && (
+                        <div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
+                          {photos.slice(0, 4).map((p: string, i: number) => (
+                            <div key={i} className="relative rounded-xl bg-black/30 overflow-hidden">
+                              <img src={p} alt="" className="w-full h-36 object-contain" />
+                              {i === 3 && photos.length > 4 && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                  <span className="text-white font-bold text-xl">+{photos.length - 4}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
                         <div className="px-4 pb-3 space-y-2">
                           {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/40 text-xs">🎥 {memory.videos.length}个视频</span>}
@@ -1556,31 +1572,17 @@ export default function MemoryStreamPage() {
                       {/* ── 图片区（1张全宽，2-4张2列，5+张3列） ── */}
                       {photos.length === 1 && (
                         <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
-                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-cover max-h-80" />
+                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-contain max-h-80 bg-black/30" />
                         </div>
                       )}
-                      {photos.length >= 2 && photos.length <= 4 && (
+                      {photos.length >= 2 && (
                         <div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
                           {photos.slice(0, 4).map((p: string, i: number) => (
-                            <div key={i} className="relative">
-                              <img src={p} alt="" className="w-full h-36 rounded-xl object-cover" />
+                            <div key={i} className="relative rounded-xl bg-black/30 overflow-hidden">
+                              <img src={p} alt="" className="w-full h-36 object-contain" />
                               {i === 3 && photos.length > 4 && (
-                                <div className="absolute inset-0 rounded-xl bg-black/60 flex items-center justify-center">
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                                   <span className="text-white font-bold text-xl">+{photos.length - 4}</span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {photos.length >= 5 && (
-                        <div className="px-4 pb-3 grid grid-cols-3 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
-                          {photos.slice(0, 6).map((p: string, i: number) => (
-                            <div key={i} className="relative">
-                              <img src={p} alt="" className="w-full h-24 rounded-xl object-cover" />
-                              {i === 5 && photos.length > 6 && (
-                                <div className="absolute inset-0 rounded-xl bg-black/60 flex items-center justify-center">
-                                  <span className="text-white font-bold text-lg">+{photos.length - 6}</span>
                                 </div>
                               )}
                             </div>
