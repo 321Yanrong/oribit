@@ -430,20 +430,19 @@ export default function MapPage() {
         {selectedMemory && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
             onClick={() => setSelectedMemory(null)}
           >
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 250 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[80vh] overflow-y-auto hide-scrollbar bg-[#1a1a1a] rounded-t-3xl border-t border-white/10"
+              className="w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar bg-[#1a1a1a] rounded-3xl border border-white/10 shadow-2xl"
             >
               {/* 照片 */}
               {selectedMemory.photos?.[0] && (
-                <div className="relative w-full aspect-[4/3]">
-                  <img src={selectedMemory.photos[0]} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-transparent" />
+                <div className="relative w-full mb-2 overflow-hidden rounded-3xl bg-black/30">
+                  <img src={selectedMemory.photos[0]} alt="" className="w-full object-cover max-h-80" />
                   {selectedMemory.photos.length > 1 && (
                     <div className="absolute bottom-3 right-3 flex gap-1">
                       {selectedMemory.photos.slice(1, 4).map((p: string, i: number) => (

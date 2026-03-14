@@ -354,6 +354,18 @@ const InviteCodeModal = ({
 
 // 4. 随机回忆弹窗
 const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose: () => void; friends: any[] }) => {
+  const META_PREFIX = '[orbit_meta:';
+  const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
+    if (!content?.startsWith(META_PREFIX)) return { text: content || '', weather: '', mood: '', route: '' };
+    const end = content.indexOf(']\n');
+    if (end === -1) return { text: content, weather: '', mood: '', route: '' };
+    try {
+      const meta = JSON.parse(content.slice(META_PREFIX.length, end));
+      return { text: content.slice(end + 2), weather: meta.weather || '', mood: meta.mood || '', route: meta.route || '' };
+    } catch {
+      return { text: content, weather: '', mood: '', route: '' };
+    }
+  };
   const photos = memory?.photos || [];
   const getFriendName = (friendId: string): string | null => {
     if (friendId.startsWith('temp-')) {
@@ -366,16 +378,17 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
   };
   if (!memory) return null;
   const date = new Date(memory.memory_date || memory.created_at);
+  const { text, weather, mood, route } = decodeMemoryContent(memory.content || '');
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-end justify-center"
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-full max-w-lg bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 pb-10 max-h-[80vh] overflow-y-auto"
+        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 250 }}
+        className="w-full max-w-lg bg-[#1a1a1a] rounded-3xl border border-white/10 shadow-2xl max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start p-5 pb-3">
@@ -390,10 +403,21 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
         </div>
         <div className="px-5 pb-5">
           {photos.length > 0 && (
-            <img src={photos[0]} className="w-full rounded-2xl object-cover max-h-52 mb-4" />
+            <div className="w-full mb-4 overflow-hidden rounded-2xl bg-black/40 border border-white/5">
+              <img src={photos[0]} className="w-full object-cover max-h-72" />
+            </div>
           )}
-          {memory.content && (
-            <p className="text-white/85 leading-relaxed mb-4">{memory.content}</p>
+          {(text || weather || mood || route) && (
+            <div className="space-y-3 mb-4">
+              {text && <p className="text-white/85 leading-relaxed whitespace-pre-wrap">{text}</p>}
+              {(weather || mood || route) && (
+                <div className="flex flex-wrap gap-2 text-sm">
+                  {weather && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">天气：{weather}</span>}
+                  {mood && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">心情：{mood}</span>}
+                  {route && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">路线：{route}</span>}
+                </div>
+              )}
+            </div>
           )}
           {memory.tagged_friends?.length > 0 && (
             <div className="flex flex-wrap gap-2">
