@@ -19,16 +19,40 @@ const getCityFromMemory = (memory: any): string => {
 const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
 
 const META_PREFIX = '[orbit_meta:';
+const LEGACY_META_PREFIX = '[orbit_data:';
+
 const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
-  if (!content?.startsWith(META_PREFIX)) return { text: content || '', weather: '', mood: '', route: '' };
-  const end = content.indexOf(']\n');
-  if (end === -1) return { text: content, weather: '', mood: '', route: '' };
-  try {
-    const meta = JSON.parse(content.slice(META_PREFIX.length, end));
-    return { text: content.slice(end + 2), weather: meta.weather || '', mood: meta.mood || '', route: meta.route || '' };
-  } catch {
-    return { text: content, weather: '', mood: '', route: '' };
-  }
+  const raw = content || '';
+  let text = raw;
+  let weather = '';
+  let mood = '';
+  let route = '';
+
+  const parseBracketMeta = (prefix: string) => {
+    if (!raw.startsWith(prefix)) return;
+    const end = raw.indexOf(']\n');
+    if (end === -1) return;
+    try {
+      const meta = JSON.parse(raw.slice(prefix.length, end));
+      weather = meta?.weather || '';
+      mood = meta?.mood || '';
+      route = meta?.route || '';
+      text = raw.slice(end + 2);
+    } catch {
+      text = raw.slice(end + 2) || raw;
+    }
+  };
+
+  parseBracketMeta(META_PREFIX);
+  parseBracketMeta(LEGACY_META_PREFIX);
+
+  // 兼容历史脏数据：去掉直接展示出来的 orbit_data/orbit_meta 字段行
+  text = text
+    .replace(/^\s*['"]?orbit_data['"]?\s*[:=].*$/gim, '')
+    .replace(/^\s*['"]?orbit_meta['"]?\s*[:=].*$/gim, '')
+    .trim();
+
+  return { text, weather, mood, route };
 };
 
 (window as any)._AMapSecurityConfig = {
@@ -342,14 +366,14 @@ export default function MapPage() {
         {showMemoryDetail && selectedPin && !selectedMemory && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={() => setShowMemoryDetail(false)}
           >
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[72vh] flex flex-col bg-[#1a1a1a] rounded-t-3xl border-t border-white/10"
+              className="w-full max-w-lg max-h-[72vh] flex flex-col bg-[#1a1a1a] rounded-3xl border border-white/10 shadow-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5">
@@ -408,7 +432,7 @@ export default function MapPage() {
                           )}
                         </div>
                         <p className="text-white text-sm line-clamp-2 leading-relaxed">
-                          {memory.content || '（无文字记录）'}
+                          {decodeMemoryContent(memory.content || '').text || '（无文字记录）'}
                         </p>
                         {taggedNames.length > 0 && (
                           <p className="text-[#00FFB3] text-xs mt-1 truncate">
