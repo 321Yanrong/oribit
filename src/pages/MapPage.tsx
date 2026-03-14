@@ -182,7 +182,7 @@ export default function MapPage() {
 
   // 获取选中光点的所有记忆
   const pinMemories = selectedPin?.memories.filter((m: any) => 
-    !selectedFriendId || m.tagged_friends.includes(selectedFriendId)
+    !selectedFriendId || m.tagged_friends?.includes(selectedFriendId) || m.user_id === selectedFriendId
   ) || [];
 
   // 初始化高德地图 (只执行一次)

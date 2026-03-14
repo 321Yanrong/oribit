@@ -437,6 +437,25 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
 
 // 5. 共同记忆弹窗 (保持不变)
 const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memories: any[]; onClose: () => void; }) => {
+  const META_PREFIX = '[orbit_meta:';
+  const LEGACY_META_PREFIX = '[orbit_data:';
+  const decodeMemoryText = (content: string) => {
+    const raw = content || '';
+    const parseByPrefix = (prefix: string, input: string) => {
+      if (!input.startsWith(prefix)) return input;
+      const end = input.indexOf(']\n');
+      if (end === -1) return input;
+      return input.slice(end + 2);
+    };
+
+    const withoutMeta = parseByPrefix(LEGACY_META_PREFIX, parseByPrefix(META_PREFIX, raw));
+
+    return withoutMeta
+      .replace(/^\s*['"]?orbit_data['"]?\s*[:=].*$/gim, '')
+      .replace(/^\s*['"]?orbit_meta['"]?\s*[:=].*$/gim, '')
+      .trim();
+  };
+
   const hasRemark = friend?.username !== friend?.real_username;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl overflow-y-auto" onClick={onClose}>
@@ -459,7 +478,7 @@ const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memor
             <div className="space-y-4">
               {memories.map((memory) => (
                 <div key={memory.id} className="p-4 rounded-2xl bg-white/5">
-                  <p className="text-white/80 mb-2">{memory.content}</p>
+                  <p className="text-white/80 mb-2">{decodeMemoryText(memory.content) || '（无文字记录）'}</p>
                   <p className="text-white/40 text-sm">{memory.memory_date}</p>
                 </div>
               ))}

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
-import { FaTimes, FaDice, FaHeart, FaSyncAlt, FaGamepad } from 'react-icons/fa';
-import { useUserStore, useMemoryStore } from '../store';
+import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaTimes, FaSyncAlt, FaGamepad, FaTrash } from 'react-icons/fa';
+import { useUserStore } from '../store';
 
 // ============================================================
 // 1. 摇骰子
@@ -296,19 +296,30 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
   const [spinning, setSpinning] = useState(false);
   const [angle, setAngle] = useState(0);
   const [result, setResult] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
   const [extraNames, setExtraNames] = useState<string[]>([]);
   const [newName, setNewName] = useState('');
 
-  const baseNames = friends.map((f: any) => f.friend?.username || '好友');
+  const baseNames = useMemo(
+    () => Array.from(new Set(friends.map((f: any) => (f.friend?.username || '好友').trim()).filter(Boolean))),
+    [friends]
+  );
   const names = [...baseNames, ...extraNames].filter(Boolean);
   const n = names.length;
 
   const addName = () => {
-    if (newName.trim() && !names.includes(newName.trim())) {
-      setExtraNames(prev => [...prev, newName.trim()]);
+    const clean = newName.trim();
+    if (clean && !names.includes(clean)) {
+      setExtraNames(prev => [...prev, clean]);
     }
     setNewName('');
   };
+
+  const removeExtraName = (name: string) => {
+    setExtraNames(prev => prev.filter((n) => n !== name));
+  };
+
+  const clearHistory = () => setHistory([]);
 
   const spin = () => {
     if (spinning || n < 2) return;
@@ -327,7 +338,9 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
       const pointer = (360 - normalised + 270) % 360;
       const segSize = 360 / n;
       const idx = Math.floor(pointer / segSize) % n;
-      setResult(names[idx]);
+      const winner = names[idx];
+      setResult(winner);
+      setHistory((prev) => [winner, ...prev].slice(0, 5));
     }, 4000);
   };
 
@@ -359,6 +372,20 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
         />
         <button onClick={addName} className="px-3 py-2 rounded-xl bg-white/10 text-white/70 text-sm">+ 加</button>
       </div>
+
+      {/* 额外名单 */}
+      {extraNames.length > 0 && (
+        <div className="w-full flex flex-wrap gap-2">
+          {extraNames.map((name) => (
+            <span key={name} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 text-white/70 text-xs">
+              {name}
+              <button onClick={() => removeExtraName(name)} className="text-white/40 hover:text-red-300">
+                <FaTrash className="text-[10px]" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 转盘 SVG */}
       <div className="relative" style={{ width: 260, height: 260 }}>
@@ -412,9 +439,27 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
           >
             <p className="text-white/50 text-sm">今天买单的是</p>
             <p className="text-3xl font-black text-[#FF9F43] mt-1">🎉 {result}</p>
+            <p className="text-white/35 text-xs mt-1">恭喜你被幸运女神点名买单～</p>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 最近结果 */}
+      {history.length > 0 && (
+        <div className="w-full rounded-2xl bg-white/5 border border-white/10 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-white/40 text-xs">最近结果</p>
+            <button onClick={clearHistory} className="text-white/30 hover:text-white/60 text-xs">清空</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {history.map((h, i) => (
+              <span key={`${h}-${i}`} className={`px-2 py-1 rounded-full text-xs ${i === 0 ? 'bg-[#FF9F43]/20 text-[#FF9F43]' : 'bg-white/10 text-white/60'}`}>
+                {i === 0 ? '本轮 ' : ''}{h}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <motion.button
         whileTap={{ scale: 0.94 }}
@@ -429,45 +474,123 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
 };
 
 // ============================================================
-// 5. 翻翻记忆（配对游戏）
+// 5. 卡通翻牌（配对游戏）
 // ============================================================
 
-// 大图库：每次游戏随机取 8 个，增加趣味性
-const ALL_EMOJI_POOL = [
-  '🌊', '☕', '🍜', '🎸', '🌙', '🦋', '🌸', '🎠',
-  '🎯', '🍕', '🎨', '🎭', '🌺', '🎪', '🍦', '🎲',
-  '🦄', '🌈', '🎵', '🏄', '🌿', '🍓', '🎈', '🦊',
-  '🍑', '🐬', '🌴', '🎀', '🧋', '🍩', '🔮', '🪄',
-];
+type ToonCard = { id: string; emoji: string; name: string; bg: string };
+type MatchTheme = 'ocean' | 'dessert' | 'space';
+type MatchLevel = '4x4' | '6x6';
+
+const DEFAULT_THEME: MatchTheme = 'ocean';
+const DEFAULT_LEVEL: MatchLevel = '4x4';
+
+const MATCH_LEVELS: Record<MatchLevel, { label: string; pairs: number; cols: number; cardClass: string; emojiClass: string; nameClass: string }> = {
+  '4x4': { label: '轻松 4×4', pairs: 8, cols: 4, cardClass: 'w-16 h-16', emojiClass: 'text-3xl', nameClass: 'text-[10px]' },
+  '6x6': { label: '进阶 6×6', pairs: 18, cols: 6, cardClass: 'w-11 h-11', emojiClass: 'text-xl', nameClass: 'text-[8px]' },
+};
+
+const MATCH_THEMES: Record<MatchTheme, { label: string; icon: string; cards: ToonCard[] }> = {
+  ocean: {
+    label: '海洋',
+    icon: '🌊',
+    cards: [
+      { id: 'ocean-whale', emoji: '🐋', name: '鲸鱼', bg: 'from-sky-500/45 to-cyan-300/30' },
+      { id: 'ocean-dolphin', emoji: '🐬', name: '海豚', bg: 'from-cyan-500/45 to-sky-300/30' },
+      { id: 'ocean-fish', emoji: '🐟', name: '小鱼', bg: 'from-blue-500/45 to-cyan-300/30' },
+      { id: 'ocean-octopus', emoji: '🐙', name: '章鱼', bg: 'from-fuchsia-500/40 to-violet-300/30' },
+      { id: 'ocean-crab', emoji: '🦀', name: '螃蟹', bg: 'from-red-500/40 to-orange-300/30' },
+      { id: 'ocean-shell', emoji: '🐚', name: '贝壳', bg: 'from-amber-400/40 to-orange-200/30' },
+      { id: 'ocean-coral', emoji: '🪸', name: '珊瑚', bg: 'from-rose-500/40 to-pink-300/30' },
+      { id: 'ocean-shrimp', emoji: '🦐', name: '虾虾', bg: 'from-orange-500/40 to-rose-300/30' },
+      { id: 'ocean-seal', emoji: '🦭', name: '海豹', bg: 'from-slate-400/40 to-cyan-300/30' },
+      { id: 'ocean-seahorse', emoji: '🐠', name: '海马', bg: 'from-yellow-400/40 to-orange-300/30' },
+      { id: 'ocean-wave', emoji: '🌊', name: '浪花', bg: 'from-cyan-500/45 to-blue-400/30' },
+      { id: 'ocean-water', emoji: '💧', name: '水滴', bg: 'from-blue-500/45 to-sky-300/30' },
+      { id: 'ocean-island', emoji: '🏝️', name: '小岛', bg: 'from-emerald-500/35 to-cyan-300/30' },
+      { id: 'ocean-sun', emoji: '🌞', name: '海上日光', bg: 'from-yellow-400/45 to-orange-300/30' },
+      { id: 'ocean-boat', emoji: '⛵', name: '帆船', bg: 'from-blue-500/40 to-emerald-300/30' },
+      { id: 'ocean-star', emoji: '⭐', name: '海星', bg: 'from-amber-400/45 to-yellow-300/30' },
+      { id: 'ocean-bubble', emoji: '🫧', name: '泡泡', bg: 'from-cyan-400/40 to-slate-200/35' },
+      { id: 'ocean-palm', emoji: '🌴', name: '棕榈', bg: 'from-emerald-500/40 to-lime-300/30' },
+    ],
+  },
+  dessert: {
+    label: '甜品',
+    icon: '🍰',
+    cards: [
+      { id: 'dessert-cake', emoji: '🍰', name: '蛋糕', bg: 'from-pink-500/45 to-rose-300/30' },
+      { id: 'dessert-cupcake', emoji: '🧁', name: '纸杯蛋糕', bg: 'from-fuchsia-500/40 to-pink-300/30' },
+      { id: 'dessert-donut', emoji: '🍩', name: '甜甜圈', bg: 'from-amber-500/40 to-rose-300/30' },
+      { id: 'dessert-cookie', emoji: '🍪', name: '曲奇', bg: 'from-yellow-500/40 to-orange-300/30' },
+      { id: 'dessert-candy', emoji: '🍬', name: '糖果', bg: 'from-violet-500/40 to-pink-300/30' },
+      { id: 'dessert-choco', emoji: '🍫', name: '巧克力', bg: 'from-amber-700/45 to-orange-500/30' },
+      { id: 'dessert-honey', emoji: '🍯', name: '蜂蜜', bg: 'from-amber-500/45 to-yellow-300/30' },
+      { id: 'dessert-icecream', emoji: '🍦', name: '冰淇淋', bg: 'from-sky-400/40 to-pink-300/30' },
+      { id: 'dessert-shaved', emoji: '🍧', name: '刨冰', bg: 'from-cyan-400/40 to-violet-300/30' },
+      { id: 'dessert-pudding', emoji: '🍮', name: '布丁', bg: 'from-orange-500/40 to-yellow-300/30' },
+      { id: 'dessert-pie', emoji: '🥧', name: '派', bg: 'from-orange-600/40 to-amber-300/30' },
+      { id: 'dessert-strawberry', emoji: '🍓', name: '草莓', bg: 'from-rose-500/45 to-red-300/30' },
+      { id: 'dessert-peach', emoji: '🍑', name: '桃子', bg: 'from-orange-400/40 to-pink-300/30' },
+      { id: 'dessert-cherry', emoji: '🍒', name: '樱桃', bg: 'from-red-500/40 to-rose-300/30' },
+      { id: 'dessert-grape', emoji: '🍇', name: '葡萄', bg: 'from-violet-600/40 to-fuchsia-300/30' },
+      { id: 'dessert-boba', emoji: '🧋', name: '奶茶', bg: 'from-amber-700/35 to-yellow-500/25' },
+      { id: 'dessert-macaroon', emoji: '🟣', name: '马卡龙', bg: 'from-fuchsia-400/40 to-violet-300/30' },
+      { id: 'dessert-jelly', emoji: '🍭', name: '果冻糖', bg: 'from-pink-500/45 to-purple-300/30' },
+    ],
+  },
+  space: {
+    label: '太空',
+    icon: '🚀',
+    cards: [
+      { id: 'space-rocket', emoji: '🚀', name: '火箭', bg: 'from-slate-700/55 to-purple-500/35' },
+      { id: 'space-ufo', emoji: '🛸', name: '飞碟', bg: 'from-cyan-500/45 to-violet-400/30' },
+      { id: 'space-planet', emoji: '🪐', name: '行星', bg: 'from-violet-600/45 to-fuchsia-300/30' },
+      { id: 'space-star', emoji: '⭐', name: '星星', bg: 'from-amber-400/45 to-yellow-300/30' },
+      { id: 'space-moon', emoji: '🌙', name: '月亮', bg: 'from-slate-400/45 to-indigo-300/30' },
+      { id: 'space-earth', emoji: '🌍', name: '地球', bg: 'from-emerald-500/45 to-sky-400/30' },
+      { id: 'space-galaxy', emoji: '🌌', name: '银河', bg: 'from-indigo-600/50 to-fuchsia-500/35' },
+      { id: 'space-comet', emoji: '☄️', name: '彗星', bg: 'from-slate-500/45 to-cyan-300/30' },
+      { id: 'space-astronaut', emoji: '👨‍🚀', name: '宇航员', bg: 'from-sky-500/45 to-indigo-300/30' },
+      { id: 'space-satellite', emoji: '🛰️', name: '卫星', bg: 'from-cyan-500/40 to-slate-300/30' },
+      { id: 'space-robot', emoji: '🤖', name: '机器人', bg: 'from-zinc-500/45 to-cyan-300/30' },
+      { id: 'space-alien', emoji: '👽', name: '外星人', bg: 'from-lime-500/45 to-emerald-300/30' },
+      { id: 'space-ring', emoji: '💫', name: '星环', bg: 'from-violet-500/45 to-sky-300/30' },
+      { id: 'space-sun', emoji: '🌞', name: '恒星', bg: 'from-orange-500/45 to-yellow-300/30' },
+      { id: 'space-antenna', emoji: '📡', name: '天线', bg: 'from-slate-500/45 to-cyan-300/30' },
+      { id: 'space-crystal', emoji: '🔮', name: '星能球', bg: 'from-violet-600/45 to-fuchsia-400/30' },
+      { id: 'space-bolt', emoji: '⚡', name: '脉冲', bg: 'from-yellow-400/45 to-amber-300/30' },
+      { id: 'space-meteor', emoji: '🌠', name: '流星', bg: 'from-indigo-600/45 to-cyan-300/30' },
+    ],
+  },
+};
+
+const shuffleArray = <T,>(source: T[]) => {
+  const list = [...source];
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+};
+
+const buildMatchCards = (theme: MatchTheme, level: MatchLevel) => {
+  const levelConfig = MATCH_LEVELS[level];
+  const basePool = MATCH_THEMES[theme].cards;
+  const fallbackPool = Object.values(MATCH_THEMES).flatMap((group) => group.cards);
+  const mergedPool = Array.from(new Map([...basePool, ...fallbackPool].map((item) => [item.id, item])).values());
+  const selected = shuffleArray(mergedPool).slice(0, levelConfig.pairs);
+  const pairs = shuffleArray([...selected, ...selected]).map((toon, i) => ({ id: i, toon, matched: false, flipped: false }));
+  return pairs;
+};
 
 const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
-  const { memories } = useMemoryStore();
-
-  const photoPool = memories.flatMap((m: any) => m.photos || []).slice(0, 8);
-  const hasEnough = photoPool.length >= 2;
-
-  // 每次新游戏随机从大池子取 8 个 emoji，增加变化
-  const pick8Emojis = () => {
-    const shuffled = [...ALL_EMOJI_POOL].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 8);
-  };
-  const buildCards = () => {
-    const imgs = hasEnough
-      ? photoPool.slice(0, 8)
-      : pick8Emojis();
-    const pairs = [...imgs, ...imgs].map((src, i) => ({ id: i, src, matched: false, flipped: false }));
-    // shuffle
-    for (let i = pairs.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
-    }
-    return pairs;
-  };
-
-  const [cards, setCards] = useState(buildCards);
+  const [theme, setTheme] = useState<MatchTheme>(DEFAULT_THEME);
+  const [level, setLevel] = useState<MatchLevel>(DEFAULT_LEVEL);
+  const [cards, setCards] = useState(() => buildMatchCards(DEFAULT_THEME, DEFAULT_LEVEL));
   const [flipped, setFlipped] = useState<number[]>([]);
   const [locked, setLocked] = useState(false);
   const [moves, setMoves] = useState(0);
+  const currentLevel = MATCH_LEVELS[level];
   const matched = cards.filter(c => c.matched).length / 2;
   const total = cards.length / 2;
   const won = matched === total;
@@ -482,7 +605,7 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
       setLocked(true);
       setMoves(m => m + 1);
       const [a, b] = newFlipped;
-      if (cards[a].src === cards[b].src) {
+      if (cards[a].toon.id === cards[b].toon.id) {
         setTimeout(() => {
           setCards(prev => prev.map((c, i) => (i === a || i === b) ? { ...c, matched: true } : c));
           setFlipped([]);
@@ -498,10 +621,65 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const restart = () => { setCards(buildCards()); setFlipped([]); setLocked(false); setMoves(0); };
+  const restart = (nextTheme: MatchTheme = theme, nextLevel: MatchLevel = level) => {
+    setCards(buildMatchCards(nextTheme, nextLevel));
+    setFlipped([]);
+    setLocked(false);
+    setMoves(0);
+  };
+
+  const handleChangeTheme = (nextTheme: MatchTheme) => {
+    setTheme(nextTheme);
+    restart(nextTheme, level);
+  };
+
+  const handleChangeLevel = (nextLevel: MatchLevel) => {
+    setLevel(nextLevel);
+    restart(theme, nextLevel);
+  };
 
   return (
     <div className="flex flex-col items-center gap-4 p-4">
+      {/* 主题选择 */}
+      <div className="w-full">
+        <p className="text-white/35 text-xs mb-2">主题皮肤</p>
+        <div className="grid grid-cols-3 gap-2">
+          {(Object.keys(MATCH_THEMES) as MatchTheme[]).map((key) => {
+            const item = MATCH_THEMES[key];
+            const active = key === theme;
+            return (
+              <button
+                key={key}
+                onClick={() => handleChangeTheme(key)}
+                className={`rounded-xl px-2 py-2 text-xs border transition-all ${active ? 'bg-[#00FFB3]/20 border-[#00FFB3]/40 text-[#00FFB3]' : 'bg-white/5 border-white/10 text-white/60'}`}
+              >
+                <span className="mr-1">{item.icon}</span>{item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 难度选择 */}
+      <div className="w-full">
+        <p className="text-white/35 text-xs mb-2">难度档位</p>
+        <div className="grid grid-cols-2 gap-2">
+          {(Object.keys(MATCH_LEVELS) as MatchLevel[]).map((key) => {
+            const item = MATCH_LEVELS[key];
+            const active = key === level;
+            return (
+              <button
+                key={key}
+                onClick={() => handleChangeLevel(key)}
+                className={`rounded-xl px-3 py-2 text-xs border transition-all ${active ? 'bg-[#FF9F43]/20 border-[#FF9F43]/40 text-[#FF9F43]' : 'bg-white/5 border-white/10 text-white/60'}`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex items-center gap-4 w-full">
         <span className="text-white/40 text-sm">{matched}/{total} 对</span>
         <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -510,8 +688,10 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
         <span className="text-white/40 text-sm">{moves} 步</span>
       </div>
 
-      {/* 牌阵 4×4 */}
-      <div className="grid grid-cols-4 gap-2.5">
+      <p className="text-white/35 text-xs">翻开的是 {MATCH_THEMES[theme].label} 主题卡通角色，不使用回忆照片</p>
+
+      {/* 牌阵（支持 4x4 / 6x6） */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${currentLevel.cols}, minmax(0, 1fr))` }}>
         {cards.map((card, i) => (
           <motion.div
             key={i}
@@ -519,7 +699,7 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
             animate={{ rotateY: card.flipped || card.matched ? 180 : 0 }}
             transition={{ duration: 0.3 }}
             style={{ perspective: 600 }}
-            className="w-16 h-16 cursor-pointer"
+            className={`${currentLevel.cardClass} cursor-pointer`}
           >
             <div className="relative w-full h-full" style={{ transformStyle: 'preserve-3d' }}>
               {/* Back */}
@@ -527,20 +707,17 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
                 className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2d3561] to-[#5d4777] flex items-center justify-center"
                 style={{ backfaceVisibility: 'hidden' }}
               >
-                <span className="text-white/30 text-lg">?</span>
+                <span className={`text-white/30 ${level === '6x6' ? 'text-sm' : 'text-lg'}`}>?</span>
               </div>
               {/* Front */}
               <div
                 className={`absolute inset-0 rounded-2xl overflow-hidden flex items-center justify-center ${card.matched ? 'ring-2 ring-[#00FFB3]' : ''}`}
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               >
-                {card.src.startsWith('http') ? (
-                  <img src={card.src} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-white/10 flex items-center justify-center text-3xl">
-                    {card.src}
-                  </div>
-                )}
+                <div className={`w-full h-full bg-gradient-to-br ${card.toon.bg} flex flex-col items-center justify-center`}>
+                  <span className={`${currentLevel.emojiClass} drop-shadow`}>{card.toon.emoji}</span>
+                  <span className={`${currentLevel.nameClass} text-black/70 font-semibold mt-0.5`}>{card.toon.name}</span>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -551,8 +728,12 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
         <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
           <p className="text-[#00FFB3] font-black text-xl">🎉 全部配对！</p>
           <p className="text-white/40 text-sm">{moves} 步完成</p>
-          <button onClick={restart} className="mt-3 px-6 py-2 rounded-2xl bg-[#00FFB3] text-black font-bold">再玩一局</button>
+          <button onClick={() => restart()} className="mt-3 px-6 py-2 rounded-2xl bg-[#00FFB3] text-black font-bold">再玩一局</button>
         </motion.div>
+      )}
+
+      {!won && (
+        <button onClick={() => restart()} className="text-white/35 text-xs underline underline-offset-2">重开本局</button>
       )}
     </div>
   );
@@ -605,8 +786,8 @@ const games = [
   {
     id: 'match',
     icon: '🎴',
-    title: '翻翻记忆',
-    desc: '用你的记忆照片玩配对，重温旅途',
+    title: '翻翻卡通',
+    desc: '支持海洋/甜品/太空皮肤 + 4x4/6x6 难度',
     color: '#fd79a8',
     bg: 'from-[#fd79a8]/20 to-[#e17055]/10',
     border: 'border-[#fd79a8]/20',
