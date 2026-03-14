@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile } from '../api/supabase';
+import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile } from '../api/supabase';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -486,6 +486,252 @@ const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memor
   );
 };
 
+const NewbieGuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const [step, setStep] = useState(0);
+  const steps = [
+    {
+      title: '欢迎来到 Orbit ✨',
+      text: '我是你的小向导汪～我们会把见面和旅行变成超可爱的回忆卡片！',
+    },
+    {
+      title: '🗺️ 地图页',
+      text: '点地图看足迹，按好友筛选，一秒找到“我们一起去过哪”。',
+    },
+    {
+      title: '🖼️ 记忆流',
+      text: '发照片 + 文字 + 地点 + @好友，每条日常都可以闪闪发光～',
+    },
+    {
+      title: '💳 账单页',
+      text: '聚餐分账超轻松，谁该付多少一眼看懂，不再尴尬对账。',
+    },
+    {
+      title: '👥 我的页',
+      text: '添加好友、改备注、看共同记忆都在这。需要帮助也可以点“账号诊断”。',
+    },
+  ];
+
+  if (!isOpen) return null;
+
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 10 }} className="w-full max-w-md bg-[#1a1a1a] rounded-3xl border border-white/10 p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[#00FFB3] text-sm font-semibold">新手指引 {step + 1}/{steps.length}</p>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+        </div>
+        <h3 className="text-white text-xl font-bold mb-3">{current.title}</h3>
+        <p className="text-white/75 leading-relaxed min-h-[72px]">{current.text}</p>
+        <div className="flex gap-2 mt-6">
+          {step > 0 && (
+            <button onClick={() => setStep((s) => s - 1)} className="px-4 py-2 rounded-xl bg-white/10 text-white/70">上一步</button>
+          )}
+          <button
+            onClick={() => {
+              if (isLast) {
+                setStep(0);
+                onClose();
+                return;
+              }
+              setStep((s) => s + 1);
+            }}
+            className="ml-auto px-5 py-2 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold"
+          >
+            {isLast ? '开始探索吧！' : '下一步'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const AccountDiagnosticsModal = ({
+  isOpen,
+  onClose,
+  currentUser,
+  friendsCount,
+  memoriesCount,
+  ledgersCount,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: any;
+  friendsCount: number;
+  memoriesCount: number;
+  ledgersCount: number;
+}) => {
+  const [checking, setChecking] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [items, setItems] = useState<Array<{ name: string; ok: boolean; detail: string }>>([]);
+  const [reportText, setReportText] = useState('');
+
+  const buildReportText = (
+    checks: Array<{ name: string; ok: boolean; detail: string }>,
+    summaryText: string,
+    errorText?: string,
+  ) => {
+    const now = new Date().toLocaleString('zh-CN');
+    const userLine = currentUser?.id
+      ? `${currentUser.username || '未命名用户'} (${currentUser.id})`
+      : '未登录用户';
+    const lines = [
+      `【Orbit 账号诊断报告】`,
+      `时间: ${now}`,
+      `用户: ${userLine}`,
+      `环境: ${typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'}`,
+      `页面: ${typeof window !== 'undefined' ? window.location.href : 'unknown'}`,
+      '',
+      `总结: ${summaryText}`,
+      '',
+      ...checks.map((item) => `- [${item.ok ? '正常' : '异常'}] ${item.name}: ${item.detail}`),
+    ];
+
+    if (errorText) {
+      lines.push('', `错误: ${errorText}`);
+    }
+
+    return lines.join('\n');
+  };
+
+  const handleCopyReport = async () => {
+    if (!reportText) return;
+    setCopying(true);
+    setCopied(false);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(reportText);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = reportText;
+        el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (e) {
+      alert('复制失败，请稍后再试');
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const runDiagnostics = async () => {
+    if (!isOpen) return;
+    setChecking(true);
+    const checks: Array<{ name: string; ok: boolean; detail: string }> = [];
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      checks.push({
+        name: '登录会话',
+        ok: !sessionError && !!sessionData.session,
+        detail: sessionError?.message || (sessionData.session ? '会话有效 ✅' : '未检测到有效会话'),
+      });
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      checks.push({
+        name: '认证用户',
+        ok: !userError && !!userData.user,
+        detail: userError?.message || (userData.user ? `UID: ${userData.user.id}` : '未获取到 auth 用户'),
+      });
+
+      if (currentUser?.id) {
+        const profile = await getProfile(currentUser.id, currentUser.email || undefined);
+        checks.push({
+          name: 'Profile 数据',
+          ok: !!profile,
+          detail: profile ? `昵称：${profile.username || '未设置'}` : 'profiles 表暂无该用户行',
+        });
+      } else {
+        checks.push({
+          name: 'Profile 数据',
+          ok: false,
+          detail: '当前页面没有 currentUser，可能已掉线',
+        });
+      }
+
+      checks.push({ name: '本地好友缓存', ok: friendsCount >= 0, detail: `共 ${friendsCount} 位` });
+      checks.push({ name: '本地记忆缓存', ok: memoriesCount >= 0, detail: `共 ${memoriesCount} 条` });
+      checks.push({ name: '本地账单缓存', ok: ledgersCount >= 0, detail: `共 ${ledgersCount} 笔` });
+
+      const failed = checks.filter((c) => !c.ok).length;
+      const summaryText = failed === 0 ? '看起来状态很健康，Orbit 正常运转中～' : `发现 ${failed} 个可能异常，建议截图这页给你排查`;
+      setSummary(summaryText);
+      setItems(checks);
+      setReportText(buildReportText(checks, summaryText));
+    } catch (e: any) {
+      setSummary('诊断中断，请稍后再试');
+      const fallbackChecks = [{ name: '系统异常', ok: false, detail: e?.message || '未知错误' }];
+      setItems(fallbackChecks);
+      setReportText(buildReportText(fallbackChecks, '诊断中断，请稍后再试', e?.message || '未知错误'));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      runDiagnostics();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/85 backdrop-blur-xl" onClick={onClose}>
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="min-h-screen bg-[#1a1a1a] rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+          <h2 className="text-white font-bold">账号诊断</h2>
+          <button onClick={runDiagnostics} disabled={checking} className="text-[#00FFB3] text-sm disabled:opacity-50">{checking ? '检测中…' : '重新检测'}</button>
+        </div>
+
+        <div className="p-4 pb-24 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-white/80 text-sm">{checking ? '正在做健康检查，请稍等～' : summary}</p>
+            <div className="mt-3">
+              <button
+                onClick={handleCopyReport}
+                disabled={checking || !reportText || copying}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 text-white/75 text-xs disabled:opacity-50 hover:bg-white/15"
+              >
+                <FaCopy className="text-[11px]" />
+                {copying ? '复制中…' : copied ? '已复制诊断报告' : '一键导出诊断报告（复制文本）'}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {items.map((item) => (
+              <div key={item.name} className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-white font-medium">{item.name}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${item.ok ? 'bg-[#00FFB3]/20 text-[#00FFB3]' : 'bg-red-500/20 text-red-300'}`}>
+                    {item.ok ? '正常' : '异常'}
+                  </span>
+                </div>
+                <p className="text-white/55 text-sm break-all">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-[#00FFB3]/20 bg-[#00FFB3]/5 p-4 text-sm text-white/80">
+            小贴士：当用户反馈“账号有问题”时，让 TA 打开这个页面并截图给你，通常能快速定位是登录、会话还是资料权限问题。
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 // ================= 主页面 =================
 export default function ProfilePage() {
   const { currentUser, friends, pendingRequests, setCurrentUser, addFriend, deleteFriend } = useUserStore();
@@ -499,6 +745,9 @@ export default function ProfilePage() {
   const [bindingFriend, setBindingFriend] = useState<any>(null);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showInviteCode, setShowInviteCode] = useState(false);
+  const [showAllFriends, setShowAllFriends] = useState(false);
+  const [showNewbieGuide, setShowNewbieGuide] = useState(false);
+  const [showAccountDiagnostics, setShowAccountDiagnostics] = useState(false);
   const [randomMemory, setRandomMemory] = useState<any>(null);
   const [friendSearch, setFriendSearch] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -549,6 +798,16 @@ export default function ProfilePage() {
       saveInviteCode(currentUser.id, inviteCode);
     }
   }, [currentUser?.id, inviteCode]);
+
+  useEffect(() => {
+    if (!currentUser?.id || typeof window === 'undefined') return;
+    const key = `orbit_newbie_guide_seen:${currentUser.id}`;
+    const seen = localStorage.getItem(key);
+    if (!seen) {
+      setShowNewbieGuide(true);
+      localStorage.setItem(key, '1');
+    }
+  }, [currentUser?.id]);
 
   // ================= 核心逻辑交互 =================
 
@@ -751,6 +1010,78 @@ const handleAddFriend = async (name: string, remark: string) => {
     }
   };
 
+  const filteredFriends = friends.filter((fs: any) => {
+    if (!friendSearch.trim()) return true;
+    const q = friendSearch.toLowerCase();
+    const displayName = fs?.friend?.username?.toLowerCase?.() || '';
+    const realName = fs?.friend?.real_username?.toLowerCase?.() || '';
+    return displayName.includes(q) || realName.includes(q);
+  });
+  const shouldCollapseOnHome = friends.length > 5 && !friendSearch.trim();
+  const homeFriends = shouldCollapseOnHome ? filteredFriends.slice(0, 5) : filteredFriends;
+
+  const renderFriendRow = (friendship: any, index: number, total: number) => {
+    const friend = friendship.friend;
+    const isTemp = friend.id.startsWith('temp-');
+    const hasRemark = !!friendship.remark;
+
+    return (
+      <motion.div
+        key={friendship.id}
+        className={`w-full flex items-center gap-3 p-4 ${index !== total - 1 ? 'border-b border-white/5' : ''} hover:bg-white/5`}
+      >
+        {/* 左侧可点击区域 */}
+        <div className="flex items-center gap-3 flex-1 cursor-pointer min-w-0" onClick={() => { if (editingRemarkId !== friendship.id) handleFriendClick(friend); }}>
+          <img src={friend.avatar_url} alt={friend.username} className="w-12 h-12 rounded-xl ring-2 ring-white/10 shrink-0" />
+          <div className="text-left min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              {/* 主显示名：备注优先 */}
+              <p className="text-white font-medium truncate">{friend.username}</p>
+              {isTemp && <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/10 text-white/40 shrink-0">临时</span>}
+            </div>
+            {/* 备注区：可内联编辑 */}
+            {editingRemarkId === friendship.id ? (
+              <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                <input
+                  autoFocus
+                  value={remarkInput}
+                  onChange={e => setRemarkInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveRemark(friendship.id); if (e.key === 'Escape') setEditingRemarkId(null); }}
+                  placeholder="输入备注..."
+                  className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded-lg outline-none border border-[#00FFB3]/40 placeholder-white/30 min-w-0"
+                />
+                <button onClick={() => handleSaveRemark(friendship.id)} className="shrink-0 p-1 bg-[#00FFB3] text-black rounded-md"><FaCheck className="text-[10px]" /></button>
+                <button onClick={() => setEditingRemarkId(null)} className="shrink-0 p-1 bg-white/10 text-white/60 rounded-md"><FaTimes className="text-[10px]" /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 group/remark" onClick={e => { e.stopPropagation(); setRemarkInput(friendship.remark || ''); setEditingRemarkId(friendship.id); }}>
+                <p className="text-white/40 text-sm truncate">
+                  {/* 有备注时显示真实名，无备注时显示默认提示 */}
+                  {hasRemark ? friend.real_username : (isTemp ? '点击绑定真实账号' : '查看共同记忆')}
+                </p>
+                <FaEdit className="text-[10px] text-white/20 opacity-0 group-hover/remark:opacity-100 shrink-0 transition-opacity" />
+              </div>
+            )}
+          </div>
+        </div>
+        {/* 右侧操作按钮 */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => handleDeleteFriend(friendship.id, friend.username)}
+            className="p-2 rounded-full text-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            title="删除好友"
+          >
+            <FaTrash className="text-xs" />
+          </button>
+          <FaChevronRight
+            className="w-4 h-4 text-white/20 cursor-pointer"
+            onClick={() => handleFriendClick(friend)}
+          />
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
       <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.2) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(0, 255, 179, 0.15) 0%, transparent 40%)` }} />
@@ -759,6 +1090,13 @@ const handleAddFriend = async (name: string, remark: string) => {
       {/* 顶部个人卡片 */}
       <div className="relative z-10 safe-top mx-4 mt-4">
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card rounded-3xl p-6 relative overflow-hidden">
+          <div className="mb-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <img src="/icons/orbit-logo.svg" alt="Orbit Logo" className="w-8 h-8 rounded-lg object-contain" />
+              <img src="/icons/orbit-wordmark.svg" alt="Orbit Wordmark" className="h-6 w-auto object-contain" />
+            </div>
+            <span className="text-white/40 text-xs shrink-0">我的页面</span>
+          </div>
           <div className="flex items-center gap-4 mb-6 relative">
             <div className="relative">
               <motion.div className="relative cursor-pointer" onClick={handleAvatarClick}>
@@ -917,76 +1255,23 @@ const handleAddFriend = async (name: string, remark: string) => {
         )}
         <div className="glass-card rounded-2xl overflow-hidden">
           {friends.length > 0 ? (
-            friends
-              .filter((fs: any) => {
-                if (!friendSearch.trim()) return true;
-                const q = friendSearch.toLowerCase();
-                // 同时搜索备注和真实名
-                return fs.friend.username.toLowerCase().includes(q) || fs.friend.real_username?.toLowerCase().includes(q);
-              })
-              .map((friendship, index, arr) => {
-              const friend = friendship.friend;
-              const isTemp = friend.id.startsWith('temp-');
-              const hasRemark = !!friendship.remark;
-              
-              return (
-                <motion.div
-                  key={friend.id}
-                  className={`w-full flex items-center gap-3 p-4 ${index !== arr.length - 1 ? 'border-b border-white/5' : ''} hover:bg-white/5`}
-                >
-                  {/* 左侧可点击区域 */}
-                  <div className="flex items-center gap-3 flex-1 cursor-pointer min-w-0" onClick={() => { if (editingRemarkId !== friendship.id) handleFriendClick(friend); }}>
-                    <img src={friend.avatar_url} alt={friend.username} className="w-12 h-12 rounded-xl ring-2 ring-white/10 shrink-0" />
-                    <div className="text-left min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {/* 主显示名：备注优先 */}
-                        <p className="text-white font-medium truncate">{friend.username}</p>
-                        {isTemp && <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/10 text-white/40 shrink-0">临时</span>}
-                      </div>
-                      {/* 备注区：可内联编辑 */}
-                      {editingRemarkId === friendship.id ? (
-                        <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
-                          <input
-                            autoFocus
-                            value={remarkInput}
-                            onChange={e => setRemarkInput(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleSaveRemark(friendship.id); if (e.key === 'Escape') setEditingRemarkId(null); }}
-                            placeholder="输入备注..."
-                            className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded-lg outline-none border border-[#00FFB3]/40 placeholder-white/30 min-w-0"
-                          />
-                          <button onClick={() => handleSaveRemark(friendship.id)} className="shrink-0 p-1 bg-[#00FFB3] text-black rounded-md"><FaCheck className="text-[10px]" /></button>
-                          <button onClick={() => setEditingRemarkId(null)} className="shrink-0 p-1 bg-white/10 text-white/60 rounded-md"><FaTimes className="text-[10px]" /></button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 group/remark" onClick={e => { e.stopPropagation(); setRemarkInput(friendship.remark || ''); setEditingRemarkId(friendship.id); }}>
-                          <p className="text-white/40 text-sm truncate">
-                            {/* 有备注时显示真实名，无备注时显示默认提示 */}
-                            {hasRemark ? friend.real_username : (isTemp ? '点击绑定真实账号' : '查看共同记忆')}
-                          </p>
-                          <FaEdit className="text-[10px] text-white/20 opacity-0 group-hover/remark:opacity-100 shrink-0 transition-opacity" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {/* 右侧操作按钮 */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => handleDeleteFriend(friendship.id, friend.username)}
-                      className="p-2 rounded-full text-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                      title="删除好友"
-                    >
-                      <FaTrash className="text-xs" />
-                    </button>
-                    <FaChevronRight
-                      className="w-4 h-4 text-white/20 cursor-pointer"
-                      onClick={() => handleFriendClick(friend)}
-                    />
-                  </div>
-                </motion.div>
-              );
-            })
+            homeFriends.length > 0 ? (
+              homeFriends.map((friendship, index) => renderFriendRow(friendship, index, homeFriends.length))
+            ) : (
+              <div className="p-8 text-center text-white/40">没有匹配的好友</div>
+            )
           ) : (
              <div className="p-8 text-center text-white/40">还没有好友</div>
+          )}
+
+          {shouldCollapseOnHome && (
+            <button
+              onClick={() => setShowAllFriends(true)}
+              className="w-full px-4 py-3 border-t border-white/5 bg-white/[0.02] hover:bg-white/5 text-white/75 flex items-center justify-between"
+            >
+              <span className="text-sm">已展示 5 位，点击查看全部 {friends.length} 位好友</span>
+              <FaChevronRight className="text-xs" />
+            </button>
           )}
           
           <button onClick={() => setShowAddFriend(true)} className="w-full p-4 flex items-center justify-center gap-2 text-orbit-mint border-t border-white/5 hover:bg-white/5">
@@ -1083,6 +1368,26 @@ const handleAddFriend = async (name: string, remark: string) => {
           <FaChevronRight className="text-white/20 ml-auto" />
         </motion.button>
       </div>
+
+      {/* 帮助与排障 */}
+      <div className="relative z-10 px-4 mt-4">
+        <div className="glass-card rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setShowNewbieGuide(true)}
+            className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5"
+          >
+            <p className="text-white font-medium">🌟 新手指引</p>
+            <p className="text-white/45 text-sm mt-1">用可爱模式 1 分钟了解所有功能</p>
+          </button>
+          <button
+            onClick={() => setShowAccountDiagnostics(true)}
+            className="w-full p-4 text-left hover:bg-white/5"
+          >
+            <p className="text-white font-medium">🛠️ 账号诊断</p>
+            <p className="text-white/45 text-sm mt-1">当用户说“账号有问题”时，这里能快速定位</p>
+          </button>
+        </div>
+      </div>
       
       {/* 退出按钮 */}
       <div className="relative z-10 px-4 mt-6 pb-20 space-y-3">
@@ -1094,6 +1399,57 @@ const handleAddFriend = async (name: string, remark: string) => {
       
       {/* 弹窗挂载区 */}
       <AnimatePresence>
+        {showAllFriends && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl"
+            onClick={() => setShowAllFriends(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="min-h-screen bg-[#1a1a1a] rounded-t-3xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
+                <button onClick={() => setShowAllFriends(false)} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+                <div className="text-center">
+                  <h2 className="text-lg font-bold text-white">全部好友</h2>
+                  <p className="text-white/40 text-xs mt-0.5">共 {friends.length} 位</p>
+                </div>
+                <div className="w-10" />
+              </div>
+
+              {friends.length >= 4 && (
+                <div className="p-4 pb-2">
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="搜索好友..."
+                      value={friendSearch}
+                      onChange={(e) => setFriendSearch(e.target.value)}
+                      className="w-full pl-8 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-white/20"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 pt-2 pb-24">
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  {filteredFriends.length > 0 ? (
+                    filteredFriends.map((friendship, index) => renderFriendRow(friendship, index, filteredFriends.length))
+                  ) : (
+                    <div className="p-8 text-center text-white/40">没有匹配的好友</div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {selectedFriend && <SharedMemoriesModal friend={selectedFriend} memories={memories.filter(m =>
           // 我发布的、@了对方的记忆
           m.tagged_friends?.includes(selectedFriend.id) ||
@@ -1104,6 +1460,17 @@ const handleAddFriend = async (name: string, remark: string) => {
         {showAddFriend && <AddFriendModal isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
         {showInviteCode && <InviteCodeModal isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
         {randomMemory && <RandomMemoryModal memory={randomMemory} onClose={() => setRandomMemory(null)} friends={friends} />}
+        {showNewbieGuide && <NewbieGuideModal isOpen={showNewbieGuide} onClose={() => setShowNewbieGuide(false)} />}
+        {showAccountDiagnostics && (
+          <AccountDiagnosticsModal
+            isOpen={showAccountDiagnostics}
+            onClose={() => setShowAccountDiagnostics(false)}
+            currentUser={currentUser}
+            friendsCount={friends.length}
+            memoriesCount={memories.length}
+            ledgersCount={ledgers.length}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

@@ -3,6 +3,7 @@ import "./index.css";
 import App from "./App.tsx";
 import { supabase } from "./api/supabase";
 import { clearOrbitStorage, isLikelyInvalidSession } from "./utils/auth";
+import { startWebVitalsBaseline } from "./utils/webVitals";
 
 if (import.meta.env.DEV && typeof window !== "undefined" && "serviceWorker" in navigator) {
 	navigator.serviceWorker
@@ -55,3 +56,6 @@ const bootstrapAuthThenRender = async () => {
 };
 
 void bootstrapAuthThenRender();
+
+// 采集首屏性能基线（LCP/CLS/INP）
+startWebVitalsBaseline();

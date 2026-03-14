@@ -779,25 +779,37 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${currentLevel.cols}, minmax(0, 1fr))` }}>
         {cards.map((card, i) => (
           <motion.div
-            key={i}
+            key={card.id}
             onClick={() => flip(i)}
             animate={{ rotateY: card.flipped || card.matched ? 180 : 0 }}
             transition={{ duration: 0.3 }}
-            style={{ perspective: 600 }}
+            style={{
+              perspective: 600,
+              transformStyle: 'preserve-3d',
+              WebkitTransformStyle: 'preserve-3d',
+            }}
             className={`${currentLevel.cardClass} cursor-pointer`}
           >
-            <div className="relative w-full h-full" style={{ transformStyle: 'preserve-3d' }}>
+            <div className="relative w-full h-full" style={{ transformStyle: 'preserve-3d', WebkitTransformStyle: 'preserve-3d' }}>
               {/* Back */}
               <div
                 className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2d3561] to-[#5d4777] flex items-center justify-center"
-                style={{ backfaceVisibility: 'hidden' }}
+                style={{
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  transform: 'translateZ(1px)',
+                }}
               >
                 <span className={`text-white/30 ${level === '6x6' ? 'text-sm' : 'text-lg'}`}>?</span>
               </div>
               {/* Front */}
               <div
                 className={`absolute inset-0 rounded-2xl overflow-hidden flex items-center justify-center ${card.matched ? 'ring-2 ring-[#00FFB3]' : ''}`}
-                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                style={{
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  transform: 'rotateY(180deg) translateZ(1px)',
+                }}
               >
                 <div className={`w-full h-full bg-gradient-to-br ${card.toon.bg} flex flex-col items-center justify-center`}>
                   <span className={`${currentLevel.emojiClass} drop-shadow`}>{card.toon.emoji}</span>

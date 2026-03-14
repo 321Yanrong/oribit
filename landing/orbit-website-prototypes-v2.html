@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Orbit 轨迹｜地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏</title>
+    <meta name="description" content="Orbit 轨迹：把见面、旅行、聚餐变成可回看的故事。支持地图记忆、好友协作、轻量记账与聚会小游戏，PWA 可添加到桌面。" />
+    <meta name="keywords" content="Orbit,轨迹,地图记忆,好友协作,分账,聚会小游戏,PWA" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://wehihi.com/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Orbit 轨迹" />
+    <meta property="og:title" content="Orbit 轨迹｜记录与好友的每一个足迹 ✨" />
+    <meta property="og:description" content="地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏，支持 PWA 添加到桌面。" />
+    <meta property="og:url" content="https://wehihi.com/" />
+    <meta property="og:image" content="https://wehihi.com/icons/icon-512.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Orbit 轨迹｜记录与好友的每一个足迹 ✨" />
+    <meta name="twitter:description" content="把见面、旅行、聚餐变成可回看的故事。" />
+    <meta name="twitter:image" content="https://wehihi.com/icons/icon-512.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Orbit 轨迹",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "url": "https://wehihi.com/",
+        "image": "https://wehihi.com/icons/icon-512.png",
+        "description": "Orbit 是一款地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏应用，支持 PWA 添加到桌面。",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "CNY"
+        }
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Orbit 是什么？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Orbit 是一款面向普通用户的地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏应用。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Android 和 iPhone 都能添加到桌面吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "支持。Android 可直接安装应用；iPhone Safari 可通过分享菜单添加到主屏幕。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "好友还没注册可以先记录吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "可以。你可以先创建虚拟好友并记录回忆，后续通过邀请码绑定真实账号，历史数据会自动衔接。"
+            }
+          }
+        ]
+      }
+    </script>
+
+    <style>
+      :root {
+        --bg: #0f1115;
+        --card: #171a21;
+        --card-2: #1e2330;
+        --text: #f6f7fb;
+        --muted: #a9afc3;
+        --brand: #00ffb3;
+        --brand-2: #5fd6ff;
+        --line: #2f3547;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        background: radial-gradient(circle at top right, #1b2130, var(--bg) 45%);
+        color: var(--text);
+      }
+
+      .container { width: min(1120px, 92vw); margin: 0 auto; }
+      .section { padding: 72px 0; }
+      .muted { color: var(--muted); }
+      .badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: 1px solid var(--line); border-radius: 999px;
+        padding: 8px 12px; font-size: 12px; color: #d7dcf0;
+        background: rgba(255,255,255,0.02);
+      }
+
+      header {
+        position: sticky; top: 0; z-index: 20;
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        background: rgba(15,17,21,0.72);
+      }
+      .nav {
+        height: 68px;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+      .brand-logo {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+      .brand-wordmark {
+        height: 24px;
+        width: auto;
+        object-fit: contain;
+        display: block;
+      }
+      .menu { display: flex; gap: 18px; font-weight: 700; font-size: 14px; }
+      .menu a { color: #d9dff4; text-decoration: none; }
+      .menu a:hover { color: #fff; }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 32px;
+        align-items: center;
+        min-height: calc(100vh - 68px);
+      }
+      .hero h1 {
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.06;
+        margin: 18px 0;
+      }
+      .hero p { font-size: clamp(16px, 2.2vw, 21px); line-height: 1.65; margin: 0; color: var(--muted); }
+
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: 1px solid var(--line); border-radius: 14px;
+        text-decoration: none; font-weight: 800;
+        padding: 12px 16px;
+      }
+      .btn-primary { background: linear-gradient(90deg, var(--brand), var(--brand-2)); color: #04251c; border: 0; }
+      .btn-ghost { color: #e5ebff; background: rgba(255,255,255,0.03); }
+
+      .phones { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 14px; align-items: end; }
+      .phone {
+        border: 2px solid #2f3547;
+        border-radius: 24px;
+        overflow: hidden;
+        background: #0c0f15;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.26);
+        max-width: 210px;
+        margin: 0 auto;
+      }
+      .phone img {
+        width: 100%;
+        height: 360px;
+        object-fit: cover;
+        object-position: center top;
+        display: block;
+        background: #0c0f15;
+      }
+      .phone:nth-child(1), .phone:nth-child(3) { transform: translateY(14px); opacity: .9; }
+
+      h2 { font-size: clamp(28px, 4vw, 44px); margin: 0; }
+      .sub { margin-top: 10px; color: var(--muted); font-size: 18px; }
+
+      .grid-2 { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .grid-3 { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .grid-4 { margin-top: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      }
+      .card h3 { margin: 8px 0 10px; font-size: 22px; }
+      .card p { margin: 0; line-height: 1.65; color: var(--muted); }
+      .list { margin: 12px 0 0; padding-left: 18px; color: #d8dff5; line-height: 1.8; }
+
+      .steps { counter-reset: step; }
+      .step h3::before {
+        counter-increment: step;
+        content: "STEP " counter(step) " · ";
+        font-size: 12px;
+        color: #9ca4bd;
+      }
+
+      .faq details {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(255,255,255,0.02);
+      }
+      .faq details + details { margin-top: 10px; }
+      .faq summary { cursor: pointer; font-weight: 800; }
+      .faq p { margin: 10px 0 0; color: var(--muted); line-height: 1.7; }
+
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 32px 0 44px;
+        color: #b8c0d8;
+      }
+      .footer-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 20px; }
+
+      @media (max-width: 980px) {
+        .menu { display: none; }
+        .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 28px; }
+        .phones { grid-template-columns: 1fr 1fr; }
+        .phone:nth-child(3) { display: none; }
+        .grid-4 { grid-template-columns: 1fr 1fr; }
+        .grid-3, .grid-2 { grid-template-columns: 1fr; }
+        .footer-grid { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 560px) {
+        .section { padding: 52px 0; }
+        .phones { grid-template-columns: 1fr; }
+        .phone:nth-child(1), .phone:nth-child(3) { transform: none; }
+        .phone:nth-child(3) { display: block; }
+        .grid-4 { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container nav">
+        <a class="brand" href="https://wehihi.com" aria-label="Orbit 首页">
+          <img class="brand-logo" src="../public/icons/orbit-logo.svg" alt="Orbit 图形 Logo" />
+          <img class="brand-wordmark" src="../public/icons/orbit-wordmark.svg" alt="Orbit 轨迹" />
+        </a>
+        <nav class="menu" aria-label="主导航">
+          <a href="#features">功能</a>
+          <a href="#flow">流程</a>
+          <a href="#friends">好友系统</a>
+          <a href="#pwa">PWA</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="container hero">
+          <div>
+            <span class="badge">✨ 记录与好友的每一个足迹</span>
+            <h1>把见面、旅行、聚餐<br />都变成可回看的故事</h1>
+            <p>
+              Orbit 让地图记忆、好友协作、轻量记账和聚会小游戏自然衔接。你只要记录当下，
+              其他交给 Orbit。
+            </p>
+            <div class="actions">
+              <a class="btn btn-primary" href="https://wehihi.com">立即体验 wehihi.com</a>
+              <a class="btn btn-ghost" href="#pwa">查看添加到桌面</a>
+            </div>
+          </div>
+          <div class="phones" aria-label="产品截图预览">
+            <div class="phone"><img src="screenshots/app/map.png" alt="地图页截图" /></div>
+            <div class="phone"><img src="screenshots/app/memory.png" alt="记忆流截图" /></div>
+            <div class="phone"><img src="screenshots/app/profile.png" alt="我的页截图" /></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="container">
+          <h2>核心功能，详细说明</h2>
+          <p class="sub">四个模块围绕同一目标：让“共同生活记录”更轻松。</p>
+
+          <div class="grid-2">
+            <article class="card">
+              <h3>🗺️ 友情地图</h3>
+              <p>按好友筛选足迹，点击点位查看地点下的回忆列表与详情。</p>
+              <ul class="list">
+                <li>按好友筛选点位</li>
+                <li>点位列表层 + 单条详情层</li>
+                <li>共享记忆参与者可视化</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>🖼️ 记忆流</h3>
+              <p>卡片式回顾照片、文字、地点和 @ 好友，支持编辑与删除。</p>
+              <ul class="list">
+                <li>图文 + 地点 + @好友</li>
+                <li>多好友 AND 筛选</li>
+                <li>随机回忆一键打开</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>💳 账单中心</h3>
+              <p>账单与回忆绑定，自动均摊和应收应付计算，结算状态明确。</p>
+              <ul class="list">
+                <li>回忆绑定账单</li>
+                <li>自动分摊</li>
+                <li>待结清 / 已结清</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>🎮 聚会小游戏</h3>
+              <p>内置骰子、转盘、真心话等，降低破冰门槛，提升参与感。</p>
+              <ul class="list">
+                <li>今天谁买单</li>
+                <li>真心话大冒险</li>
+                <li>翻翻卡通（4x4/6x6）</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="flow">
+        <div class="container">
+          <h2>用户流程（上手路径）</h2>
+          <p class="sub">从第一次使用到长期留存，流程清晰无门槛。</p>
+          <div class="grid-4 steps">
+            <article class="card step"><h3>登录 / 注册</h3><p>支持邮箱登录、忘记密码、演示模式。</p></article>
+            <article class="card step"><h3>添加好友</h3><p>可先创建虚拟好友，再用邀请码绑定真实账号。</p></article>
+            <article class="card step"><h3>创建回忆</h3><p>上传图片、填写地点、@好友，自动进入地图与记忆流。</p></article>
+            <article class="card step"><h3>记账结算</h3><p>同条回忆补账单，系统自动计算并展示结算状态。</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="friends">
+        <div class="container">
+          <h2>好友系统（先记再绑）</h2>
+          <p class="sub">朋友没注册也能先记录，后续绑定真实账号不丢历史。</p>
+          <div class="grid-3">
+            <article class="card">
+              <h3>阶段 A：虚拟好友</h3>
+              <p>输入昵称即可创建，可参与 @ 标签和账单协作。</p>
+            </article>
+            <article class="card">
+              <h3>阶段 B：邀请码绑定</h3>
+              <p>输入邀请码后，一键关联真实账号，流程低打扰。</p>
+            </article>
+            <article class="card">
+              <h3>阶段 C：自动继承数据</h3>
+              <p>历史标签迁移、双向好友关系补齐、地图与记忆即时同步。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="pwa">
+        <div class="container">
+          <h2>PWA 安装与离线能力</h2>
+          <p class="sub">支持 Android / iOS 安装引导，弱网可读缓存，写入离线提示。</p>
+          <div class="grid-3">
+            <article class="card">
+              <h3>🤖 Android</h3>
+              <p>检测设备后优先显示一键安装；若事件不可用，展示菜单安装指引。</p>
+            </article>
+            <article class="card">
+              <h3>🍎 iOS Safari</h3>
+              <p>引导路径：分享按钮 → 添加到主屏幕 → 添加。</p>
+            </article>
+            <article class="card">
+              <h3>📡 离线体验</h3>
+              <p>核心资源缓存可读；上传/发帖/改资料等写操作离线会明确提示。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <div class="container faq">
+          <h2>常见问题（FAQ）</h2>
+          <p class="sub">面向真实使用场景的快速答疑。</p>
+
+          <details>
+            <summary>Orbit 是免费的吗？</summary>
+            <p>当前基础功能可免费使用（以线上实际公告为准）。</p>
+          </details>
+          <details>
+            <summary>好友还没注册，我能先记录共同回忆吗？</summary>
+            <p>可以。先创建虚拟好友即可开始记录，后续邀请码绑定真实账号后会自动衔接历史数据。</p>
+          </details>
+          <details>
+            <summary>Android 和 iPhone 都能添加到桌面吗？</summary>
+            <p>支持。Android 可直接安装；iPhone Safari 可通过分享菜单添加到主屏幕。</p>
+          </details>
+          <details>
+            <summary>用户反馈账号异常，怎么排查？</summary>
+            <p>可在应用内打开“账号诊断”并一键导出报告文本，客服可快速定位会话/资料/缓存问题。</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container footer-grid">
+        <div>
+          <h3 style="margin:0;font-size:28px;">Orbit 轨迹</h3>
+          <p class="muted" style="margin-top:10px;line-height:1.7;">
+            把你和好友的每次相聚，沉淀为可回看的地图故事。
+          </p>
+        </div>
+        <div>
+          <h4 style="margin:0 0 10px;">快速入口</h4>
+          <p><a style="color:#dbe3fa;" href="https://wehihi.com">访问 wehihi.com</a></p>
+          <p><a style="color:#dbe3fa;" href="https://wehihi.com">登录 / 注册</a></p>
+          <p><a style="color:#dbe3fa;" href="https://wehihi.com">忘记密码</a></p>
+        </div>
+        <div>
+          <h4 style="margin:0 0 10px;">版权信息</h4>
+          <p class="muted">© 2026 Orbit Team</p>
+          <p class="muted">Domain: wehihi.com</p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

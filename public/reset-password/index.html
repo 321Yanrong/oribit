@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbit 密码重置中...</title>
+    <script>
+      (function () {
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+        var target = '/?mode=reset-password' + search + hash;
+        window.location.replace(target);
+      })();
+    </script>
+  </head>
+  <body style="background:#121212;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+    正在跳转到 Orbit 重置密码页面，请稍候...
+  </body>
+</html>

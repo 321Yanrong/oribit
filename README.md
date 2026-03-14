@@ -68,7 +68,8 @@ Orbit 的核心理念是：
 
 ### App 标识
 
-![Orbit Logo](public/lineart-dog.png)
+![Orbit Logo](public/icons/orbit-logo.svg)
+![Orbit Wordmark](public/icons/orbit-wordmark.svg)
 
 ### 页面展示位（可替换为真实截图）
 
@@ -217,7 +218,7 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
 - [x] 旧缓存清理（`cleanupOutdatedCaches`）
 - [x] 离线兜底页（`public/offline.html`）
 - [x] 增加“可安装提示”UI（`beforeinstallprompt`）
-- [ ] 首屏性能指标基线（LCP/CLS/INP）并记录
+- [x] 首屏性能指标基线（LCP/CLS/INP）采集能力接入（可导出文本）
 
 ### P1（下个迭代）
 
@@ -225,6 +226,7 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
 - [x] 对上传与写操作（发记忆、改资料）给出“离线不可用”明确提示
 - [x] 统一更新提示条（新版本可用时提醒“点击刷新”）
 - [x] 增加 iOS 安装引导文案（Safari “添加到主屏幕”）
+- [x] 增加安卓设备安装引导文案（菜单“安装应用/添加到主屏幕”）
 - [ ] 设计离线模式信息架构（哪些页面可看、哪些操作禁用）
 
 ### P2（后续增强）
@@ -247,6 +249,24 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
 - 断网时进入离线页且不崩溃
 - 新版本发布后 1 次刷新可完成升级
 - Lighthouse：PWA 关键项全部通过
+
+### 首屏性能基线记录方法（LCP / CLS / INP）
+
+已接入自动采集：`src/utils/webVitals.ts`（在 `src/main.tsx` 启动）。
+
+#### 如何记录
+
+1. 启动项目并打开首页，等待 3~5 秒。  
+2. 打开浏览器控制台，执行：`await window.exportOrbitWebVitalsBaseline()`  
+3. 会自动复制一段基线文本（含 LCP/CLS/INP、时间、页面、环境）。
+
+你也可以执行：`window.getOrbitWebVitalsBaseline()` 查看 JSON 数据。
+
+#### 建议记录模板（示例）
+
+| 日期 | 环境 | LCP | CLS | INP | 备注 |
+|---|---|---:|---:|---:|---|
+| 2026-03-14 | MacBook + Chrome | 待记录 | 待记录 | 待记录 | 首次接入基线采集 |
 
 ---
 

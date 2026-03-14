@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'oribit',
-        short_name: 'oribit',
+        name: 'Orbit 轨迹',
+        short_name: 'Orbit',
         description: '一款专为密友圈设计的情感地图手账 + 极简记账数字胶囊',
         theme_color: '#00FFB3',
         background_color: '#121212',

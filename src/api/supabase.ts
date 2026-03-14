@@ -4,6 +4,7 @@ import { clearOrbitStorage, emitInvalidAuthEvent, isLikelyInvalidSession } from 
 
 const supabaseUrl = 'https://qoaqmbepnsqymxzpncyf.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYXFtYmVwbnNxeW14enBuY3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQ5NTMsImV4cCI6MjA4ODUzMDk1M30.dmQ5kVi2dGQHJ8QM7gDSRx8nNSSIfZ5jVbh22NLeBIc'
+const PASSWORD_RESET_REDIRECT_URL = 'https://wehihi.com/reset-password'
 
 const authAwareFetch: typeof fetch = async (input, init) => {
   const response = await fetch(input, init)
@@ -257,12 +258,22 @@ export const signOut = async () => {
 // 发送重置密码邮件
 export const sendPasswordReset = async (email: string) => {
   ensureOnlineForWrite('发送重置邮件')
-  const redirectTo = window?.location?.origin || undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
+    redirectTo: PASSWORD_RESET_REDIRECT_URL,
   });
   if (error) throw error;
   return true;
+}
+
+// 密码找回链接回跳后，设置新密码
+export const updatePasswordAfterRecovery = async (newPassword: string) => {
+  ensureOnlineForWrite('设置新密码')
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error('新密码至少 6 位')
+  }
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw error
+  return data
 }
 
 export const getCurrentUser = async () => {
@@ -428,13 +439,35 @@ export const updateProfileUsername = async (userId: string, username: string) =>
     throw new Error('昵称不能为空')
   }
 
-  const { data, error } = await supabase
+  // 先走 update，避免 upsert 触发 INSERT 策略导致 "violates ... policy"
+  const { data: updated, error: updateError } = await supabase
     .from('profiles')
-    .upsert({ id: userId, username: cleanName }, { onConflict: 'id' })
+    .update({ username: cleanName })
+    .eq('id', userId)
     .select('id, username, avatar_url, created_at, invite_code')
-    .single()
+    .maybeSingle()
 
-  if (error) throw error
+  if (updateError) throw updateError
+
+  let data = updated
+
+  // 极少数情况下 profile 行不存在，再尝试插入
+  if (!data) {
+    const { data: inserted, error: insertError } = await supabase
+      .from('profiles')
+      .insert({ id: userId, username: cleanName })
+      .select('id, username, avatar_url, created_at, invite_code')
+      .single()
+
+    if (insertError) {
+      const msg = (insertError as any)?.message || ''
+      if (/violates|policy|permission|row-level security/i.test(msg)) {
+        throw new Error('昵称保存被数据库策略拦截（profiles 写入权限）。请运行最新 SQL 迁移后重试。')
+      }
+      throw insertError
+    }
+    data = inserted
+  }
 
   // 同步 auth user metadata，避免 profile 临时不可读时回退到旧昵称
   try {

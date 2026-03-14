@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone } from 'react-icons/fa';
+import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
 import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory } from '../api/supabase';
@@ -1327,6 +1327,45 @@ export default function MemoryStreamPage() {
     return { name: f?.username || '好友', avatar: f?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest' };
   };
 
+  const handleShareMemory = async (memory: any) => {
+    const { text: memoryText } = decodeMemoryContent(memory.content || '');
+    const raw = (memoryText || '').replace(/\s+/g, ' ').trim();
+    const snippet = raw ? (raw.length > 30 ? `${raw.slice(0, 30)}...` : raw) : '我在 Orbit 记录了一段回忆';
+    const locationText = memory.location?.name ? `📍${memory.location.name}` : '和好友的共同回忆';
+    const dateText = new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+    const shareUrl = `https://wehihi.com/?from=memory_share&utm_source=wechat&utm_medium=social`;
+    const shareText = `【Orbit 回忆分享】\n${snippet}\n${locationText} · ${dateText}\n点这里下载并一起记录：${shareUrl}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Orbit 回忆分享',
+          text: `${snippet} ${locationText}`.trim(),
+          url: shareUrl,
+        });
+        return;
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = shareText;
+        el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+
+      alert('已复制分享文案，粘贴到微信即可邀请对方下载～');
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
+      alert('分享失败，请稍后重试');
+    }
+  };
+
   // 搜索 + 好友筛选
   const filteredMemories = useMemo(() => {
     let result = memories;
@@ -1584,6 +1623,7 @@ export default function MemoryStreamPage() {
                         <div className="flex items-center gap-5">
                           <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1.5 text-sm transition-all ${reaction.liked ? 'text-red-400' : 'text-white/40 hover:text-red-300'}`}><FaHeart />{reaction.likes > 0 && <span className="text-xs">{reaction.likes}</span>}</button>
                           <button onClick={() => toggleRoastOpen(memory.id)} className={`flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'}`}><FaComment /><span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
+                          <button onClick={() => handleShareMemory(memory)} className="flex items-center gap-1.5 text-sm text-white/40 hover:text-[#5fd6ff]"><FaShareAlt /><span className="text-xs">分享微信</span></button>
                         </div>
                         <button onClick={() => setSelectedMemory(memory)} className="text-white/20 text-xs hover:text-white/50">查看全部 →</button>
                       </div>
@@ -1738,6 +1778,13 @@ export default function MemoryStreamPage() {
                             <span className="text-xs">
                               {reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}
                             </span>
+                          </button>
+                          <button
+                            onClick={() => handleShareMemory(memory)}
+                            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-[#5fd6ff] transition-colors"
+                          >
+                            <FaShareAlt />
+                            <span className="text-xs">分享微信</span>
                           </button>
                         </div>
                         <button

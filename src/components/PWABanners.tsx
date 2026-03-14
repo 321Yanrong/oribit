@@ -8,12 +8,17 @@ type BeforeInstallPromptEvent = Event & {
 
 const INSTALL_DISMISSED_KEY = 'orbit_pwa_install_dismissed';
 const IOS_GUIDE_DISMISSED_KEY = 'orbit_pwa_ios_guide_dismissed';
+const ANDROID_GUIDE_DISMISSED_KEY = 'orbit_pwa_android_guide_dismissed';
+
+type DeviceKind = 'android' | 'ios' | 'other';
 
 export default function PWABanners() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [deviceKind, setDeviceKind] = useState<DeviceKind>('other');
   const [isIosSafari, setIsIosSafari] = useState(false);
   const [iosGuideDismissed, setIosGuideDismissed] = useState(false);
+  const [androidGuideDismissed, setAndroidGuideDismissed] = useState(false);
   const [needRefresh, setNeedRefresh] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -35,10 +40,19 @@ export default function PWABanners() {
 
   useEffect(() => {
     const userAgent = window.navigator.userAgent || '';
+    const uaData = (window.navigator as any).userAgentData;
+    const platformHint = String(uaData?.platform || '').toLowerCase();
     const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+    const isAndroid = /android/i.test(userAgent) || platformHint.includes('android');
     const isSafari = /safari/i.test(userAgent) && !/crios|fxios|edgios|chrome|android/i.test(userAgent);
+
+    if (isAndroid) setDeviceKind('android');
+    else if (isIOS) setDeviceKind('ios');
+    else setDeviceKind('other');
+
     setIsIosSafari(isIOS && isSafari);
     setIosGuideDismissed(localStorage.getItem(IOS_GUIDE_DISMISSED_KEY) === '1');
+    setAndroidGuideDismissed(localStorage.getItem(ANDROID_GUIDE_DISMISSED_KEY) === '1');
 
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -90,6 +104,10 @@ export default function PWABanners() {
   }, []);
 
   const canInstall = useMemo(() => Boolean(deferredPrompt && !isInstalled), [deferredPrompt, isInstalled]);
+  const canShowAndroidGuide = useMemo(
+    () => Boolean(deviceKind === 'android' && !isInstalled && !deferredPrompt && !androidGuideDismissed),
+    [androidGuideDismissed, deferredPrompt, deviceKind, isInstalled]
+  );
   const canShowIosGuide = useMemo(
     () => Boolean(isIosSafari && !isInstalled && !deferredPrompt && !iosGuideDismissed),
     [deferredPrompt, iosGuideDismissed, isInstalled, isIosSafari]
@@ -115,6 +133,11 @@ export default function PWABanners() {
     setIosGuideDismissed(true);
   };
 
+  const handleDismissAndroidGuide = () => {
+    localStorage.setItem(ANDROID_GUIDE_DISMISSED_KEY, '1');
+    setAndroidGuideDismissed(true);
+  };
+
   const handleRefresh = async () => {
     if (!updateServiceWorker) return;
     await updateServiceWorker(true);
@@ -125,11 +148,24 @@ export default function PWABanners() {
       {canInstall && (
         <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#00FFB3]/30 bg-[#0f1715]/95 p-3 shadow-xl">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-white/90">📲 安装 Orbit 到主屏幕，获得更接近 App 的体验</p>
+            <p className="text-sm text-white/90">
+              {deviceKind === 'android'
+                ? '🤖 检测到安卓设备：可一键安装 Orbit 到桌面'
+                : '📲 安装 Orbit 到主屏幕，获得更接近 App 的体验'}
+            </p>
             <div className="flex items-center gap-2 shrink-0">
               <button onClick={handleDismissInstall} className="text-xs text-white/40 hover:text-white/70">稍后</button>
               <button onClick={handleInstall} className="rounded-lg bg-[#00FFB3] px-3 py-1.5 text-xs font-semibold text-black">安装</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {canShowAndroidGuide && (
+        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#00FFB3]/30 bg-[#0f1715]/95 p-3 shadow-xl">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-white/90">🤖 安卓安装指引：点右上角菜单（⋮）→ 选择「安装应用 / 添加到主屏幕」</p>
+            <button onClick={handleDismissAndroidGuide} className="shrink-0 text-xs text-white/45 hover:text-white/70">知道了</button>
           </div>
         </div>
       )}

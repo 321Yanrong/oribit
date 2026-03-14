@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons/fa';
-import { supabase, signUp, signIn, sendPasswordReset } from '../api/supabase';
+import { supabase, signUp, signIn, sendPasswordReset, updatePasswordAfterRecovery } from '../api/supabase';
 import { useUserStore } from '../store';
 
 const EMAIL_ACTION_COOLDOWN_MS = 60 * 1000;
@@ -36,8 +36,72 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   
   const { setCurrentUser } = useUserStore();
+
+  useEffect(() => {
+    const detectRecoveryFromUrl = () => {
+      if (typeof window === 'undefined') return false;
+      const queryParams = new URLSearchParams(window.location.search);
+      const hashRaw = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+      const hashParams = new URLSearchParams(hashRaw);
+
+      const queryType = queryParams.get('type') || queryParams.get('mode');
+      const hashType = hashParams.get('type') || hashParams.get('mode');
+      const hasAccessToken = Boolean(hashParams.get('access_token'));
+
+      return queryType === 'recovery' || queryType === 'reset-password' || hashType === 'recovery' || hashType === 'reset-password' || hasAccessToken;
+    };
+
+    if (detectRecoveryFromUrl()) {
+      setIsRecoveryMode(true);
+      setError('🔐 欢迎回来，设置一个新密码就好啦～');
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+        setError('🔐 已进入密码重置模式，请设置新密码');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const clearRecoveryUrlMarks = () => {
+    if (typeof window === 'undefined') return;
+    const clean = window.location.pathname;
+    window.history.replaceState({}, document.title, clean);
+  };
+
+  const handleCompleteRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdatingPassword(true);
+    setError(null);
+    try {
+      if (newPassword.length < 6) {
+        throw new Error('新密码至少需要 6 位');
+      }
+      if (newPassword !== confirmPassword) {
+        throw new Error('两次输入的新密码不一致');
+      }
+      await updatePasswordAfterRecovery(newPassword);
+      setError('✅ 密码更新成功，已经帮你回到 Orbit 啦！');
+      setIsRecoveryMode(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      clearRecoveryUrlMarks();
+      onSuccess();
+    } catch (err: any) {
+      setError(err?.message || '密码更新失败，请重试');
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,14 +226,50 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
             className="mx-auto mb-4"
           >
-            <img src="/lineart-dog.png" alt="Orbit" className="w-28 h-28 object-contain drop-shadow-2xl" />
+            <img src="/icons/orbit-logo.svg" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
           </motion.div>
           <h1 className="text-3xl font-bold text-white mb-2">Orbit 轨迹</h1>
           <p className="text-white/50">记录与好友的每一个足迹 ✨</p>
         </div>
         
         {/* 表单 */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={isRecoveryMode ? handleCompleteRecovery : handleSubmit} className="space-y-4">
+          {isRecoveryMode ? (
+            <>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">新密码</label>
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="input-glass pl-12"
+                    placeholder="至少6位密码"
+                    minLength={6}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/60 text-sm mb-2">确认新密码</label>
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="input-glass pl-12"
+                    placeholder="再输入一次新密码"
+                    minLength={6}
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
           {!isLogin && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
@@ -204,6 +304,8 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
               />
             </div>
           </div>
+            </>
+          )}
           
           <div>
             <label className="block text-white/60 text-sm mb-2">密码</label>
@@ -237,19 +339,19 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           {/* 提交按钮 */}
           <motion.button
             type="submit"
-            disabled={loading}
+            disabled={isRecoveryMode ? updatingPassword : loading}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg shadow-pink-500/20"
           >
-            {loading ? (
+            {(isRecoveryMode ? updatingPassword : loading) ? (
               <>
                 <FaSpinner className="w-5 h-5 animate-spin" />
                 <span>处理中...</span>
               </>
             ) : (
               <>
-                <span>{isLogin ? '登录' : '注册'}</span>
+                <span>{isRecoveryMode ? '更新密码' : (isLogin ? '登录' : '注册')}</span>
                 <FaArrowRight className="w-5 h-5" />
               </>
             )}
@@ -257,7 +359,8 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
         </form>
         
         {/* 切换登录/注册 */}
-        <div className="text-center mt-6">
+        {!isRecoveryMode && (
+          <div className="text-center mt-6">
           <button
             onClick={() => {
               setIsLogin(!isLogin);
@@ -279,7 +382,8 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
               </button>
             </div>
           )}
-        </div>
+          </div>
+        )}
         
         {/* 演示模式 */}
         <div className="mt-6 pt-6 border-t border-white/10">

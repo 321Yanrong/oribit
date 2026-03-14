@@ -1,6 +1,6 @@
 {
-  "name": "oribit",
-  "short_name": "oribit",
+  "name": "Orbit 轨迹",
+  "short_name": "Orbit",
   "description": "一款专为密友圈设计的情感地图手账 + 极简记账数字胶囊",
   "start_url": "/",
   "display": "standalone",
