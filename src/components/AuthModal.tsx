@@ -4,6 +4,25 @@ import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons
 import { supabase, signUp, signIn, sendPasswordReset } from '../api/supabase';
 import { useUserStore } from '../store';
 
+const EMAIL_ACTION_COOLDOWN_MS = 60 * 1000;
+
+const getEmailActionCooldownKey = (action: 'signup' | 'reset', email: string) =>
+  `orbit_email_cooldown:${action}:${email.trim().toLowerCase()}`;
+
+const getEmailActionRemainingMs = (action: 'signup' | 'reset', email: string) => {
+  if (typeof window === 'undefined') return 0;
+  const key = getEmailActionCooldownKey(action, email);
+  const lastTs = Number(localStorage.getItem(key) || 0);
+  const remain = EMAIL_ACTION_COOLDOWN_MS - (Date.now() - lastTs);
+  return remain > 0 ? remain : 0;
+};
+
+const markEmailActionTriggered = (action: 'signup' | 'reset', email: string) => {
+  if (typeof window === 'undefined') return;
+  const key = getEmailActionCooldownKey(action, email);
+  localStorage.setItem(key, String(Date.now()));
+};
+
 interface AuthModalProps {
   onSuccess: () => void;
   onDemo: () => void;
@@ -47,19 +66,29 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
         if (password.length < 6) {
           throw new Error('密码至少需要 6 位');
         }
+
+        const signupCooldown = getEmailActionRemainingMs('signup', email);
+        if (signupCooldown > 0) {
+          const seconds = Math.ceil(signupCooldown / 1000);
+          throw new Error(`邮件发送太频繁，请 ${seconds} 秒后再试`);
+        }
+
         await signUp(email, password, username);
+        markEmailActionTriggered('signup', email);
         setError('✅ 注册成功！请前往邮箱点击验证链接，再回来登录。');
         setIsLogin(true);
       }
     } catch (err: any) {
-      const msg: string = err.message || '';
+      const msg: string = err?.message || '';
+      const code: string = err?.code || '';
       if (msg.includes('Email not confirmed')) {
         setError('📧 邮箱尚未验证，请先点击注册邮件中的链接');
       } else if (msg.includes('User already registered') || msg.includes('already been registered')) {
         setError('该邮箱已注册，请直接登录');
       } else if (msg.includes('Invalid login credentials')) {
         setError('邮箱或密码错误，请重新输入');
-      } else if (msg.includes('Email rate limit exceeded')) {
+      } else if (msg.includes('Email rate limit exceeded') || code === 'over_email_send_rate_limit' || msg.includes('over_email_send_rate_limit') || msg.includes('429')) {
+        markEmailActionTriggered('signup', email);
         setError('邮件发送太频繁，请稍后再试');
       } else {
         setError(msg || '操作失败，请重试');
@@ -77,11 +106,20 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
     setResetting(true);
     setError(null);
     try {
+      const resetCooldown = getEmailActionRemainingMs('reset', email);
+      if (resetCooldown > 0) {
+        const seconds = Math.ceil(resetCooldown / 1000);
+        throw new Error(`邮件发送太频繁，请 ${seconds} 秒后再试`);
+      }
+
       await sendPasswordReset(email);
+      markEmailActionTriggered('reset', email);
       setError('📧 已发送重置邮件，请查收邮箱并按指引设置新密码');
     } catch (err: any) {
-      const msg: string = err.message || '';
-      if (msg.includes('Email rate limit exceeded')) {
+      const msg: string = err?.message || '';
+      const code: string = err?.code || '';
+      if (msg.includes('Email rate limit exceeded') || code === 'over_email_send_rate_limit' || msg.includes('over_email_send_rate_limit') || msg.includes('429')) {
+        markEmailActionTriggered('reset', email);
         setError('邮件发送太频繁，请稍后再试');
       } else {
         setError(msg || '发送失败，请稍后再试');
