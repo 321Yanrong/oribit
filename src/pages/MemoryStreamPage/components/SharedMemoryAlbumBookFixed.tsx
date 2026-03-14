@@ -11,7 +11,6 @@ const MUSIC_TRACKS = [
   { label: '本地音乐 · bgm3', url: '/music/bgm3.mp3' },
   { label: '本地音乐 · bgm4', url: '/music/bgm4.mp3' },
 ];
-const [pendingPosterDataUrl, setPendingPosterDataUrl] = useState<string | null>(null);
 type FriendChip = { id: string; name: string; avatar?: string };
 
 // ==========================================
@@ -144,6 +143,8 @@ export const MemoryStoryDrawer = ({
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState(0);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
+  const [pendingPosterDataUrl, setPendingPosterDataUrl] = useState<string | null>(null);
+  const [storyCompleted, setStoryCompleted] = useState(false);
     // 海报预览弹窗开关
     const [showPosterPreview, setShowPosterPreview] = useState(false);
   const [posterLoading, setPosterLoading] = useState(false);
@@ -233,12 +234,19 @@ export const MemoryStoryDrawer = ({
       if (activeIndex < playlist.length - 1) {
         setActiveIndex((a) => a + 1);
         setProgress(0);
+        setStoryCompleted(false);
       } else {
         setIsPaused(true);
         setProgress(100);
+        setStoryCompleted(true); // 仅在真正播放完最后一张后展示分享卡片
       }
     }
   }, [progress, activeIndex, playlist.length, currentItem]);
+
+  // 切换 memory 时重置完成态
+  useEffect(() => {
+    setStoryCompleted(false);
+  }, [activeIndex, memories]);
 
   const handlePointerDown = () => setIsPaused(true);
   const handlePointerUp = (e: React.MouseEvent | React.TouchEvent) => {
@@ -574,7 +582,7 @@ export const MemoryStoryDrawer = ({
               >
                 {mText && <p className="text-white text-base leading-relaxed drop-shadow-lg font-medium whitespace-pre-wrap">{mText}</p>}
 
-                {currentItem.isAllLast && (
+                {currentItem.isAllLast && storyCompleted && (
                   <div className="bg-black/45 backdrop-blur-xl rounded-3xl p-5 border border-white/20 w-full pointer-events-auto shadow-2xl">
                     <div className="flex justify-between items-end mb-5">
                       <div>
@@ -615,7 +623,7 @@ export const MemoryStoryDrawer = ({
                           <p className="font-semibold text-white/90">微信分享小贴士</p>
                           <p>1) 点“去微信分享回忆”生成分享数据</p>
                           <p>2) 保存缩略图/海报到相册，在微信选择分享</p>
-                          <p>3) 封面默认取下一张照片，若无则当前照片</p>
+                          <p>3) 封面默认取上一张照片，若无则当前照片</p>
                         </div>
                         <div className="hidden sm:block text-right text-[11px] text-white/60">
                           <p>封面图</p>

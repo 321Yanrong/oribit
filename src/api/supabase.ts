@@ -1049,12 +1049,15 @@ export const deleteMemory = async (memoryId: string): Promise<void> => {
 };
 
 export const getMemoryComments = async (memoryIds: string[]) => {
-  if (!memoryIds.length) return [];
+  // Supabase 列 memory_id 为 uuid，过滤演示模式的非 uuid id，避免 22P02
+  const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  const validIds = memoryIds.filter((id) => isUuid(id));
+  if (!validIds.length) return [];
 
   const { data, error } = await supabase
     .from('memory_comments')
     .select('id, memory_id, author_id, content, created_at')
-    .in('memory_id', memoryIds)
+    .in('memory_id', validIds)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
