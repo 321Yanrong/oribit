@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSyncAlt, FaGamepad, FaTrash } from 'react-icons/fa';
 import { useUserStore } from '../store';
@@ -480,6 +480,30 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
 type ToonCard = { id: string; emoji: string; name: string; bg: string };
 type MatchTheme = 'ocean' | 'dessert' | 'space';
 type MatchLevel = '4x4' | '6x6';
+type MatchBestRecord = { theme: MatchTheme; timeMs: number; moves: number; createdAt: string };
+
+const MATCH_BEST_TIME_KEY = 'orbit_match_6x6_best_times_v1';
+
+const loadBestRecords = (): MatchBestRecord[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(MATCH_BEST_TIME_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item: any) => item && typeof item.timeMs === 'number' && typeof item.moves === 'number' && item.theme);
+  } catch {
+    return [];
+  }
+};
+
+const formatDuration = (ms: number) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const centiseconds = Math.floor((ms % 1000) / 10);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
+};
 
 const DEFAULT_THEME: MatchTheme = 'ocean';
 const DEFAULT_LEVEL: MatchLevel = '4x4';
@@ -590,13 +614,64 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
   const [flipped, setFlipped] = useState<number[]>([]);
   const [locked, setLocked] = useState(false);
   const [moves, setMoves] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [hasRecordedWin, setHasRecordedWin] = useState(false);
+  const [bestRecords, setBestRecords] = useState<MatchBestRecord[]>(() => loadBestRecords());
   const currentLevel = MATCH_LEVELS[level];
   const matched = cards.filter(c => c.matched).length / 2;
   const total = cards.length / 2;
   const won = matched === total;
+  const themeBest = useMemo(
+    () => bestRecords.filter((r) => r.theme === theme).sort((a, b) => a.timeMs - b.timeMs || a.moves - b.moves).slice(0, 5),
+    [bestRecords, theme]
+  );
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = window.setInterval(() => {
+      setElapsedMs((prev) => prev + 100);
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [timerRunning]);
+
+  useEffect(() => {
+    if (level !== '6x6') {
+      setTimerRunning(false);
+      setElapsedMs(0);
+      setHasRecordedWin(false);
+    }
+  }, [level]);
+
+  useEffect(() => {
+    if (!won || level !== '6x6' || hasRecordedWin) return;
+
+    setTimerRunning(false);
+    const record: MatchBestRecord = {
+      theme,
+      timeMs: elapsedMs,
+      moves,
+      createdAt: new Date().toISOString(),
+    };
+
+    setBestRecords((prev) => {
+      const next = [...prev, record]
+        .sort((a, b) => a.timeMs - b.timeMs || a.moves - b.moves)
+        .slice(0, 20);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(MATCH_BEST_TIME_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
+
+    setHasRecordedWin(true);
+  }, [won, level, hasRecordedWin, theme, elapsedMs, moves]);
 
   const flip = (idx: number) => {
     if (locked || cards[idx].flipped || cards[idx].matched) return;
+    if (level === '6x6' && !timerRunning && !won) {
+      setTimerRunning(true);
+    }
     const newFlipped = [...flipped, idx];
     setCards(prev => prev.map((c, i) => i === idx ? { ...c, flipped: true } : c));
     setFlipped(newFlipped);
@@ -626,6 +701,9 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
     setFlipped([]);
     setLocked(false);
     setMoves(0);
+    setElapsedMs(0);
+    setTimerRunning(false);
+    setHasRecordedWin(false);
   };
 
   const handleChangeTheme = (nextTheme: MatchTheme) => {
@@ -688,6 +766,13 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
         <span className="text-white/40 text-sm">{moves} 步</span>
       </div>
 
+      {level === '6x6' && (
+        <div className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 flex items-center justify-between">
+          <span className="text-white/40 text-xs">⏱ 当前计时</span>
+          <span className="text-[#00FFB3] font-mono text-sm">{formatDuration(elapsedMs)}</span>
+        </div>
+      )}
+
       <p className="text-white/35 text-xs">翻开的是 {MATCH_THEMES[theme].label} 主题卡通角色，不使用回忆照片</p>
 
       {/* 牌阵（支持 4x4 / 6x6） */}
@@ -728,8 +813,28 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
         <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
           <p className="text-[#00FFB3] font-black text-xl">🎉 全部配对！</p>
           <p className="text-white/40 text-sm">{moves} 步完成</p>
+          {level === '6x6' && <p className="text-[#00FFB3]/80 text-sm mt-1">用时 {formatDuration(elapsedMs)}</p>}
           <button onClick={() => restart()} className="mt-3 px-6 py-2 rounded-2xl bg-[#00FFB3] text-black font-bold">再玩一局</button>
         </motion.div>
+      )}
+
+      {level === '6x6' && (
+        <div className="w-full rounded-2xl bg-white/5 border border-white/10 p-3">
+          <p className="text-white/40 text-xs mb-2">🏆 本地最佳（{MATCH_THEMES[theme].label} / 6x6）</p>
+          {themeBest.length === 0 ? (
+            <p className="text-white/30 text-xs">还没有记录，完成一局来上榜吧</p>
+          ) : (
+            <div className="space-y-1.5">
+              {themeBest.map((item, idx) => (
+                <div key={`${item.createdAt}-${idx}`} className="flex items-center justify-between text-xs">
+                  <span className={`font-semibold ${idx === 0 ? 'text-[#FFD166]' : 'text-white/55'}`}>#{idx + 1}</span>
+                  <span className="text-[#00FFB3] font-mono">{formatDuration(item.timeMs)}</span>
+                  <span className="text-white/40">{item.moves} 步</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {!won && (

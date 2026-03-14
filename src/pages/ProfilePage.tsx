@@ -2,7 +2,20 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername } from '../api/supabase';
+import { signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile } from '../api/supabase';
+
+const stripOrbitMetaText = (content: string) => {
+  const raw = content || '';
+
+  const cleaned = raw
+    .replace(/^\s*\[(?:orbit_meta|orbit_data):[\s\S]*?\}(?:\]|】)?\s*/i, '')
+    .replace(/^\s*\[(?:orbit_meta|orbit_data):[\s\S]*?(?:\]|】)\s*/i, '')
+    .replace(/^\s*['"]?orbit_data['"]?\s*[:=].*$/gim, '')
+    .replace(/^\s*['"]?orbit_meta['"]?\s*[:=].*$/gim, '')
+    .trim();
+
+  return cleaned;
+};
 
 // 1. 添加好友弹窗（支持：临时好友 + 已注册真实好友）
 const AddFriendModal = ({
@@ -357,14 +370,14 @@ const InviteCodeModal = ({
 const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose: () => void; friends: any[] }) => {
   const META_PREFIX = '[orbit_meta:';
   const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
-    if (!content?.startsWith(META_PREFIX)) return { text: content || '', weather: '', mood: '', route: '' };
+    if (!content?.startsWith(META_PREFIX)) return { text: stripOrbitMetaText(content || ''), weather: '', mood: '', route: '' };
     const end = content.indexOf(']\n');
-    if (end === -1) return { text: content, weather: '', mood: '', route: '' };
+    if (end === -1) return { text: stripOrbitMetaText(content), weather: '', mood: '', route: '' };
     try {
       const meta = JSON.parse(content.slice(META_PREFIX.length, end));
-      return { text: content.slice(end + 2), weather: meta.weather || '', mood: meta.mood || '', route: meta.route || '' };
+      return { text: stripOrbitMetaText(content.slice(end + 2)), weather: meta.weather || '', mood: meta.mood || '', route: meta.route || '' };
     } catch {
-      return { text: content, weather: '', mood: '', route: '' };
+      return { text: stripOrbitMetaText(content), weather: '', mood: '', route: '' };
     }
   };
   const photos = memory?.photos || [];
@@ -437,25 +450,6 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
 
 // 5. 共同记忆弹窗 (保持不变)
 const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memories: any[]; onClose: () => void; }) => {
-  const META_PREFIX = '[orbit_meta:';
-  const LEGACY_META_PREFIX = '[orbit_data:';
-  const decodeMemoryText = (content: string) => {
-    const raw = content || '';
-    const parseByPrefix = (prefix: string, input: string) => {
-      if (!input.startsWith(prefix)) return input;
-      const end = input.indexOf(']\n');
-      if (end === -1) return input;
-      return input.slice(end + 2);
-    };
-
-    const withoutMeta = parseByPrefix(LEGACY_META_PREFIX, parseByPrefix(META_PREFIX, raw));
-
-    return withoutMeta
-      .replace(/^\s*['"]?orbit_data['"]?\s*[:=].*$/gim, '')
-      .replace(/^\s*['"]?orbit_meta['"]?\s*[:=].*$/gim, '')
-      .trim();
-  };
-
   const hasRemark = friend?.username !== friend?.real_username;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl overflow-y-auto" onClick={onClose}>
@@ -478,7 +472,7 @@ const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memor
             <div className="space-y-4">
               {memories.map((memory) => (
                 <div key={memory.id} className="p-4 rounded-2xl bg-white/5">
-                  <p className="text-white/80 mb-2">{decodeMemoryText(memory.content) || '（无文字记录）'}</p>
+                  <p className="text-white/80 mb-2">{stripOrbitMetaText(memory.content) || '（无文字记录）'}</p>
                   <p className="text-white/40 text-sm">{memory.memory_date}</p>
                 </div>
               ))}
@@ -528,12 +522,14 @@ export default function ProfilePage() {
     }
     if (!currentUser?.id) return;
     try {
-      const updated = await updateProfileUsername(currentUser.id, newName);
+      await updateProfileUsername(currentUser.id, newName);
+      const refreshedProfile = await getProfile(currentUser.id, currentUser.email || undefined);
       setCurrentUser({
         ...currentUser,
-        username: updated.username,
+        username: refreshedProfile?.username || newName.trim(),
       } as any);
       setIsEditingName(false);
+      setNewName(refreshedProfile?.username || newName.trim());
     } catch (e: any) {
       alert(e?.message || '昵称保存失败，请重试');
     }

@@ -430,8 +430,7 @@ export const updateProfileUsername = async (userId: string, username: string) =>
 
   const { data, error } = await supabase
     .from('profiles')
-    .update({ username: cleanName })
-    .eq('id', userId)
+    .upsert({ id: userId, username: cleanName }, { onConflict: 'id' })
     .select('id, username, avatar_url, created_at, invite_code')
     .single()
 
