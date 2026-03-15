@@ -244,7 +244,14 @@ function LivePhotoUploader({
           ))}
         </div>
       )}
-      <input ref={inputRef} type="file" accept="video/*,.mov,.mp4,.webm" multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/*,image/*,.mov,.mp4,.webm"
+        multiple
+        className="hidden"
+        onChange={e => handleFiles(e.target.files)}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { MemoryStreamDraft, useUIStore } from '../store/ui';
 import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
+import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -55,10 +56,10 @@ const formatDateGroup = (dateStr: string) => {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   const isToday = date.toDateString() === today.toDateString();
   const isYesterday = date.toDateString() === yesterday.toDateString();
-  
+
   if (isToday) {
     return '今天';
   } else if (isYesterday) {
@@ -69,7 +70,7 @@ const formatDateGroup = (dateStr: string) => {
     const day = date.getDate();
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     const weekday = weekdays[date.getDay()];
-    
+
     if (year === today.getFullYear()) {
       return `${month}月${day}日 ${weekday}`;
     }
@@ -122,23 +123,23 @@ const decodeMemoryContent = (content: string): { text: string; weather: string; 
 // 按日期分组记忆
 const groupMemoriesByDate = (memories: any[]) => {
   const groups: { [key: string]: any[] } = {};
-  
+
   const sortedMemories = [...memories].sort((a, b) => {
     const dateA = new Date(a.memory_date || a.created_at);
     const dateB = new Date(b.memory_date || b.created_at);
     return dateB.getTime() - dateA.getTime();
   });
-  
+
   sortedMemories.forEach(memory => {
     const date = memory.memory_date || memory.created_at;
     const dateKey = date.split('T')[0];
-    
+
     if (!groups[dateKey]) {
       groups[dateKey] = [];
     }
     groups[dateKey].push(memory);
   });
-  
+
   return Object.entries(groups).map(([date, items]) => ({
     date,
     displayDate: formatDateGroup(date),
@@ -185,290 +186,6 @@ const getLocalDateTimeValue = (dateInput?: string) => {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   return now.toISOString().slice(0, 16);
-};
-
-// 记忆详情弹窗
-const MemoryDetailModal = ({ 
-  memory, 
-  onClose,
-  friends,
-}: { 
-  memory: any; 
-  onClose: () => void;
-  friends: any[];
-}) => {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const photos = memory.photos || [];
-  const videos = memory.videos || [];
-  const audios = memory.audios || [];
-  const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
-  
-  // 获取好友名称（虚拟好友用 temp- 前缀；不认识的 ID 返回 null 不渲染）
-  const getFriendName = (friendId: string): string | null => {
-    if (friendId.startsWith('temp-')) {
-      const fid = friendId.replace('temp-', '');
-      const vf = friends.find((f: any) => f.id === fid);
-      return vf?.friend_name || null;
-    }
-    const friend = friends.find((f: any) => f.friend?.id === friendId || f.id === friendId);
-    return friend?.friend?.username || friend?.username || null;
-  };
-  
-  // Route stops
-  const routeStops = route ? route.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl overflow-y-auto"
-      onClick={onClose}
-    >
-      <div className="min-h-screen" onClick={(e) => e.stopPropagation()}>
-        {/* 顶部操作栏 */}
-        <motion.div 
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-gradient-to-b from-black/80 to-transparent"
-        >
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
-          >
-            <FaTimes className="text-white text-lg" />
-          </button>
-          <div className="text-center">
-            <div className="text-white/60 text-xs">{formatDateGroup(memory.memory_date || memory.created_at)}</div>
-            <div className="text-white font-medium">{formatTime(memory.memory_date || memory.created_at)}</div>
-          </div>
-          {/* 天气 + 心情 顶部角标 */}
-          <div className="flex items-center gap-1 text-xl">
-            {weather && <span title={weather}>{weather}</span>}
-            {mood && <span title={mood}>{mood}</span>}
-          </div>
-        </motion.div>
-        
-        {/* 主内容区 */}
-        <div className="px-4 pb-32">
-          {/* 地点信息 */}
-          {memory.location && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="flex items-center gap-2 mb-4"
-            >
-              <div className="p-2 rounded-full bg-gradient-to-r from-[#00FFB3]/20 to-[#00D9FF]/20">
-                <FaMapMarkerAlt className="text-[#00FFB3]" />
-              </div>
-              <div>
-                <div className="text-white font-medium">{memory.location.name}</div>
-                <div className="text-white/40 text-sm">{memory.location.address}</div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* 天气 / 心情 / 路线 详情卡 */}
-          {(weather || mood || routeStops.length > 0) && (
-            <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.12 }} className="mb-5 p-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 space-y-3">
-              {(weather || mood) && (
-                <div className="flex flex-wrap gap-2">
-                  {weather && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/20">
-                      <span className="text-lg">{weather}</span>
-                      <span className="text-sky-300 text-sm">{WEATHER_OPTIONS.find(w => w.emoji === weather)?.label || '天气'}</span>
-                    </div>
-                  )}
-                  {mood && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00FFB3]/10 border border-[#00FFB3]/20">
-                      <span className="text-lg">{mood}</span>
-                      <span className="text-[#00FFB3] text-sm">{MOOD_OPTIONS.find(m => m.emoji === mood)?.label || '心情'}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              {routeStops.length > 0 && (
-                <div>
-                  <p className="text-white/40 text-xs mb-2">📍 行程路线</p>
-                  <div className="flex flex-wrap items-center gap-1">
-                    {routeStops.map((stop, i) => (
-                      <span key={i} className="flex items-center gap-1">
-                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-white/80 text-sm">{stop}</span>
-                        {i < routeStops.length - 1 && <span className="text-white/30 text-xs">→</span>}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* 照片轮播 */}
-          {photos.length > 0 && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mb-8"
-            >
-              <div className="relative rounded-2xl overflow-hidden bg-white/5">
-                <img
-                  src={photos[currentPhotoIndex]}
-                  alt={`照片 ${currentPhotoIndex + 1}`}
-                  className="w-full h-auto max-h-[60vh] object-contain bg-black/40"
-                />
-                
-                {photos.length > 1 && (
-                  <>
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                      {photos.map((_: any, index: number) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentPhotoIndex(index)}
-                          className={`w-2 h-2 rounded-full transition-all ${
-                            index === currentPhotoIndex 
-                              ? 'bg-white w-6' 
-                              : 'bg-white/40'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    
-                    <button
-                      onClick={() => setCurrentPhotoIndex(Math.max(0, currentPhotoIndex - 1))}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 backdrop-blur-sm disabled:opacity-30"
-                      disabled={currentPhotoIndex === 0}
-                    >
-                      <FaChevronRight className="text-white rotate-180" />
-                    </button>
-                    <button
-                      onClick={() => setCurrentPhotoIndex(Math.min(photos.length - 1, currentPhotoIndex + 1))}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 backdrop-blur-sm disabled:opacity-30"
-                      disabled={currentPhotoIndex === photos.length - 1}
-                    >
-                      <FaChevronRight className="text-white" />
-                    </button>
-                  </>
-                )}
-                
-                <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm flex items-center gap-2">
-                  <FaImages className="text-white/70 text-sm" />
-                  <span className="text-white text-sm">{currentPhotoIndex + 1} / {photos.length}</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-          
-          {/* 视频展示 */}
-          {videos.length > 0 && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="mb-8 space-y-4"
-            >
-              {videos.map((video: string, index: number) => (
-                <video
-                  key={index}
-                  src={video}
-                  controls
-                  className="w-full rounded-2xl"
-                  poster={photos[0]}
-                />
-              ))}
-            </motion.div>
-          )}
-          
-          {/* 语音内容 */}
-          {audios.length > 0 && (
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.27 }}
-              className="mb-8 space-y-3"
-            >
-              <div className="text-white/40 text-xs mb-2">🎙️ 语音记录</div>
-              {audios.map((url: string, index: number) => (
-                <div key={index} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
-                  <div className="p-2.5 rounded-full bg-[#00FFB3]/10 shrink-0">
-                    <FaMicrophone className="text-[#00FFB3]" />
-                  </div>
-                  <audio src={url} controls className="flex-1 h-8 accent-[#00FFB3]" />
-                </div>
-              ))}
-            </motion.div>
-          )}
-          
-          {/* 趣事描述 */}
-          {memoryText && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mb-8"
-            >
-              <div className="relative p-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10">
-                <FaQuoteLeft className="absolute top-4 left-4 text-[#00FFB3]/30 text-xl" />
-                <p className="text-white/90 text-lg leading-relaxed pl-6">
-                  {memoryText}
-                </p>
-              </div>
-            </motion.div>
-          )}
-          
-          {/* @的好友 */}
-          {memory.tagged_friends && memory.tagged_friends.length > 0 && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.35 }}
-              className="mb-6"
-            >
-              <div className="text-white/40 text-sm mb-2">一起的人</div>
-              <div className="flex flex-wrap gap-2">
-                {memory.tagged_friends.map((friendId: string, index: number) => {
-                  const name = getFriendName(friendId);
-                  if (!name) return null;
-                  return (
-                    <motion.span
-                      key={friendId}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.4 + index * 0.1 }}
-                      className="px-3 py-1.5 rounded-full bg-[#00FFB3]/10 text-[#00FFB3] text-sm border border-[#00FFB3]/20"
-                    >
-                      @{name}
-                    </motion.span>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-          
-          {/* 账单信息 */}
-          {memory.has_ledger && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="p-4 rounded-2xl bg-gradient-to-r from-[#FF9F43]/10 to-[#FF6B6B]/10 border border-[#FF9F43]/20"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-[#FF9F43]/20">
-                  <FaDollarSign className="text-[#FF9F43]" />
-                </div>
-                <div>
-                  <div className="text-white/60 text-sm">本次消费</div>
-                  <div className="text-white font-semibold">¥{memory.ledger?.total_amount || '0.00'}</div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
 };
 
 // 地点搜索组件
@@ -1599,26 +1316,56 @@ export default function MemoryStreamPage() {
   
   // 获取记忆数据
   useEffect(() => {
+    let isMounted = true;
+
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([
-        fetchMemories(),
-        useUserStore.getState().fetchFriends() // ✨ 确保好友数据同步加载
-      ]);
-      setIsLoading(false);
-    };
-    loadData();
+      try {
+        // 加一个 8 秒的超时竞态，防止 iOS 静默挂起 Promise
+        const fetchPromise = Promise.all([
+          fetchMemories(),
+          useUserStore.getState().fetchFriends(),
+        ]);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
 
-    // ✨ 新增：监听手机切换 App 后切回来的事件
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('手机切回页面，重新同步数据');
-        useUserStore.getState().fetchFriends(); // 重新拉取好友，防止丢失
-        fetchMemories(); // 重新拉取记忆
+        await Promise.race([fetchPromise, timeoutPromise]);
+      } catch (error) {
+        console.error('拉取数据超时或被系统打断:', error);
+      } finally {
+        if (isMounted) setIsLoading(false); // 无论如何，一定要关掉 Loading！
       }
     };
+    
+    loadData();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const currentMemories = useMemoryStore.getState().memories;
+        
+        // 💥 核心修复：如果发现切回来时数据被 iOS 清空了（变成了 0 条）
+        if (!currentMemories || currentMemories.length === 0) {
+          console.log('数据丢失，等待网络恢复后重新拉取...');
+          setIsLoading(true); // 必须先让它转圈圈，不要显示“还没有回忆”
+          
+          // 延迟 1.5 秒，给 iOS 一点时间重新连上 WiFi 或 5G
+          setTimeout(() => {
+            Promise.all([
+              fetchMemories(),
+              useUserStore.getState().fetchFriends()
+            ]).catch(console.error)
+              .finally(() => setIsLoading(false)); // 拉取完再关掉 Loading
+          }, 1500);
+        } else {
+          // 如果数据还在，只是静默更新，不打断用户
+          fetchMemories().catch(console.error);
+          setIsLoading(false); // 兜底，防止卡在 Loading
+        }
+      }
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
+      isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchMemories]);
@@ -1765,7 +1512,14 @@ export default function MemoryStreamPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FaSpinner className="text-[#00FFB3] text-3xl animate-spin mb-4" />
-            <p className="text-white/40">加载回忆中...</p>
+            <p className="text-white/40 mb-6">加载回忆中...</p>
+            {/* PWA 防卡死神器：刷新按钮 */}
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 rounded-full border border-white/20 text-white/50 text-xs hover:text-white hover:bg-white/10 transition-colors"
+            >
+              如果卡住，点此重新加载
+            </button>
           </div>
         ) : groupedMemories.length === 0 ? (
           <motion.div 
@@ -1822,14 +1576,16 @@ export default function MemoryStreamPage() {
                       {mText && <p className="px-4 pb-3 text-white/85 text-sm leading-relaxed">{mText}</p>}
                       {photos.length === 1 && (
                         <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
-                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-contain max-h-80 bg-black/30" />
+                          {/* ✨ 改为 object-cover 填满，并把最大高度稍微调高一点，避免竖图被裁得太多，同时去掉 bg-black/30 */}
+                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-cover max-h-[400px]" />
                         </div>
                       )}
                       {photos.length >= 2 && (
                         <div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
                           {photos.slice(0, 4).map((p: string, i: number) => (
-                            <div key={i} className="relative rounded-xl bg-black/30 overflow-hidden">
-                              <img src={p} alt="" className="w-full h-36 object-contain" />
+                            // ✨ 删掉了 bg-black/30，改为 cover 填满
+                            <div key={i} className="relative rounded-xl overflow-hidden">
+                              <img src={p} alt="" className="w-full h-36 object-cover" />
                               {i === 3 && photos.length > 4 && (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                                   <span className="text-white font-bold text-xl">+{photos.length - 4}</span>
@@ -1950,14 +1706,16 @@ export default function MemoryStreamPage() {
                       {/* ── 图片区（1张全宽，2-4张2列，5+张3列） ── */}
                       {photos.length === 1 && (
                         <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
-                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-contain max-h-80 bg-black/30" />
+                          {/* ✨ 改为 object-cover 填满，并把最大高度稍微调高一点，避免竖图被裁得太多，同时去掉 bg-black/30 */}
+                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-cover max-h-[400px]" />
                         </div>
                       )}
                       {photos.length >= 2 && (
                         <div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
                           {photos.slice(0, 4).map((p: string, i: number) => (
-                            <div key={i} className="relative rounded-xl bg-black/30 overflow-hidden">
-                              <img src={p} alt="" className="w-full h-36 object-contain" />
+                            // ✨ 删掉了 bg-black/30，改为 cover 填满
+                            <div key={i} className="relative rounded-xl overflow-hidden">
+                              <img src={p} alt="" className="w-full h-36 object-cover" />
                               {i === 3 && photos.length > 4 && (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                                   <span className="text-white font-bold text-xl">+{photos.length - 4}</span>

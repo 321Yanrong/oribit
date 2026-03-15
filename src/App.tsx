@@ -46,6 +46,7 @@ function App() {
   const [allowAuthModal, setAllowAuthModal] = useState(false); // 避免闪屏期间弹出登录窗
   const [showSplash, setShowSplash] = useState(true);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
+  const [firstScreenReady, setFirstScreenReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
@@ -75,12 +76,20 @@ function App() {
 
   // 只有当加载完成且最短展示时间结束后才收起闪屏，避免加载过程外露
   useEffect(() => {
-    if (!splashMinimumElapsed || loading || !showSplash) return;
+    if (!splashMinimumElapsed || loading || !firstScreenReady || !showSplash) return;
     const AUTH_DELAY = 500;
     setShowSplash(false);
     const authTimer = window.setTimeout(() => setAllowAuthModal(true), AUTH_DELAY);
     return () => window.clearTimeout(authTimer);
-  }, [splashMinimumElapsed, loading, showSplash]);
+  }, [splashMinimumElapsed, loading, firstScreenReady, showSplash]);
+
+  // 非登录态或演示模式下不阻塞闪屏
+  useEffect(() => {
+    if (loading) return;
+    if (isDemoMode || !currentUser) {
+      setFirstScreenReady(true);
+    }
+  }, [loading, isDemoMode, currentUser]);
 
   // 全局新手指引：冷启动登录后即弹，不依赖进入“我的”页
   useEffect(() => {
@@ -107,6 +116,74 @@ function App() {
       setShowAuth(true);
     }
   }, [loading, currentUser, isDemoMode]);
+
+  // 页面从后台 / bfcache 回到前台时，若状态被系统回收则自动重拉
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const rehydrateIfEmpty = () => {
+      const { currentUser } = useUserStore.getState();
+      if (!currentUser) return;
+
+      const { memories, fetchMemories } = useMemoryStore.getState();
+      if (!memories || memories.length === 0) fetchMemories();
+
+      const { friends, fetchFriends } = useUserStore.getState();
+      if (!friends || friends.length === 0) fetchFriends();
+
+      const { ledgers, fetchLedgers } = useLedgerStore.getState();
+      if (!ledgers || ledgers.length === 0) fetchLedgers();
+    };
+
+    const handleResume = () => {
+      if (document.visibilityState === 'visible') {
+        rehydrateIfEmpty();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleResume);
+    window.addEventListener('pageshow', handleResume);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleResume);
+      window.removeEventListener('pageshow', handleResume);
+    };
+  }, []);
+
+  // 页面从后台 / bfcache 恢复时，如果状态被系统回收则自动重拉
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const rehydrateIfEmpty = () => {
+      const { currentUser } = useUserStore.getState();
+      if (!currentUser) return;
+
+      const { memories, fetchMemories } = useMemoryStore.getState();
+      if (!memories || memories.length === 0) fetchMemories();
+
+      const { friends, fetchFriends } = useUserStore.getState();
+      if (!friends || friends.length === 0) fetchFriends();
+
+      const { ledgers, fetchLedgers } = useLedgerStore.getState();
+      if (!ledgers || ledgers.length === 0) fetchLedgers();
+    };
+
+    const handlePageShow = () => {
+      if (!document.hidden) rehydrateIfEmpty();
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) rehydrateIfEmpty();
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
 
   const handleDemo = () => {
     // 演示用户
@@ -467,7 +544,7 @@ useEffect(() => {
   const renderPage = () => {
     switch (currentPage) {
       case 'map':
-        return <MapPage />;
+        return <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />;
       case 'memory':
         return <MemoryStreamPage />;
       case 'ledger':
@@ -477,7 +554,7 @@ useEffect(() => {
       case 'profile':
         return <ProfilePage />;
       default:
-        return <MapPage />;
+        return <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />;
     }
   };
 

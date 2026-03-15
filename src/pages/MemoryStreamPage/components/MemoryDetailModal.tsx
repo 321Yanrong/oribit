@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaImages, FaMicrophone, FaDollarSign, FaQuoteLeft } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, FaQuoteLeft } from 'react-icons/fa';
 import { decodeMemoryContent, formatDateGroup, formatTime, MOOD_OPTIONS, WEATHER_OPTIONS } from '../utils';
 
 interface MemoryDetailModalProps {
@@ -11,6 +11,7 @@ interface MemoryDetailModalProps {
 
 const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const photos = memory.photos || [];
   const videos = memory.videos || [];
   const audios = memory.audios || [];
@@ -37,7 +38,7 @@ const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps)
       onClick={onClose}
     >
       <div className="min-h-screen" onClick={(e) => e.stopPropagation()}>
-        <motion.div 
+        <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-gradient-to-b from-black/80 to-transparent"
@@ -60,7 +61,7 @@ const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps)
 
         <div className="px-4 pb-32">
           {memory.location && (
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
@@ -98,7 +99,7 @@ const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps)
                 <div>
                   <p className="text-white/40 text-xs mb-2">📍 行程路线</p>
                   <div className="flex flex-wrap items-center gap-1">
-                    {routeStops.map((stop, i) => (
+                    {routeStops.map((stop: string, i: number) => (
                       <span key={i} className="flex items-center gap-1">
                         <span className="px-2.5 py-1 rounded-full bg-white/10 text-white/80 text-sm">{stop}</span>
                         {i < routeStops.length - 1 && <span className="text-white/30 text-xs">→</span>}
@@ -110,53 +111,100 @@ const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps)
             </motion.div>
           )}
 
+          {/* ✨ 核心重构：完美单图居中 + 仿朋友圈动态九宫格 */}
           {photos.length > 0 && (
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
               className="mb-8"
             >
-              <div className="relative rounded-2xl overflow-hidden bg-white/5">
-                <img
-                  src={photos[currentPhotoIndex]}
-                  alt={`照片 ${currentPhotoIndex + 1}`}
-                  className="w-full h-auto max-h-[60vh] object-contain bg-black/40"
-                />
-                {photos.length > 1 && (
-                  <>
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                      {photos.map((_: any, index: number) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentPhotoIndex(index)}
-                          className={`w-2 h-2 rounded-full transition-all ${index === currentPhotoIndex ? 'bg-white w-6' : 'bg-white/40'}`}
-                        />
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setCurrentPhotoIndex(Math.max(0, currentPhotoIndex - 1))}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 backdrop-blur-sm disabled:opacity-30"
-                      disabled={currentPhotoIndex === 0}
-                    >
-                      <FaChevronRight className="text-white rotate-180" />
-                    </button>
-                    <button
-                      onClick={() => setCurrentPhotoIndex(Math.min(photos.length - 1, currentPhotoIndex + 1))}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 backdrop-blur-sm disabled:opacity-30"
-                      disabled={currentPhotoIndex === photos.length - 1}
-                    >
-                      <FaChevronRight className="text-white" />
-                    </button>
-                  </>
-                )}
-                <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm flex items-center gap-2">
-                  <FaImages className="text-white/70 text-sm" />
-                  <span className="text-white text-sm">{currentPhotoIndex + 1} / {photos.length}</span>
+              {photos.length === 1 ? (
+                <div
+                  className="relative w-full rounded-2xl overflow-hidden bg-black/20 cursor-zoom-in grid place-items-center"
+                  onClick={() => { setCurrentPhotoIndex(0); setIsLightboxOpen(true); }}
+                >
+                  <img
+                    src={photos[0]}
+                    alt="照片"
+                    className="max-h-[65vh] max-w-full w-auto h-auto object-contain"
+                  />
                 </div>
-              </div>
+              ) : (
+                <div className={`grid gap-1.5 ${photos.length === 2 || photos.length === 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                  {photos.map((p: string, idx: number) => (
+                    <button
+                      key={p + idx}
+                      className="relative aspect-square rounded-xl overflow-hidden bg-black/30"
+                      onClick={() => { setCurrentPhotoIndex(idx); setIsLightboxOpen(true); }}
+                    >
+                      <img src={p} alt={`照片 ${idx + 1}`} className="absolute inset-0 w-full h-full object-cover" />
+                      {/* 右下角序号角标 */}
+                      <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded border border-white/10 bg-black/50 text-white/80 text-[10px] font-mono leading-none backdrop-blur-sm">
+                        {idx + 1}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
+
+          <AnimatePresence>
+            {isLightboxOpen && photos.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+                onClick={() => setIsLightboxOpen(false)}
+              >
+                <div className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center px-4" onClick={(e) => e.stopPropagation()}>
+                  <img
+                    src={photos[currentPhotoIndex]}
+                    alt={`原图 ${currentPhotoIndex + 1}`}
+                    className="max-h-[90vh] max-w-[90vw] w-auto h-auto object-contain"
+                  />
+                  {photos.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setCurrentPhotoIndex((idx) => Math.max(0, idx - 1))}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 transition disabled:opacity-40"
+                        disabled={currentPhotoIndex === 0}
+                      >
+                        <FaChevronRight className="text-white rotate-180" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPhotoIndex((idx) => Math.min(photos.length - 1, idx + 1))}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 transition disabled:opacity-40"
+                        disabled={currentPhotoIndex === photos.length - 1}
+                      >
+                        <FaChevronRight className="text-white" />
+                      </button>
+                      <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">
+                        {photos.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentPhotoIndex(index)}
+                            className={`w-2 h-2 rounded-full transition-all ${index === currentPhotoIndex ? 'bg-white w-6' : 'bg-white/40'}`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <button
+                    onClick={() => setIsLightboxOpen(false)}
+                    className="absolute top-6 right-6 p-3 rounded-full bg-white/10 hover:bg-white/20 transition"
+                  >
+                    <FaTimes className="text-white text-lg" />
+                  </button>
+                  <div className="absolute top-6 left-6 px-3 py-1.5 rounded-full bg-white/10 text-white text-sm">
+                    {currentPhotoIndex + 1} / {photos.length}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {videos.length > 0 && (
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25 }} className="mb-8 space-y-4">

@@ -1,5 +1,20 @@
 const META_PREFIX = '[orbit_meta:';
 
+export const WEATHER_OPTIONS = [
+  { emoji: '☀️', label: '晴天' }, { emoji: '⛅', label: '多云' },
+  { emoji: '🌧️', label: '下雨' }, { emoji: '❄️', label: '下雪' },
+  { emoji: '🌈', label: '彩虹' }, { emoji: '🌪️', label: '大风' },
+  { emoji: '🌫️', label: '大雾' }, { emoji: '⛈️', label: '雷雨' },
+];
+
+export const MOOD_OPTIONS = [
+  { emoji: '😊', label: '开心' }, { emoji: '😍', label: '幸福' },
+  { emoji: '🥰', label: '甜蜜' }, { emoji: '😎', label: '酷' },
+  { emoji: '🥺', label: '感动' }, { emoji: '😢', label: '落泪' },
+  { emoji: '😤', label: '疲惫' }, { emoji: '🤩', label: '超棒' },
+  { emoji: '🤔', label: '迷茫' }, { emoji: '😴', label: '困了' },
+];
+
 export const formatDateGroup = (dateStr: string) => {
   const date = new Date(dateStr);
   const today = new Date();

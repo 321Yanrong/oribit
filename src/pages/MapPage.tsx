@@ -59,7 +59,7 @@ const decodeMemoryContent = (content: string): { text: string; weather: string; 
   securityJsCode: AMAP_SECURITY_CODE,
 };
 
-export default function MapPage() {
+export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: () => void }) {
   const { selectedPin, setSelectedPin } = useMapStore();
   const { memories, fetchMemories, selectedFriendId, setSelectedFriendId } = useMemoryStore();
   const { friends, currentUser } = useUserStore();
@@ -67,19 +67,34 @@ export default function MapPage() {
   const [showMemoryDetail, setShowMemoryDetail] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null); // 单条记忆详情
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [memoriesFetched, setMemoriesFetched] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [mapGroupBy, setMapGroupBy] = useState<'location' | 'city'>('location');
   
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]); // ✨ 新增：用来存储高德的 Marker 实例，方便后续清理
   const containerRef = useRef<HTMLDivElement>(null);
+  const readyFiredRef = useRef(false);
 
   // ✨ 核心修复 1：进页面立刻拉取最新回忆数据
   useEffect(() => {
     if (currentUser?.id) {
-      fetchMemories();
+      fetchMemories()
+        .catch(() => {})
+        .finally(() => setMemoriesFetched(true));
+    } else {
+      setMemoriesFetched(false);
     }
   }, [currentUser?.id, fetchMemories]);
+
+  // 通知外部首屏数据已就绪（地图已加载且回忆数据到位）
+  useEffect(() => {
+    if (!onFirstScreenReady || readyFiredRef.current) return;
+    if (mapLoaded && memoriesFetched) {
+      readyFiredRef.current = true;
+      onFirstScreenReady();
+    }
+  }, [mapLoaded, memoriesFetched, onFirstScreenReady]);
 
   // ✨ 核心修复 2：将散落的 memories 按“地点”打包分组，生成地图需要的 Pins
   const getFriendDisplay = (personId: string) => {
@@ -203,7 +218,10 @@ export default function MapPage() {
       map.addControl(new AMap.Scale());
       mapRef.current = map;
       setMapLoaded(true);
-    }).catch(e => console.error('地图加载失败:', e));
+    }).catch(e => {
+      console.error('地图加载失败:', e);
+      setMapLoaded(true); // 不阻塞闪屏收起
+    });
 
     return () => mapRef.current?.destroy();
   }, []);
