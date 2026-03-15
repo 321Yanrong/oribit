@@ -346,10 +346,30 @@ useEffect(() => {
     let isMounted = true;
     let invalidSessionHandled = false;
 
-    const handleInvalidSession = async (reason?: string) => {
+    const handleInvalidSession = async (reason: string) => {
       if (invalidSessionHandled) return;
       invalidSessionHandled = true;
       console.warn('Detected invalid auth/session token, clearing Orbit caches.', reason);
+      try {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && refreshed?.session?.user) {
+          const user = refreshed.session.user;
+          const profile = await getProfile(user.id, user.email || undefined);
+          if (profile && isMounted) {
+            setCurrentUser({ ...profile, avatar_url: sanitiseAvatarUrl(profile.avatar_url, user.id) });
+            setShowAuth(false);
+          }
+          useMemoryStore.getState().fetchMemories();
+          useUserStore.getState().fetchFriends();
+          useUserStore.getState().fetchPendingRequests();
+          useLedgerStore.getState().fetchLedgers();
+          saveInviteCode(user.id, generateInviteCode(user.id));
+          invalidSessionHandled = false;
+          return;
+        }
+      } catch (e) {
+        console.warn('Session refresh failed, clearing local session:', e);
+      }
       try {
         await supabase.auth.signOut({ scope: 'local' });
       } catch (e) {

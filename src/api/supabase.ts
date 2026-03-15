@@ -16,7 +16,6 @@ const authAwareFetch: typeof fetch = async (input, init) => {
       const authRelatedEndpoint = /\/auth\/v1\//.test(url) || /\/rest\/v1\//.test(url)
 
       if (authRelatedEndpoint && isLikelyInvalidSession(errorCode || `http_${response.status}`)) {
-        clearOrbitStorage()
         emitInvalidAuthEvent(errorCode || `http_${response.status}`)
       }
     }
