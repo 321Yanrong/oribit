@@ -6,15 +6,22 @@
 -- 1. 为 friendships 表的 UPDATE 策略允许接收方也能操作
 --    （接受申请时需要把 pending → accepted）
 DROP POLICY IF EXISTS "Users can update own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can update own or received friendships" ON friendships;
 
 CREATE POLICY "Users can update own or received friendships" ON friendships
   FOR UPDATE USING (
     auth.uid() = user_id          -- 发起方可更新（改备注等）
     OR auth.uid() = friend_id     -- 接收方可更新（接受申请）
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+    OR friend_id IS NULL          -- 允许把对方关系降级为虚拟好友
   );
 
 -- 2. 允许接收方删除（拒绝申请）
 DROP POLICY IF EXISTS "Users can delete own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can delete own or received friendships" ON friendships;
 
 CREATE POLICY "Users can delete own or received friendships" ON friendships
   FOR DELETE USING (
@@ -22,9 +29,19 @@ CREATE POLICY "Users can delete own or received friendships" ON friendships
     OR auth.uid() = friend_id     -- 接收方可删除（拒绝申请）
   );
 
+-- 2.5 允许查看自己相关的好友关系（PostgREST UPDATE/DELETE 需要可见行）
+DROP POLICY IF EXISTS "Users can view own or received friendships" ON friendships;
+
+CREATE POLICY "Users can view own or received friendships" ON friendships
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+  );
+
 -- 3. 允许绑定虚拟好友时为对方插入反向记录
 --    （A 绑定 B 时，需要插入 user_id=B 的行，但 A 是登录方）
 DROP POLICY IF EXISTS "Users can insert own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can insert friendships" ON friendships;
 
 CREATE POLICY "Users can insert friendships" ON friendships
   FOR INSERT WITH CHECK (

@@ -86,7 +86,14 @@ const AddFriendModal = ({
           setCode(''); setRealStep('input'); setPreviewProfile(null);
           onClose();
         } catch (err: any) {
-          alert(err.message || '操作失败');
+          const message = err?.message || '操作失败';
+          if (/好友申请已发送|等待对方确认|已经和.+建立好友关系/.test(message)) {
+            setCode(''); setRealStep('input'); setPreviewProfile(null);
+            onClose();
+            alert(message);
+            return;
+          }
+          alert(message);
         } finally {
           setLoading(false);
         }
@@ -227,6 +234,103 @@ const AddFriendModal = ({
           >
             {loading && <FaSpinner className="animate-spin" />}
             {tab === 'virtual' ? '添加临时好友' : realStep === 'input' ? '查找' : bindTarget === 'new' ? '确认添加' : '确认绑定'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// 1.5 接受好友申请弹窗（与添加好友保持同款样式）
+const AcceptFriendModal = ({
+  isOpen,
+  onClose,
+  requester,
+  virtualFriends,
+  onConfirm,
+  loading,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  requester: any;
+  virtualFriends: any[];
+  onConfirm: (bindTarget: string) => void;
+  loading: boolean;
+}) => {
+  const [bindTarget, setBindTarget] = useState<string>('new');
+
+  useEffect(() => {
+    if (isOpen) {
+      setBindTarget('new');
+    }
+  }, [isOpen, requester?.id]);
+
+  if (!isOpen) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xl font-bold text-white">接受好友申请</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
+            <FaTimes className="text-white/60" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#00FFB3]/10 border border-[#00FFB3]/20 mb-4">
+          <img
+            src={requester?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${requester?.id}`}
+            alt={requester?.username}
+            className="w-12 h-12 rounded-xl ring-2 ring-[#00FFB3]/30"
+          />
+          <div>
+            <p className="text-white font-bold">{requester?.username || '未知用户'}</p>
+            <p className="text-[#00FFB3] text-xs mt-0.5">想添加你为好友</p>
+          </div>
+        </div>
+
+        {virtualFriends.length > 0 && (
+          <div className="space-y-2 mb-4">
+            <p className="text-white/50 text-xs mb-2">是否绑定到已有马甲好友？</p>
+            <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === 'new' ? 'border-[#00FFB3] bg-[#00FFB3]/5' : 'border-white/10 bg-white/3'}`}>
+              <input type="radio" name="bindTarget" value="new" checked={bindTarget === 'new'} onChange={() => setBindTarget('new')} className="accent-[#00FFB3]" />
+              <span className="text-white text-sm">✅ 直接接受（不绑定）</span>
+            </label>
+            {virtualFriends.map((vf: any) => (
+              <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-[#FF9F43]/5' : 'border-white/10 bg-white/3'}`}>
+                <input type="radio" name="bindTarget" value={vf.id} checked={bindTarget === vf.id} onChange={() => setBindTarget(vf.id)} className="accent-[#FF9F43]" />
+                <img src={vf.friend.avatar_url} alt={vf.friend.username} className="w-7 h-7 rounded-lg" />
+                <div className="min-w-0">
+                  <p className="text-white text-sm truncate">{vf.friend.username}</p>
+                  {vf.remark && <p className="text-white/40 text-xs truncate">{vf.remark}</p>}
+                </div>
+                <span className="ml-auto text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded shrink-0">绑定</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-semibold"
+          >
+            取消
+          </button>
+          <button
+            disabled={loading}
+            onClick={() => onConfirm(bindTarget)}
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-50"
+          >
+            {loading ? <FaSpinner className="inline-block animate-spin" /> : '确认接受'}
           </button>
         </div>
       </motion.div>
@@ -837,6 +941,10 @@ const handleAddFriend = async (name: string, remark: string) => {
   const handleBindExisting = async (friendshipId: string, inviteCode: string) => {
     const code = inviteCode.trim().toUpperCase();
     const realProfile = await lookupProfileByInviteCode(code);
+    if (currentUser?.id && realProfile.id === currentUser.id) {
+      alert('不能绑定自己的邀请码');
+      return;
+    }
     const { syncedCount } = await bindVirtualFriend(friendshipId, realProfile.id);
     await useUserStore.getState().fetchFriends();
     await useMemoryStore.getState().fetchMemories();
@@ -849,22 +957,24 @@ const handleAddFriend = async (name: string, remark: string) => {
 
   // 接受好友申请（可选绑定现有马甲）
   const [processingRequests, setProcessingRequests] = useState<Record<string, boolean>>({});
+  const [acceptingRequest, setAcceptingRequest] = useState<any>(null);
+  const [acceptingLoading, setAcceptingLoading] = useState(false);
 
-  const handleAcceptRequest = async (req: any) => {
+  const handleAcceptRequest = (req: any) => {
+    if (processingRequests[req.id]) return;
+    setAcceptingRequest(req);
+  };
+
+  const handleConfirmAccept = async (bindTarget: string) => {
+    if (!acceptingRequest) return;
+    const req = acceptingRequest;
     if (processingRequests[req.id]) return;
     setProcessingRequests((s) => ({ ...s, [req.id]: true }));
+    setAcceptingLoading(true);
     try {
       let bindVirtualFriendshipId: string | undefined;
-      const virtualFriends = friends.filter((f: any) => f.status === 'virtual');
-      if (virtualFriends.length > 0) {
-        const choice = window.prompt(
-          `是否把这位好友绑定到已有马甲？输入序号绑定，留空直接接受：\n` +
-          virtualFriends.map((f: any, idx: number) => `${idx + 1}. ${f.username || f.friend_name || f.remark || '马甲好友'}`).join('\n')
-        );
-        const idx = choice ? parseInt(choice, 10) - 1 : -1;
-        if (!Number.isNaN(idx) && idx >= 0 && idx < virtualFriends.length) {
-          bindVirtualFriendshipId = virtualFriends[idx].id?.replace('temp-', '') || virtualFriends[idx].id;
-        }
+      if (bindTarget && bindTarget !== 'new') {
+        bindVirtualFriendshipId = bindTarget?.replace('temp-', '') || bindTarget;
       }
 
       await acceptFriendRequest(req.id, req.user_id, currentUser!.id, bindVirtualFriendshipId);
@@ -875,9 +985,11 @@ const handleAddFriend = async (name: string, remark: string) => {
       await useUserStore.getState().fetchFriends();
       await useUserStore.getState().fetchPendingRequests();
       await useMemoryStore.getState().fetchMemories();
+      setAcceptingRequest(null);
     } catch (err: any) {
       alert('接受失败：' + err.message);
     } finally {
+      setAcceptingLoading(false);
       setProcessingRequests((s) => {
         const copy = { ...s };
         delete copy[req.id];
@@ -919,6 +1031,10 @@ const handleAddFriend = async (name: string, remark: string) => {
 
       // 1. 反查真实用户
       const realProfile = await lookupProfileByInviteCode(code);
+      if (currentUser?.id && realProfile.id === currentUser.id) {
+        alert('不能绑定自己的邀请码');
+        return;
+      }
 
       // 2. 更新数据库：friendships + memory_tags
       const { syncedCount } = await bindVirtualFriend(friendshipId, realProfile.id);
@@ -1447,7 +1563,7 @@ const handleAddFriend = async (name: string, remark: string) => {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="min-h-screen bg-[#1a1a1a] rounded-t-3xl"
+              className="min-h-screen max-h-screen overflow-y-auto bg-[#1a1a1a] rounded-t-3xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
@@ -1493,6 +1609,16 @@ const handleAddFriend = async (name: string, remark: string) => {
           m.user_id === selectedFriend.id
         )} onClose={() => setSelectedFriend(null)} />}
         {bindingFriend && <BindFriendModal friend={bindingFriend} isOpen={!!bindingFriend} onClose={() => setBindingFriend(null)} onBind={handleBindFriend} />}
+        {acceptingRequest && (
+          <AcceptFriendModal
+            isOpen={!!acceptingRequest}
+            onClose={() => setAcceptingRequest(null)}
+            requester={acceptingRequest.requester}
+            virtualFriends={friends.filter((f: any) => f.status === 'virtual')}
+            onConfirm={handleConfirmAccept}
+            loading={acceptingLoading}
+          />
+        )}
         {showAddFriend && <AddFriendModal isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
         {showInviteCode && <InviteCodeModal isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
         {randomMemory && <RandomMemoryModal memory={randomMemory} onClose={() => setRandomMemory(null)} friends={friends} />}

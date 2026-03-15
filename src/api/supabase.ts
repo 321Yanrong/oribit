@@ -339,6 +339,9 @@ export const lookupProfileByInviteCode = async (inviteCode: string) => {
   return data
 }
 
+const isPermissionError = (error: any) =>
+  error?.code === '42501' || /permission|not allowed|violates row level security/i.test(error?.message || '');
+
 const ensureAcceptedFriendship = async (userId: string, friendId: string): Promise<void> => {
   const { data: existingRows, error: fetchError } = await supabase
     .from('friendships')
@@ -360,6 +363,10 @@ const ensureAcceptedFriendship = async (userId: string, friendId: string): Promi
     return;
   }
 
+  if (existingRows.some((row: any) => row.status === 'accepted')) {
+    return;
+  }
+
   const ids = existingRows.map((row: any) => row.id);
 
   // 全部统一为 accepted
@@ -367,7 +374,18 @@ const ensureAcceptedFriendship = async (userId: string, friendId: string): Promi
     .from('friendships')
     .update({ status: 'accepted' })
     .in('id', ids);
-  if (updateError) throw updateError;
+  if (updateError) {
+    if (isPermissionError(updateError)) {
+      const { error: insertError } = await supabase
+        .from('friendships')
+        .insert({ user_id: userId, friend_id: friendId, status: 'accepted' });
+      if (insertError && (insertError as any).code !== '23505') {
+        throw insertError;
+      }
+      return;
+    }
+    throw updateError;
+  }
 
   // 如果历史上已经有重复关系，保留最早一条，其余清理，避免列表出现重复好友
   if (ids.length > 1) {
@@ -376,7 +394,7 @@ const ensureAcceptedFriendship = async (userId: string, friendId: string): Promi
       .from('friendships')
       .delete()
       .in('id', duplicateIds);
-    if (dedupeError) throw dedupeError;
+    if (dedupeError && !isPermissionError(dedupeError)) throw dedupeError;
   }
 };
 
@@ -385,6 +403,13 @@ export const bindVirtualFriend = async (
   realUserId: string
 ): Promise<{ syncedCount: number }> => {
   ensureOnlineForWrite('绑定好友')
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const currentUserId = authData?.user?.id;
+  if (!currentUserId) throw new Error('当前未登录，无法绑定好友');
+  if (currentUserId === realUserId) {
+    throw new Error('不能绑定自己的邀请码');
+  }
   // 0. 先查出发起方（A 的 user_id），用于创建反向记录
   const { data: existing, error: fetchErr } = await supabase
     .from('friendships')
@@ -393,6 +418,9 @@ export const bindVirtualFriend = async (
     .single();
   if (fetchErr) throw fetchErr;
   const ownerUserId = existing.user_id;
+  if (ownerUserId !== currentUserId) {
+    throw new Error('当前账号不是该马甲好友的创建者，无法绑定');
+  }
 
   // 1. 更新 friendships.friend_id 为真实用户 UUID，状态改为 accepted
   const { error: e1 } = await supabase
@@ -873,11 +901,51 @@ export const updateMemoryContent = async (memoryId: string, newContent: string) 
 // ==================== 好友删除 ====================
 export const deleteFriendship = async (friendshipId: string): Promise<void> => {
   ensureOnlineForWrite('删除好友')
+
+  const { data: row, error: fetchError } = await supabase
+    .from('friendships')
+    .select('id, user_id, friend_id, status')
+    .eq('id', friendshipId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!row) return;
+
   const { error } = await supabase
     .from('friendships')
     .delete()
     .eq('id', friendshipId);
   if (error) throw error;
+
+  // 如果是已绑定的真实好友，尝试把对方侧的关系降级为虚拟好友
+  if (row.friend_id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', row.user_id)
+      .maybeSingle();
+
+    const displayName = profile?.username || '已删除好友';
+
+    const { data: reverse } = await supabase
+      .from('friendships')
+      .select('id, status, friend_id')
+      .eq('user_id', row.friend_id)
+      .eq('friend_id', row.user_id)
+      .maybeSingle();
+
+    if (reverse?.id && reverse.friend_id) {
+      const { error: downgradeError } = await supabase
+        .from('friendships')
+        .update({ friend_id: null, status: 'virtual', friend_name: displayName })
+        .eq('id', reverse.id);
+      if (downgradeError) {
+        if (isPermissionError(downgradeError)) {
+          throw new Error('缺少权限将对方关系降级为虚拟好友，请在 Supabase 执行 friend-requests-migration.sql');
+        }
+        throw downgradeError;
+      }
+    }
+  }
 };
 
 // 好友备注更新
@@ -972,6 +1040,17 @@ export const getPendingFriendRequests = async (userId: string): Promise<any[]> =
     .select('id, username, avatar_url')
     .in('id', requesterIds);
 
+  // Step 3: 如果双方已是 accepted，则过滤掉这条 pending，避免“幽灵申请”
+  const { data: acceptedRows } = await supabase
+    .from('friendships')
+    .select('user_id, friend_id, status')
+    .eq('status', 'accepted')
+    .or(`and(user_id.eq.${userId},friend_id.in.(${requesterIds.join(',')})),and(user_id.in.(${requesterIds.join(',')}),friend_id.eq.${userId})`);
+
+  const acceptedSet = new Set(
+    (acceptedRows || []).map((row: any) => `${row.user_id}::${row.friend_id}`)
+  );
+
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
   const deduped = data.reduce((acc: any[], row: any) => {
@@ -980,10 +1059,12 @@ export const getPendingFriendRequests = async (userId: string): Promise<any[]> =
     return acc;
   }, []);
 
-  return deduped.map((r: any) => ({
-    ...r,
-    requester: profileMap.get(r.user_id) || null,
-  }));
+  return deduped
+    .filter((r: any) => !acceptedSet.has(`${r.user_id}::${userId}`) && !acceptedSet.has(`${userId}::${r.user_id}`))
+    .map((r: any) => ({
+      ...r,
+      requester: profileMap.get(r.user_id) || null,
+    }));
 };
 
 // 接受好友申请：把发起方记录改为 accepted，再插一条反向记录
@@ -996,10 +1077,11 @@ export const acceptFriendRequest = async (
   ensureOnlineForWrite('处理好友申请')
 
   // 1) 先按 id 更新（兼容旧调用；即便 0 行也不阻断后续幂等修复）
-  await supabase
+  const { error: updateError } = await supabase
     .from('friendships')
     .update({ status: 'accepted' })
     .eq('id', friendshipId);
+  if (updateError && !isPermissionError(updateError)) throw updateError;
 
   // 2) 双向都做幂等修复，确保“同意一次”后双方都能立即看到彼此
   await ensureAcceptedFriendship(requesterId, currentUserId);
@@ -1012,7 +1094,7 @@ export const acceptFriendRequest = async (
     .eq('user_id', requesterId)
     .eq('friend_id', currentUserId)
     .eq('status', 'pending');
-  if (cleanRequesterPendingError) throw cleanRequesterPendingError;
+  if (cleanRequesterPendingError && !isPermissionError(cleanRequesterPendingError)) throw cleanRequesterPendingError;
 
   const { error: cleanCurrentPendingError } = await supabase
     .from('friendships')
@@ -1020,7 +1102,7 @@ export const acceptFriendRequest = async (
     .eq('user_id', currentUserId)
     .eq('friend_id', requesterId)
     .eq('status', 'pending');
-  if (cleanCurrentPendingError) throw cleanCurrentPendingError;
+  if (cleanCurrentPendingError && !isPermissionError(cleanCurrentPendingError)) throw cleanCurrentPendingError;
 
   // 4) 可选：把已存在的马甲好友绑定到此真实用户
   if (bindVirtualFriendshipId) {

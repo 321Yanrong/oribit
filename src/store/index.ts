@@ -163,8 +163,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     set((state) => ({ friends: [formatted, ...state.friends] }));
   },
   deleteFriend: async (friendshipId) => {
-    const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
-    if (!error) await get().fetchFriends();
+    const { deleteFriendship } = await import('../api/supabase');
+    await deleteFriendship(friendshipId);
+    await get().fetchFriends();
   },
 }));
 
@@ -276,21 +277,30 @@ interface LedgerState {
 
 export const useLedgerStore = create<LedgerState>((set, get) => ({
   ledgers: [],
+  _fetchLedgersInFlight: null as Promise<void> | null,
   fetchLedgers: async () => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId || !isRealUUID(userId)) return;
+    const inFlight = (get() as any)._fetchLedgersInFlight as Promise<void> | null;
+    if (inFlight) return inFlight;
     try {
-      const { getLedgers } = await import('../api/supabase');
-      const data = await getLedgers(userId);
-      const seen = new Set<string>();
-      const unique = ((data || []) as any[]).filter((l: any) => {
-        if (seen.has(l.id)) return false;
-        seen.add(l.id);
-        return true;
-      });
-      set({ ledgers: unique });
+      const task = (async () => {
+        const { getLedgers } = await import('../api/supabase');
+        const data = await getLedgers(userId);
+        const seen = new Set<string>();
+        const unique = ((data || []) as any[]).filter((l: any) => {
+          if (seen.has(l.id)) return false;
+          seen.add(l.id);
+          return true;
+        });
+        set({ ledgers: unique });
+      })();
+      set({ _fetchLedgersInFlight: task } as any);
+      await task;
     } catch (e) {
       console.error('fetchLedgers error:', e);
+    } finally {
+      set({ _fetchLedgersInFlight: null } as any);
     }
   },
   addLedger: (ledger) => set((state) => ({ ledgers: [...state.ledgers, ledger] })),

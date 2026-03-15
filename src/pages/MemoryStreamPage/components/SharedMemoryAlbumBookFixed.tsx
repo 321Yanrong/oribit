@@ -82,7 +82,7 @@ export const MemoryStoryEntry = ({
         </div>
 
         {friends.length > 0 && onSelectFriend && (
-          <div className="relative mt-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="relative mt-4 flex flex-nowrap gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {friends.map((f) => {
               const active = selectedFriendIds.includes(f.id);
               return (
@@ -93,7 +93,7 @@ export const MemoryStoryEntry = ({
                     if (active) onSelectFriend(selectedFriendIds.filter((id) => id !== f.id));
                     else onSelectFriend([...selectedFriendIds, f.id]);
                   }}
-                  className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
                     active
                       ? 'bg-[#00FFB3] text-black border-transparent'
                       : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30'
