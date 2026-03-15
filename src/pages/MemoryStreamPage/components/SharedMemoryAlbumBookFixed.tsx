@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
-import { FaDollarSign, FaMapMarkerAlt, FaTimes } from 'react-icons/fa';
+import { FaDollarSign, FaMapMarkerAlt, FaTimes, FaPlay, FaPause } from 'react-icons/fa';
 import { decodeMemoryContent } from '../utils';
 import memoryFlowBackground from '../../../../回忆流.jpg';
 
@@ -159,6 +159,33 @@ export const MemoryStoryDrawer = ({
     }
     return audioRef.current;
   }, [selectedTrack]);
+
+  const handleToggleMusic = useCallback(() => {
+    const audio = ensureAudio();
+    if (!audio) return;
+    if (isMusicPlaying) {
+      audio.pause();
+      setIsMusicPlaying(false);
+    } else {
+      setIsMusicPlaying(true);
+      audio.play().catch(() => setIsMusicPlaying(false));
+    }
+  }, [ensureAudio, isMusicPlaying]);
+
+  const handleNextTrack = useCallback(() => {
+    setSelectedTrack((prev) => {
+      const next = (prev + 1) % MUSIC_TRACKS.length;
+      const audio = ensureAudio();
+      if (audio) {
+        audio.pause();
+        audio.src = MUSIC_TRACKS[next].url;
+        audio.load();
+        audio.play().catch(() => setIsMusicPlaying(false));
+      }
+      setIsMusicPlaying(true);
+      return next;
+    });
+  }, [ensureAudio]);
 
   const currentItem = playlist[activeIndex];
   // Keep a loaded blur background to avoid a black flash when switching photos
@@ -701,44 +728,40 @@ export const MemoryStoryDrawer = ({
           </AnimatePresence>
         </div>
 
-        <div className="absolute bottom-4 right-4 z-[160] flex items-center gap-2 pointer-events-auto bg-black/30 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10 shadow-lg">
-          <div className="flex items-center gap-2">
+        <div className="absolute top-16 right-4 z-[160] flex items-center justify-end pointer-events-auto">
+          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/12 shadow-lg text-xs text-white">
             <button
-              onClick={() => {
-                const audio = ensureAudio();
-                if (!audio) return;
-                if (!isMusicPlaying) {
-                  setIsMusicPlaying(true);
-                  // Only play in response to user interaction
-                  audio.play().catch(() => {
-                    setIsMusicPlaying(false);
-                    // Optionally show a UI message: 用户需手动解除静音/自动播放限制
-                  });
-                } else {
-                  audio.pause();
-                  setIsMusicPlaying(false);
-                }
-              }}
-              className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
-                isMusicPlaying ? 'border-[#00FFB3]/60 text-[#00FFB3] bg-[#00ffb3]/10' : 'border-white/30 text-white bg-white/5'
+              onClick={handleToggleMusic}
+              className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+                isMusicPlaying ? 'border-[#00FFB3]/60 text-[#00FFB3] bg-[#00ffb3]/10 shadow-[0_0_12px_rgba(0,255,179,0.25)]' : 'border-white/25 text-white bg-white/5'
               }`}
+              title={isMusicPlaying ? '暂停' : '播放'}
             >
-              {isMusicPlaying ? '音乐：播放中' : '音乐：已暂停'}
+              {isMusicPlaying ? <FaPause className="text-sm" /> : <FaPlay className="text-sm ml-0.5" />}
             </button>
-            <select
-              value={selectedTrack}
-              onChange={(e) => setSelectedTrack(Number(e.target.value))}
-              className="text-xs bg-white/5 text-white border border-white/20 rounded-lg px-2 py-1 focus:outline-none"
+            <button
+              onClick={handleNextTrack}
+              className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full hover:bg-white/5 transition-colors"
+              title="下一首"
             >
-              {MUSIC_TRACKS.map((t, i) => (
-                <option key={t.label} value={i} className="bg-[#0b0f1c] text-white">
-                  {t.label}
-                </option>
-              ))}
-            </select>
+              <span className="font-semibold whitespace-nowrap">{MUSIC_TRACKS[selectedTrack].label}</span>
+              {isMusicPlaying && (
+                <div className="flex items-end gap-0.5 h-4 text-[#00FFB3]">
+                  {[0, 1, 2].map((b) => (
+                    <motion.span
+                      key={b}
+                      className="w-1 rounded-full bg-[#00FFB3]"
+                      initial={{ height: '35%' }}
+                      animate={{ height: ['35%', '90%', '45%', '75%'] }}
+                      transition={{ duration: 1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: b * 0.12 }}
+                    />
+                  ))}
+                </div>
+              )}
+            </button>
           </div>
         </div>
-        </div>
+      </div>
       </motion.div>
     </AnimatePresence>
   );

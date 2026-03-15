@@ -68,6 +68,19 @@
         font-size: 13px;
         font-weight: 800;
       }
+      .sketch {
+        border: 2px dashed #111;
+        border-radius: 18px;
+        background: #fff;
+      }
+      .sketch-box {
+        border: 2px solid #111;
+        border-radius: 16px;
+        padding: 16px;
+        background: rgba(255,255,255,0.6);
+      }
+      .sketch-title { font-size: 22px; font-weight: 900; }
+      .sketch-desc { color: #444; line-height: 1.7; margin-top: 6px; }
     </style>
   </head>
   <body>
@@ -92,25 +105,7 @@
         <header class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-                <!-- Orbit ring (back, drawn first) -->
-                <ellipse cx="50" cy="50" rx="46" ry="16" fill="none" stroke="#111" stroke-width="3" transform="rotate(-15 50 50)"/>
-                <!-- Left floppy ear -->
-                <ellipse cx="31" cy="43" rx="10" ry="15" fill="white" stroke="#111" stroke-width="3" transform="rotate(-22 31 43)"/>
-                <!-- Right floppy ear -->
-                <ellipse cx="69" cy="43" rx="10" ry="15" fill="white" stroke="#111" stroke-width="3" transform="rotate(22 69 43)"/>
-                <!-- Dog head -->
-                <circle cx="50" cy="57" r="23" fill="white" stroke="#111" stroke-width="3"/>
-                <!-- Happy eyes (curved arcs) -->
-                <path d="M 38 53 Q 42 47 46 53" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
-                <path d="M 54 53 Q 58 47 62 53" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
-                <!-- Nose -->
-                <ellipse cx="50" cy="63" rx="3.5" ry="2.5" fill="#111"/>
-                <!-- Smile -->
-                <path d="M 43 69 Q 50 76 57 69" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
-                <!-- Satellite dot on orbit (upper right, outside dog) -->
-                <circle cx="91" cy="37" r="4" fill="#111"/>
-              </svg>
+              <img src="../public/icons/orbit-logo.svg" alt="Orbit 品牌标志" class="w-10 h-10 rounded-xl" />
             </div>
             <span class="text-2xl font-black ink">Orbit 轨迹</span>
           </div>
@@ -148,8 +143,8 @@
               <img class="shot" src="screenshots/app/map.png" alt="地图页" />
             </div>
             <div class="phone z-10">
-              <div class="phone-header">记忆流</div>
-              <img class="shot" src="screenshots/app/memory.png" alt="记忆流" />
+              <div class="phone-header">回忆相册</div>
+              <img class="shot" src="screenshots/app/memory-open.png" alt="回忆相册展开" />
             </div>
             <div class="phone rotate-[6deg] translate-y-4">
               <div class="phone-header">小游戏</div>
@@ -167,56 +162,64 @@
           <p class="mt-4 text-2xl text-gray-700">地图、记忆、账单、小游戏，陪你把日常变成有温度的故事</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-8 mt-14">
-          <article class="line p-7">
-            <div class="flex items-center justify-between mb-5">
-              <h3 class="text-3xl font-black"><i class="fa-solid fa-map-location-dot mr-2"></i> 地图</h3>
-              <span class="sticker">共同足迹</span>
+        <div class="grid grid-cols-2 gap-10 mt-14">
+          <article class="sketch-box">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">🗺️</div>
+              <div>
+                <div class="sketch-title">地图 · 共同足迹</div>
+                <div class="sketch-desc">按好友筛选点位，点开即看地点下的回忆清单与详情。</div>
+              </div>
             </div>
-            <img src="screenshots/app/map.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="地图功能" />
-            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 按好友筛选回忆地点</li>
-              <li>• 点击地图点位查看细节</li>
-              <li>• 城市级汇总共同记忆</li>
+            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 好友筛选 + 城市汇总</li>
+              <li>• 点位列表层 + 单条详情层</li>
+              <li>• 回忆参与者与位置并列呈现</li>
             </ul>
           </article>
 
-          <article class="line p-7">
-            <div class="flex items-center justify-between mb-5">
-              <h3 class="text-3xl font-black"><i class="fa-solid fa-images mr-2"></i> 记忆</h3>
-              <span class="sticker">图文胶囊</span>
+          <article class="sketch-box">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">🖼️</div>
+              <div>
+                <div class="sketch-title">记忆流 · 图文胶囊</div>
+                <div class="sketch-desc">卡片式回顾照片、文字、地点和 @ 好友，支持编辑与删除。</div>
+              </div>
             </div>
-            <img src="screenshots/app/memory.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="记忆功能" />
-            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 一键记录照片、地点、文字</li>
-              <li>• @ 好友形成共享回忆</li>
-              <li>• 支持回忆流快速浏览</li>
+            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 图文 + 地点 + @ 好友</li>
+              <li>• 多好友 AND 筛选</li>
+              <li>• 随机回忆一键打开</li>
             </ul>
           </article>
 
-          <article class="line p-7">
-            <div class="flex items-center justify-between mb-5">
-              <h3 class="text-3xl font-black"><i class="fa-solid fa-wallet mr-2"></i> 账单</h3>
-              <span class="sticker">智能分摊</span>
+          <article class="sketch-box">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">💳</div>
+              <div>
+                <div class="sketch-title">账单中心 · 智能分摊</div>
+                <div class="sketch-desc">账单与回忆绑定，自动均摊与结算提示，避免漏单。</div>
+              </div>
             </div>
-            <img src="screenshots/app/ledger.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="账单功能" />
-            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 和回忆卡片绑定，避免漏单</li>
-              <li>• 自动计算谁该付多少</li>
-              <li>• 已结清状态清晰可见</li>
+            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 回忆绑定账单</li>
+              <li>• 自动分摊 / 待结清标识</li>
+              <li>• 参与者应收应付清晰</li>
             </ul>
           </article>
 
-          <article class="line p-7">
-            <div class="flex items-center justify-between mb-5">
-              <h3 class="text-3xl font-black"><i class="fa-solid fa-gamepad mr-2"></i> 游戏</h3>
-              <span class="sticker">聚会破冰</span>
+          <article class="sketch-box">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">🎮</div>
+              <div>
+                <div class="sketch-title">聚会小游戏 · 破冰</div>
+                <div class="sketch-desc">骰子、转盘、真心话等轻量工具，快速活跃气氛。</div>
+              </div>
             </div>
-            <img src="screenshots/app/games.png" class="h-72 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="游戏功能" />
-            <ul class="mt-5 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 骰子、转盘、连连看等内置小游戏</li>
-              <li>• 适合聚会、旅行、约会场景</li>
-              <li>• 轻松活跃气氛，不尴尬</li>
+            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+              <li>• 今天谁买单 / 真心话</li>
+              <li>• 翻翻卡通 4x4 / 6x6</li>
+              <li>• 旅途 / 聚会快速开场</li>
             </ul>
           </article>
         </div>
@@ -232,34 +235,40 @@
         </div>
 
         <div class="mt-16 grid grid-cols-3 gap-8">
-          <article class="line p-8 relative">
+          <article class="sketch p-8 relative">
             <span class="absolute -top-5 left-6 sticker">STEP 1</span>
             <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl">
               <i class="fa-solid fa-user-plus"></i>
             </div>
             <h3 class="text-3xl font-black mt-6">创建账号 & 添加好友</h3>
-            <p class="mt-4 text-xl text-gray-700 leading-relaxed">注册后可先添加虚拟好友，后续一键绑定真人账号，不会丢失历史回忆。</p>
-            <img src="screenshots/app/profile.png" class="mt-5 h-64 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="step1" />
+            <p class="mt-4 text-xl text-gray-700 leading-relaxed">注册后可先加虚拟好友，后续用邀请码一键替换为真实账号，不丢历史。</p>
+            <div class="sketch-box mt-5">
+              <div class="sketch-desc">动作：注册 → 填好友昵称 → 生成邀请码。</div>
+            </div>
           </article>
 
-          <article class="line p-8 relative">
+          <article class="sketch p-8 relative">
             <span class="absolute -top-5 left-6 sticker">STEP 2</span>
             <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl">
               <i class="fa-solid fa-camera-retro"></i>
             </div>
             <h3 class="text-3xl font-black mt-6">记录当天的回忆</h3>
-            <p class="mt-4 text-xl text-gray-700 leading-relaxed">上传照片、写一句话、定位地点并 @ 同行好友，回忆立刻沉淀到地图和记忆流。</p>
-            <img src="screenshots/app/memory.png" class="mt-5 h-64 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="step2" />
+            <p class="mt-4 text-xl text-gray-700 leading-relaxed">上传图片、写一句话、定位地点并 @ 同行好友，形成图文胶囊。</p>
+            <div class="sketch-box mt-5">
+              <div class="sketch-desc">动作：拍照/上传 → 输入地点 → 选择参与者 → 发布。</div>
+            </div>
           </article>
 
-          <article class="line p-8 relative">
+          <article class="sketch p-8 relative">
             <span class="absolute -top-5 left-6 sticker">STEP 3</span>
             <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl">
               <i class="fa-solid fa-receipt"></i>
             </div>
             <h3 class="text-3xl font-black mt-6">分账 & 轻松结算</h3>
-            <p class="mt-4 text-xl text-gray-700 leading-relaxed">在回忆中附带账单，系统自动均摊，谁该给谁一目了然，避免社交尴尬。</p>
-            <img src="screenshots/app/ledger.png" class="mt-5 h-64 w-full rounded-2xl border-2 border-black object-cover" style="object-position:top" alt="step3" />
+            <p class="mt-4 text-xl text-gray-700 leading-relaxed">在回忆卡片添加账单，系统自动分摊，谁该付多少一目了然。</p>
+            <div class="sketch-box mt-5">
+              <div class="sketch-desc">动作：关联账单 → 填金额与参与者 → 查看应收应付 → 标记结清。</div>
+            </div>
           </article>
         </div>
 
@@ -282,15 +291,15 @@
         </div>
 
         <div class="mt-14 grid grid-cols-12 gap-8 items-stretch">
-          <div class="col-span-5 line p-8">
+          <div class="col-span-5 sketch p-8">
             <h3 class="text-3xl font-black mb-4"><i class="fa-regular fa-face-smile mr-2"></i> 虚拟好友阶段</h3>
             <ul class="space-y-3 text-xl text-gray-800 font-semibold">
-              <li>• 可先添加「小王」「阿泽」等昵称</li>
-              <li>• 立刻开始打标签和记回忆</li>
-              <li>• 不要求对方已注册 Orbit</li>
+              <li>• 直接输入昵称即可创建</li>
+              <li>• 可参与 @ 标签和账单协作</li>
+              <li>• 无需对方注册，先把故事记下来</li>
             </ul>
-            <div class="mt-6 p-4 rounded-2xl border-2 border-dashed border-black">
-              <p class="text-base font-bold text-gray-700">适用场景：朋友还没下载 App，但你想先把回忆记下来。</p>
+            <div class="mt-6 sketch-box">
+              <p class="text-base font-bold text-gray-700">场景：朋友未下载 App，但你想先打卡 / 记账。</p>
             </div>
           </div>
 
@@ -299,29 +308,29 @@
             <div class="mt-4 text-lg font-black text-center">输入邀请码<br/>一键绑定</div>
           </div>
 
-          <div class="col-span-5 line p-8">
+          <div class="col-span-5 sketch p-8">
             <h3 class="text-3xl font-black mb-4"><i class="fa-solid fa-user-check mr-2"></i> 绑定真实账号后</h3>
             <ul class="space-y-3 text-xl text-gray-800 font-semibold">
-              <li>• 之前所有 @ 标签自动迁移</li>
-              <li>• 好友关系双向可见</li>
-              <li>• 记忆流与地图同步刷新</li>
+              <li>• 历史 @ 标签自动迁移</li>
+              <li>• 好友关系双向补齐</li>
+              <li>• 地图与记忆即时同步</li>
             </ul>
-            <div class="mt-6 p-4 rounded-2xl border-2 border-dashed border-black">
-              <p class="text-base font-bold text-gray-700">优势：不丢历史数据，关系更真实，体验连续。</p>
+            <div class="mt-6 sketch-box">
+              <p class="text-base font-bold text-gray-700">优势：数据完整保留，关系真实连贯。</p>
             </div>
           </div>
         </div>
 
         <div class="mt-12 grid grid-cols-3 gap-6">
-          <div class="line p-5 text-center">
+          <div class="sketch p-5 text-center">
             <p class="text-lg font-black">① 创建虚拟好友</p>
             <p class="text-gray-700 mt-2">记录不等待</p>
           </div>
-          <div class="line p-5 text-center">
+          <div class="sketch p-5 text-center">
             <p class="text-lg font-black">② 输入邀请码绑定</p>
             <p class="text-gray-700 mt-2">一键替换身份</p>
           </div>
-          <div class="line p-5 text-center">
+          <div class="sketch p-5 text-center">
             <p class="text-lg font-black">③ 回忆自动继承</p>
             <p class="text-gray-700 mt-2">数据完整保留</p>
           </div>

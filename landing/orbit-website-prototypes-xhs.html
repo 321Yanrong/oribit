@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbit 小红书种草版（Figma Frames）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      * { font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+      body { background:#f4f4f4; }
+      .frame {
+        width: 1440px;
+        min-height: 1024px;
+        margin: 48px auto;
+        background: #fff;
+        border: 1px solid #111;
+        box-shadow: 0 24px 60px rgba(0,0,0,.12);
+        position: relative;
+        overflow: hidden;
+      }
+      .ink { color:#111; }
+      .line {
+        border: 2px solid #111;
+        border-radius: 28px;
+        background: #fff;
+      }
+      .doodle {
+        border: 2px dashed #111;
+        border-radius: 999px;
+        opacity: .5;
+      }
+      .phone {
+        width: 210px;
+        height: 478px;
+        border: 4px solid #111;
+        border-radius: 34px;
+        overflow: hidden;
+        background: #0d0d0d;
+        box-shadow: 0 16px 28px rgba(0,0,0,.22);
+        flex-shrink: 0;
+      }
+      .phone-header {
+        height: 24px;
+        border-bottom: 2px solid #111;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size: 10px;
+        font-weight: 700;
+        background:#fff;
+        color:#111;
+      }
+      .shot {
+        width:100%;
+        height:calc(100% - 24px);
+        object-fit: cover;
+        object-position: top center;
+      }
+      .sticker {
+        border:2px solid #111;
+        border-radius: 999px;
+        background:#fff;
+        padding: .35rem .9rem;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      /* ✨ 新增：小红书手帐风荧光笔高亮特效 */
+      .highlight-cyan {
+        background: linear-gradient(180deg, transparent 55%, rgba(0, 255, 179, 0.45) 55%);
+        display: inline;
+        padding: 0 4px;
+      }
+      .highlight-pink {
+        background: linear-gradient(180deg, transparent 55%, rgba(255, 107, 107, 0.35) 55%);
+        display: inline;
+        padding: 0 4px;
+      }
+      .sketch {
+        border: 2px dashed #111;
+        border-radius: 18px;
+        background: #fff;
+      }
+      .sketch-box {
+        border: 2px solid #111;
+        border-radius: 16px;
+        padding: 16px;
+        background: rgba(255,255,255,0.6);
+      }
+      .sketch-title { font-size: 22px; font-weight: 900; }
+      .sketch-desc { color: #444; line-height: 1.7; margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="max-w-[1500px] mx-auto px-4 py-10">
+
+      <section class="frame p-16" id="frame-hero">
+        <div class="absolute top-8 left-8 sticker bg-[#00FFB3] shadow-[4px_4px_0px_#111]">拒绝朋友圈吃灰 🪐</div>
+        <div class="absolute -top-20 -left-16 w-72 h-72 doodle"></div>
+        <div class="absolute bottom-10 right-10 w-60 h-60 doodle"></div>
+
+        <header class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 shrink-0">
+              <img src="../public/icons/orbit-logo.svg" alt="Orbit 品牌标志" class="w-10 h-10 rounded-xl" />
+            </div>
+            <span class="text-2xl font-black ink">Orbit 轨迹</span>
+          </div>
+          <nav class="flex items-center gap-6 text-sm font-bold ink">
+            <span>宝藏功能</span><span>快速入住</span><span>神仙体验</span><span>获取邀请码</span>
+          </nav>
+        </header>
+
+        <div class="grid grid-cols-2 gap-10 mt-14 items-center">
+          <div>
+            <div class="inline-flex items-center gap-2 line px-4 py-2 mb-6 bg-yellow-100">
+              <i class="fa-solid fa-sparkles text-yellow-500"></i>
+              <span class="text-sm font-extrabold">专属于你和 TA 的赛博小窝</span>
+            </div>
+            <h1 class="text-[64px] leading-[1.1] font-black ink">
+              把我们的碎碎念<br/>存进<span class="highlight-cyan">只有彼此可见</span>的星球
+            </h1>
+            <p class="mt-6 text-[20px] leading-relaxed text-gray-700 max-w-xl font-medium">
+              厌倦了朋友圈的公开营业？不如和最好的朋友/恋人建一个“赛博秘密基地”。足迹点亮、私密相册、不伤感情的体面分账……<br/><strong class="text-black">Orbit，陪你把日常变成绝美的宝藏手帐。</strong>
+            </p>
+            <div class="mt-10 flex items-center gap-4">
+              <button class="line px-8 py-4 text-lg font-black ink hover:-translate-y-1 transition shadow-[4px_4px_0px_#111]"><i class="fa-brands fa-apple mr-2"></i> iOS 蹲内测</button>
+              <button class="line px-8 py-4 text-lg font-black ink hover:-translate-y-1 transition shadow-[4px_4px_0px_#111]"><i class="fa-brands fa-android mr-2"></i> 安卓求码</button>
+            </div>
+            <div class="mt-7 flex gap-3">
+              <span class="sticker border-[#111] bg-pink-100">🎀 绝美手帐感</span>
+              <span class="sticker border-[#111] bg-blue-100">👯‍♀️ 闺蜜情侣必备</span>
+              <span class="sticker border-[#111] bg-green-100">☁️ 超级治愈系</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-6 relative py-6">
+            <div class="phone rotate-[-6deg] translate-y-4">
+              <div class="phone-header">打卡地图</div>
+              <img class="shot" src="screenshots/app/map.png" alt="地图页" />
+            </div>
+            <div class="phone z-10 scale-105 shadow-[0_24px_50px_rgba(0,0,0,0.3)]">
+              <div class="phone-header">私密记忆流</div>
+              <img class="shot" src="screenshots/app/memory.png" alt="记忆流" />
+            </div>
+            <div class="phone rotate-[6deg] translate-y-4">
+              <div class="phone-header">口袋破冰机</div>
+              <img class="shot" src="screenshots/app/games.png" alt="小游戏" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="frame p-16" id="frame-features">
+        <div class="absolute top-8 left-8 sticker bg-[#00D9FF] shadow-[4px_4px_0px_#111]">02 / 宝藏功能大赏</div>
+        <div class="text-center mt-10">
+          <h2 class="text-6xl font-black ink"><span class="highlight-cyan">宝藏功能</span>，把日常变成手帐</h2>
+          <p class="mt-4 text-2xl text-gray-700">地图点亮、私密相册、体面分账、拯救冷场，懂你的每个小心思</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-10 mt-14">
+          <article class="sketch-box hover:-translate-y-2 transition-transform shadow-[6px_6px_0px_#111]">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-yellow-100">📍</div>
+              <div>
+                <div class="sketch-title">你们的“专属足迹点亮”</div>
+                <div class="sketch-desc">去过的地方不再是冷冰冰的定位，而是我们笑过闹过的专属地图。点开地标，瞬间穿越回那天的回忆里。</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="sketch-box hover:-translate-y-2 transition-transform shadow-[6px_6px_0px_#111]">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-blue-100">🎞️</div>
+              <div>
+                <div class="sketch-title">绝不社死的“私密朋友圈”</div>
+                <div class="sketch-desc">每天发 10 条废话也不怕被嫌弃！图文、语音、天气和心情，像时空胶囊一样封存起来，仅 @懂你的人 可见。</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="sketch-box hover:-translate-y-2 transition-transform shadow-[6px_6px_0px_#111]">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-pink-100">💰</div>
+              <div>
+                <div class="sketch-title">感情不谈钱的“体面分账”</div>
+                <div class="sketch-desc">聚会算账太尴尬？一键生成绝美的“回忆小票”！谁付了钱、谁该 A 多少，算得清清楚楚，体面又不伤感情。</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="sketch-box hover:-translate-y-2 transition-transform shadow-[6px_6px_0px_#111]">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-green-100">🎲</div>
+              <div>
+                <div class="sketch-title">拯救冷场的“口袋破冰机”</div>
+                <div class="sketch-desc">聚会不知道聊啥？掏出手机转盘，今晚谁请喝奶茶、谁选吃什么，一秒安排得明明白白，瞬间炒热气氛！</div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="frame p-16" id="frame-how">
+        <div class="absolute top-8 left-8 sticker bg-[#FF6B6B] text-white shadow-[4px_4px_0px_#111]">03 / 极简入住指南</div>
+
+        <div class="mt-10 text-center">
+          <h2 class="text-6xl font-black">3 步搭建你们的<span class="highlight-pink">赛博小窝</span> 🏕️</h2>
+          <p class="mt-4 text-2xl text-gray-700">不用做攻略，拉上死党/另一半马上拎包入住</p>
+        </div>
+
+        <div class="mt-16 grid grid-cols-3 gap-8">
+          <article class="sketch p-8 relative shadow-[6px_6px_0px_#111] bg-white">
+            <span class="absolute -top-5 left-6 sticker bg-[#111] text-white">STEP 1</span>
+            <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-purple-100">
+              <i class="fa-solid fa-envelope-open-text"></i>
+            </div>
+            <h3 class="text-2xl font-black mt-6">发邀请，锁死关系</h3>
+            <p class="mt-4 text-lg text-gray-700 leading-relaxed">丢个专属邀请码，把最好的损友/恋人拉进你的专属轨道，闲人免进。</p>
+            <div class="sketch-box mt-5 bg-gray-50 border-dashed">
+              <div class="sketch-desc text-sm font-bold">✨ 动作：发个邀请码，成功绑定。</div>
+            </div>
+          </article>
+
+          <article class="sketch p-8 relative shadow-[6px_6px_0px_#111] bg-white">
+            <span class="absolute -top-5 left-6 sticker bg-[#111] text-white">STEP 2</span>
+            <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-orange-100">
+              <i class="fa-solid fa-camera-retro"></i>
+            </div>
+            <h3 class="text-2xl font-black mt-6">随手丢进日常碎片</h3>
+            <p class="mt-4 text-lg text-gray-700 leading-relaxed">随手拍张照，记下今天的好心情和烂天气，配上语音和吐槽，绝不漏掉任何细节。</p>
+            <div class="sketch-box mt-5 bg-gray-50 border-dashed">
+              <div class="sketch-desc text-sm font-bold">✨ 动作：选图 + 写感受 + @那个谁。</div>
+            </div>
+          </article>
+
+          <article class="sketch p-8 relative shadow-[6px_6px_0px_#111] bg-white">
+            <span class="absolute -top-5 left-6 sticker bg-[#111] text-white">STEP 3</span>
+            <div class="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center text-2xl bg-teal-100">
+              <i class="fa-solid fa-receipt"></i>
+            </div>
+            <h3 class="text-2xl font-black mt-6">结清治愈系小票</h3>
+            <p class="mt-4 text-lg text-gray-700 leading-relaxed">把这顿火锅、那场电影的开销变成一张精美小票，系统替你算好该谁 A 谁。</p>
+            <div class="sketch-box mt-5 bg-gray-50 border-dashed">
+              <div class="sketch-desc text-sm font-bold">✨ 动作：录入金额，再也不怕糊涂账。</div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="frame p-16" id="frame-friend-system">
+        <div class="absolute top-8 left-8 sticker bg-yellow-300 shadow-[4px_4px_0px_#111]">04 / 杀手锏：替身模式</div>
+
+        <div class="mt-10 text-center">
+          <h2 class="text-5xl font-black">朋友太懒不想下载？<br/>没关系，你先<span class="highlight-cyan">单机玩！</span>🎮</h2>
+          <p class="mt-4 text-2xl text-gray-700">神仙设定：先用“替身”悄悄记录，以后再一键联机！</p>
+        </div>
+
+        <div class="mt-14 grid grid-cols-12 gap-8 items-stretch">
+          <div class="col-span-5 sketch p-8 bg-blue-50 shadow-[6px_6px_0px_#111]">
+            <h3 class="text-3xl font-black mb-4">✨ 超省心的“替身模式”</h3>
+            <ul class="space-y-3 text-lg text-gray-800 font-bold mt-6">
+              <li>• 不用求爷爷告奶奶逼朋友下载</li>
+              <li>• 在 App 里给 TA 建个“虚拟分身”</li>
+              <li>• 照样 @TA、照样和 TA 平摊账单</li>
+            </ul>
+            <div class="mt-8 sketch-box bg-white">
+              <p class="text-base font-black text-[#111]">场景：死党还没下 App，但我今天就是要打卡！</p>
+            </div>
+          </div>
+
+          <div class="col-span-2 flex flex-col items-center justify-center">
+            <div class="line p-5 rounded-full text-4xl bg-white shadow-[4px_4px_0px_#111]">🔗</div>
+            <div class="mt-4 text-lg font-black text-center text-gray-500">等 TA 下载后<br/>一键魔法交接</div>
+          </div>
+
+          <div class="col-span-5 sketch p-8 bg-pink-50 shadow-[6px_6px_0px_#111]">
+            <h3 class="text-3xl font-black mb-4">🔮 随时随地的“一键联机”</h3>
+            <ul class="space-y-3 text-lg text-gray-800 font-bold mt-6">
+              <li>• 朋友下载后，丢给 TA 一个联机码</li>
+              <li>• 之前的替身数据瞬间“灵魂附体”</li>
+              <li>• 历史回忆一秒同步到 TA 的手机里</li>
+            </ul>
+            <div class="mt-8 sketch-box bg-white">
+              <p class="text-base font-black text-[#111]">惊喜：数据无缝衔接，感动不用重来！</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="frame p-16" id="frame-footer">
+        <div class="absolute top-8 left-8 sticker bg-gray-200">05 / 关注我们</div>
+
+        <div class="line p-12 mt-20 bg-gray-50 shadow-[8px_8px_0px_#111]">
+          <div class="grid grid-cols-12 gap-8">
+            <div class="col-span-5">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 shrink-0">
+                  <img src="../public/icons/orbit-logo.svg" alt="Orbit 品牌标志" class="w-12 h-12 rounded-2xl" />
+                </div>
+                <h2 class="text-4xl font-black">Orbit 轨迹</h2>
+              </div>
+              <p class="text-xl text-gray-700 mt-5 leading-relaxed font-bold">
+                属于你和 TA 的私密生活手帐。<br/>
+                把每一次见面，都变成闪闪发光的宝藏档案。
+              </p>
+              <div class="mt-8 flex gap-3 flex-wrap">
+                <span class="sticker bg-white border-[#111]">拒绝吃灰</span>
+                <span class="sticker bg-white border-[#111]">神仙打卡</span>
+                <span class="sticker bg-white border-[#111]">独立开发者</span>
+              </div>
+            </div>
+
+            <div class="col-span-3">
+              <h3 class="text-2xl font-black mb-4">加入内测</h3>
+              <div class="space-y-3 text-lg font-bold">
+                <div class="line px-4 py-3 bg-white hover:-translate-y-1 transition cursor-pointer"><i class="fa-solid fa-code mr-2"></i> 获取内测邀请码</div>
+                <div class="line px-4 py-3 bg-white hover:-translate-y-1 transition cursor-pointer"><i class="fa-brands fa-redriver mr-2"></i> 关注小红书更新</div>
+              </div>
+            </div>
+
+            <div class="col-span-4 pl-8">
+              <h3 class="text-2xl font-black mb-4">来找开发者玩</h3>
+              <ul class="space-y-3 text-lg font-bold text-gray-800">
+                <li class="p-2 bg-white rounded-xl border-2 border-black">
+                  <i class="fa-brands fa-hongkong mr-2 text-red-500"></i> 小红书：@Orbit开发日记
+                </li>
+                <li class="p-2 bg-white rounded-xl border-2 border-black mt-2">
+                  <i class="fa-regular fa-envelope mr-2"></i>
+                  chenyanrong2025@163.com
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-12 pt-6 border-t-2 border-black flex justify-between text-sm font-bold text-gray-500">
+            <span>独立开发作品 · 用爱发电</span>
+            <span>Made with ❤️ for best friends & couples</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

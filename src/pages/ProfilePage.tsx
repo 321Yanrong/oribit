@@ -486,7 +486,7 @@ const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memor
   );
 };
 
-const NewbieGuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+export const NewbieGuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [step, setStep] = useState(0);
   const steps = [
     {
@@ -799,16 +799,6 @@ export default function ProfilePage() {
       saveInviteCode(currentUser.id, inviteCode);
     }
   }, [currentUser?.id, inviteCode]);
-
-  useEffect(() => {
-    if (!currentUser?.id || typeof window === 'undefined') return;
-    const key = `orbit_newbie_guide_seen:${currentUser.id}`;
-    const seen = localStorage.getItem(key);
-    if (!seen) {
-      setShowNewbieGuide(true);
-      localStorage.setItem(key, '1');
-    }
-  }, [currentUser?.id]);
 
   // ================= 核心逻辑交互 =================
 

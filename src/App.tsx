@@ -6,10 +6,11 @@ import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } f
 import BottomNav from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import PWABanners from './components/PWABanners';
+import SplashScreen from './components/SplashScreen';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
-import ProfilePage from './pages/ProfilePage';
+import ProfilePage, { NewbieGuideModal } from './pages/ProfilePage';
 import GamesPage from './pages/GamesPage';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
@@ -42,12 +43,21 @@ function App() {
   const { currentPage } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
   const [showAuth, setShowAuth] = useState(false);
+  const [allowAuthModal, setAllowAuthModal] = useState(false); // 避免闪屏期间弹出登录窗
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
+  const [showNewbieGuide, setShowNewbieGuide] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    const SPLASH_MIN_DURATION = 2500;
+    const splashTimer = window.setTimeout(() => {
+      setSplashMinimumElapsed(true);
+    }, SPLASH_MIN_DURATION);
 
     const hostname = window.location.hostname.toLowerCase();
     const referrer = (document.referrer || '').toLowerCase();
@@ -57,7 +67,46 @@ function App() {
     if (fromWehihiHost || fromWehihiReferrer) {
       setShowEarlyAccessBanner(true);
     }
+
+    return () => {
+      window.clearTimeout(splashTimer);
+    };
   }, []);
+
+  // 只有当加载完成且最短展示时间结束后才收起闪屏，避免加载过程外露
+  useEffect(() => {
+    if (!splashMinimumElapsed || loading || !showSplash) return;
+    const AUTH_DELAY = 500;
+    setShowSplash(false);
+    const authTimer = window.setTimeout(() => setAllowAuthModal(true), AUTH_DELAY);
+    return () => window.clearTimeout(authTimer);
+  }, [splashMinimumElapsed, loading, showSplash]);
+
+  // 全局新手指引：冷启动登录后即弹，不依赖进入“我的”页
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (loading) return;
+    if (!currentUser?.id) {
+      setShowNewbieGuide(false);
+      return;
+    }
+    if (isDemoMode) return;
+    const key = `orbit_newbie_guide_seen:${currentUser.id}`;
+    const seen = window.localStorage.getItem(key);
+    if (!seen) {
+      setShowNewbieGuide(true);
+      window.localStorage.setItem(key, '1');
+    }
+  }, [currentUser?.id, isDemoMode, loading]);
+
+  // 🚑 兜底：加载完后如果没有用户也不是演示模式，强制弹出登录框
+  useEffect(() => {
+    if (loading) return;
+    if (!currentUser && !isDemoMode) {
+      setAllowAuthModal(true);
+      setShowAuth(true);
+    }
+  }, [loading, currentUser, isDemoMode]);
 
   const handleDemo = () => {
     // 演示用户
@@ -117,7 +166,11 @@ function App() {
           memory_date: '2026-03-10T14:00:00Z',
           created_at: '2026-03-10T14:00:00Z',
           location_id: 'demo-loc1',
-          photos: ['https://images.unsplash.com/photo-1474181487882-5abf3f0ba6c2?w=400'],
+          photos: [
+            'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1400&q=80',
+            'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=80',
+            'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1400&q=80'
+          ],
           videos: [], audios: [],
           tagged_friends: ['demo-f1', 'demo-f2'],
           has_ledger: true,
@@ -132,7 +185,10 @@ function App() {
           memory_date: '2026-03-08T10:30:00Z',
           created_at: '2026-03-08T10:30:00Z',
           location_id: 'demo-loc2',
-          photos: ['https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400'],
+          photos: [
+            'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80'
+          ],
           videos: [], audios: [],
           tagged_friends: ['demo-f1'],
           has_ledger: false,
@@ -146,7 +202,10 @@ function App() {
           memory_date: '2026-02-20T19:00:00Z',
           created_at: '2026-02-20T19:00:00Z',
           location_id: 'demo-loc3',
-          photos: [],
+          photos: [
+            'https://images.unsplash.com/photo-1508057198894-247b23fe5ade?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1000&q=80&sat=-10'
+          ],
           videos: [], audios: [],
           tagged_friends: ['demo-f2'],
           has_ledger: true,
@@ -194,6 +253,17 @@ function App() {
     setIsDemoMode(true);
     setShowAuth(false);
   };
+
+  // 自动进入演示模式（仅供截图/演示用），避免登录态干扰
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (loading || isDemoMode) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === '1') {
+      handleDemo();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isDemoMode]);
 
 useEffect(() => {
     let isMounted = true;
@@ -411,62 +481,72 @@ useEffect(() => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-orbit-black flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 rounded-full border-4 border-orbit-mint/30 border-t-orbit-mint"
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-orbit-black text-white overflow-hidden">
-      {/* 演示模式横幅 */}
-      {isDemoMode && (
-        <div className="fixed top-0 left-0 right-0 z-[999] bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white text-xs font-medium py-1.5 text-center flex items-center justify-center gap-2">
-          <span>✨ 演示模式 — 数据仅供展示，不会保存</span>
-          <button
-            onClick={() => { setIsDemoMode(false); setCurrentUser(null); useMemoryStore.setState({ memories: [] }); useLedgerStore.setState({ ledgers: [] }); useUserStore.setState({ friends: [] }); setShowAuth(true); }}
-            className="underline opacity-80 hover:opacity-100"
-          >退出演示</button>
+      {loading ? (
+        <div className="min-h-screen bg-orbit-black flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 rounded-full border-4 border-orbit-mint/30 border-t-orbit-mint"
+          />
         </div>
+      ) : (
+        <>
+          {/* 演示模式横幅 */}
+          {isDemoMode && (
+            <div className="fixed top-0 left-0 right-0 z-[999] bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white text-xs font-medium py-1.5 text-center flex items-center justify-center gap-2">
+              <span>✨ 演示模式 — 数据仅供展示，不会保存</span>
+              <button
+                onClick={() => { setIsDemoMode(false); setCurrentUser(null); useMemoryStore.setState({ memories: [] }); useLedgerStore.setState({ ledgers: [] }); useUserStore.setState({ friends: [] }); setShowAuth(true); }}
+                className="underline opacity-80 hover:opacity-100"
+              >退出演示</button>
+            </div>
+          )}
+          {showEarlyAccessBanner && (
+            <div className={`fixed left-0 right-0 ${isDemoMode ? 'top-7' : 'top-0'} z-[998] bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-[#06231c] text-xs font-semibold py-1.5 text-center flex items-center justify-center gap-2`}>
+              <span>🎉 欢迎参与 Orbit 早期内测</span>
+              <button
+                onClick={() => setShowEarlyAccessBanner(false)}
+                className="underline opacity-80 hover:opacity-100"
+              >知道了</button>
+            </div>
+          )}
+          <div className={isDemoMode && showEarlyAccessBanner ? 'pt-14' : (isDemoMode || showEarlyAccessBanner ? 'pt-7' : '')}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentPage}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {renderPage()}
+              </motion.div>
+            </AnimatePresence>
+            
+            <BottomNav />
+            <PWABanners />
+            
+            {/* 认证模态框 */}
+            <AnimatePresence>
+              {allowAuthModal && (!currentUser || showAuth) && (
+                <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {showNewbieGuide && (
+                <NewbieGuideModal isOpen={showNewbieGuide} onClose={() => setShowNewbieGuide(false)} />
+              )}
+            </AnimatePresence>
+          </div>
+        </>
       )}
-      {showEarlyAccessBanner && (
-        <div className={`fixed left-0 right-0 ${isDemoMode ? 'top-7' : 'top-0'} z-[998] bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-[#06231c] text-xs font-semibold py-1.5 text-center flex items-center justify-center gap-2`}>
-          <span>🎉 欢迎参与 Orbit 早期内测</span>
-          <button
-            onClick={() => setShowEarlyAccessBanner(false)}
-            className="underline opacity-80 hover:opacity-100"
-          >知道了</button>
-        </div>
-      )}
-      <div className={isDemoMode && showEarlyAccessBanner ? 'pt-14' : (isDemoMode || showEarlyAccessBanner ? 'pt-7' : '')}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPage}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {renderPage()}
-        </motion.div>
-      </AnimatePresence>
-      
-      <BottomNav />
-      <PWABanners />
-      
-      {/* 认证模态框 */}
+
+      {/* 闪屏：覆盖全局，掩护首屏加载 */}
       <AnimatePresence>
-        {(!currentUser || showAuth) && (
-          <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
-        )}
+        {showSplash && <SplashScreen />}
       </AnimatePresence>
-      </div>
     </div>
   );
 }

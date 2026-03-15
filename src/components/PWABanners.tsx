@@ -9,6 +9,7 @@ type BeforeInstallPromptEvent = Event & {
 const INSTALL_DISMISSED_KEY = 'orbit_pwa_install_dismissed';
 const IOS_GUIDE_DISMISSED_KEY = 'orbit_pwa_ios_guide_dismissed';
 const ANDROID_GUIDE_DISMISSED_KEY = 'orbit_pwa_android_guide_dismissed';
+const OFFLINE_READY_DISMISSED_KEY = 'orbit_pwa_offline_ready_dismissed';
 
 type DeviceKind = 'android' | 'ios' | 'other';
 
@@ -23,6 +24,7 @@ export default function PWABanners() {
   const [offlineReady, setOfflineReady] = useState(false);
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [updateServiceWorker, setUpdateServiceWorker] = useState<((reloadPage?: boolean) => Promise<void>) | null>(null);
+  const [offlineReadyDismissed, setOfflineReadyDismissed] = useState(false);
 
   useEffect(() => {
     const updater = registerSW({
@@ -31,6 +33,7 @@ export default function PWABanners() {
         setNeedRefresh(true);
       },
       onOfflineReady() {
+        if (localStorage.getItem(OFFLINE_READY_DISMISSED_KEY) === '1') return;
         setOfflineReady(true);
       },
     });
@@ -53,6 +56,7 @@ export default function PWABanners() {
     setIsIosSafari(isIOS && isSafari);
     setIosGuideDismissed(localStorage.getItem(IOS_GUIDE_DISMISSED_KEY) === '1');
     setAndroidGuideDismissed(localStorage.getItem(ANDROID_GUIDE_DISMISSED_KEY) === '1');
+    setOfflineReadyDismissed(localStorage.getItem(OFFLINE_READY_DISMISSED_KEY) === '1');
 
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -143,6 +147,12 @@ export default function PWABanners() {
     await updateServiceWorker(true);
   };
 
+  const handleDismissOfflineReady = () => {
+    localStorage.setItem(OFFLINE_READY_DISMISSED_KEY, '1');
+    setOfflineReadyDismissed(true);
+    setOfflineReady(false);
+  };
+
   return (
     <div className="fixed inset-x-0 bottom-24 z-[120] pointer-events-none px-4 space-y-2">
       {canInstall && (
@@ -188,9 +198,10 @@ export default function PWABanners() {
         </div>
       )}
 
-      {offlineReady && !isOffline && (
-        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-white/15 bg-black/70 p-3 shadow-xl">
+      {offlineReady && !isOffline && !offlineReadyDismissed && (
+        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-white/15 bg-black/70 p-3 shadow-xl flex items-center justify-between gap-3">
           <p className="text-sm text-white/80">✅ 离线缓存已就绪，弱网也能更稳定打开</p>
+          <button onClick={handleDismissOfflineReady} className="text-xs text-white/50 hover:text-white/80">知道了</button>
         </div>
       )}
 

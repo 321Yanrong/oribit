@@ -17,13 +17,40 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 
-// 1. Load app and enter demo mode
-await page.goto('http://localhost:5173', { waitUntil: 'networkidle' });
-await sleep(1500);
+// 1. Load app in auto-demo mode (query param triggers handleDemo in App)
+const preferUrl = process.env.APP_URL || 'http://localhost:5173/?demo=1';
+const candidates = Array.from(new Set([
+  preferUrl,
+  'http://127.0.0.1:5174/?demo=1',
+  'http://localhost:5174/?demo=1',
+]));
 
-// Click the demo button
-await page.getByText('暂不登录，先看看演示').click();
-await sleep(3000);
+let loaded = false;
+for (const url of candidates) {
+  try {
+    await page.goto(url, { waitUntil: 'networkidle' });
+    loaded = true;
+    break;
+  } catch (e) {
+    console.warn('Goto failed, try next:', url, e?.message || e);
+  }
+}
+
+if (!loaded) {
+  throw new Error('无法打开应用，请确认开发服务器已启动');
+}
+
+await page.evaluate(async () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  const dbs = await indexedDB.databases();
+  dbs.forEach((db) => db.name && indexedDB.deleteDatabase(db.name));
+});
+await page.reload({ waitUntil: 'networkidle' });
+await sleep(4500); // 覆盖闪屏、登录检查与演示数据注入
+
+// 确认演示模式横幅已出现
+await page.getByText('演示模式', { exact: false }).waitFor({ state: 'visible', timeout: 15000 });
 
 // Inject CSS: force map canvas / amap container to stay dark so no white flash
 await page.addStyleTag({ content: `
@@ -54,6 +81,34 @@ await page.locator('nav').getByText('记忆').click();
 await sleep(1500);
 await page.screenshot({ path: path.join(outDir, 'memory.png'), type: 'png', fullPage: false });
 console.log('✅ memory.png');
+
+// 3b. MEMORY detail (打开回忆相册)
+const firstMemory = page.getByText('今天在外滩和朋友拍了好多照片', { exact: false }).first();
+await firstMemory.waitFor({ state: 'visible', timeout: 8000 });
+await firstMemory.click();
+await sleep(1800);
+await page.screenshot({ path: path.join(outDir, 'memory-open.png'), type: 'png', fullPage: false });
+console.log('✅ memory-open.png');
+
+// 3c. MEMORY story playback (回忆相册串联播放界面)
+await page.locator('button:has-text("回忆相册")').click();
+const storyCard = page.getByText('memory story', { exact: false }).first();
+await storyCard.waitFor({ state: 'visible', timeout: 8000 });
+await storyCard.click();
+await page.getByText('音乐：', { exact: false }).waitFor({ state: 'visible', timeout: 8000 });
+await sleep(1200);
+await page.screenshot({ path: path.join(outDir, 'memory-story.png'), type: 'png', fullPage: false });
+console.log('✅ memory-story.png');
+// 关闭播放抽屉，若失败则刷新页面兜底
+try {
+  await page.keyboard.press('Escape');
+  await page.mouse.click(10, 10);
+  await page.getByText('音乐：', { exact: false }).waitFor({ state: 'hidden', timeout: 3000 });
+} catch (e) {
+  console.warn('Close drawer via reload fallback');
+  await page.reload({ waitUntil: 'networkidle' });
+  await sleep(2000);
+}
 
 // 4. LEDGER page
 await page.locator('nav').getByText('账单').click();
