@@ -429,10 +429,10 @@ export const MemoryStoryDrawer = ({
       ctx.font = 'bold 22px "Inter", "PingFang SC"';
       ctx.fillText('长按保存 · 微信分享', 70, infoY + 20);
 
-      // Draw QR code (bottom right)
-      // For demo, use a placeholder QR code image. Replace with real QR code as needed.
+      // Draw QR code (bottom right) - link to the specific share page for this memory
       const qrImg = new window.Image();
       qrImg.crossOrigin = 'anonymous';
+      const shareUrl = `https://orbit.yanrong.fun/share-memory/?id=${currentItem.memory.id}`;
       qrImg.onload = () => {
         ctx.save();
         ctx.globalAlpha = 0.95;
@@ -441,7 +441,7 @@ export const MemoryStoryDrawer = ({
         setPendingPosterDataUrl(canvas.toDataURL('image/png'));
       };
       qrImg.onerror = () => setPendingPosterDataUrl(canvas.toDataURL('image/png'));
-      qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://orbit.yanrong.fun';
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`;
     } catch (e) {
       console.error(e);
       setPendingPosterDataUrl(null);
