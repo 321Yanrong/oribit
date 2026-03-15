@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaVideo, FaTimes, FaSpinner, FaPlay, FaMicrophone, FaStop, FaTrash, FaBolt } from 'react-icons/fa';
+import { FaImage, FaVideo, FaTimes, FaSpinner, FaMicrophone, FaStop, FaTrash, FaBolt } from 'react-icons/fa';
+import { track } from '../utils/analytics';
 
-const MAX_VIDEO_SIZE_MB = 30;
 const LIVE_MAX_SIZE_MB = 30;
 const UPLOAD_TIMEOUT_MS = 45000;
 const MAX_IMAGE_EDGE = 1600;
-const MIN_IMAGE_COMPRESS_SIZE = 1.5 * 1024 * 1024; // 1.5MB 以上才压缩
+const MIN_IMAGE_COMPRESS_SIZE = 0.6 * 1024 * 1024; // 600KB 以上才压缩
 
 const withTimeout = async <T,>(promise: Promise<T>, ms = UPLOAD_TIMEOUT_MS): Promise<T> => {
   const timeout = new Promise<never>((_, reject) => {
@@ -33,6 +33,20 @@ interface MediaUploaderProps {
 const compressImage = async (file: File): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
   if (file.size < MIN_IMAGE_COMPRESS_SIZE) return file;
+  try {
+    const { default: imageCompression } = await import('browser-image-compression');
+    const compressed = await imageCompression(file, {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: MAX_IMAGE_EDGE,
+      useWebWorker: true,
+      initialQuality: 0.85,
+    });
+    if (compressed && compressed.size < file.size) {
+      return new File([compressed], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+    }
+  } catch (err) {
+    console.warn('图片压缩库失败，尝试 fallback 压缩', err);
+  }
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
@@ -191,36 +205,57 @@ export function VoiceRecorder({
   );
 }
 
+type LiveItem = { url: string; mediaType: 'video' | 'image' };
+
 // ── Live 图上传器 ─────────────────────────────────────────────────
 function LivePhotoUploader({
-  userId, livePhotos, onLivePhotosChange,
-}: { userId: string; livePhotos: string[]; onLivePhotosChange: (urls: string[]) => void }) {
+  userId,
+  liveItems,
+  onAddLiveVideos,
+  onAddLiveImages,
+  onRemoveLiveItem,
+}: {
+  userId: string;
+  liveItems: LiveItem[];
+  onAddLiveVideos: (urls: string[]) => void;
+  onAddLiveImages: (urls: string[]) => void;
+  onRemoveLiveItem: (item: LiveItem) => void;
+}) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || uploading) return;
     const all = Array.from(files);
-    const valid = all.filter(f => f.type.startsWith('video/') || f.name.match(/\.(mov|mp4|webm)$/i));
-    if (!valid.length) {
-      alert('请选择 Live 视频文件（.mov / .mp4 / .webm）');
+    const videoFiles = all.filter(f => f.type.startsWith('video/') || f.name.match(/\.(mov|mp4|webm)$/i));
+    const imageFiles = all.filter(f => f.type.startsWith('image/') || f.name.match(/\.(heic|heif|jpg|jpeg|png)$/i));
+    if (!videoFiles.length && !imageFiles.length) {
+      alert('请选择 Live 视频或 Live 照片（支持 .mov / .mp4 / .webm / .heic / .heif）');
       return;
     }
-    const oversize = valid.find(f => f.size > LIVE_MAX_SIZE_MB * 1024 * 1024);
+    const oversize = [...videoFiles, ...imageFiles].find(f => f.size > LIVE_MAX_SIZE_MB * 1024 * 1024);
     if (oversize) {
       alert(`Live 文件不能超过 ${LIVE_MAX_SIZE_MB}MB`);
       return;
     }
     setUploading(true);
     try {
-      const { uploadVideo } = await import('../api/supabase');
-      const urls = await Promise.all(valid.map(file => withTimeout(uploadVideo(userId, file))));
-      onLivePhotosChange([...livePhotos, ...urls]);
+      const { uploadVideo, uploadPhoto } = await import('../api/supabase');
+      const [videoUrls, imageUrls] = await Promise.all([
+        Promise.all(videoFiles.map(file => withTimeout(uploadVideo(userId, file)))),
+        Promise.all(imageFiles.map(file => withTimeout(uploadPhoto(userId, file)))),
+      ]);
+      if (videoUrls.length) onAddLiveVideos(videoUrls);
+      if (imageUrls.length) onAddLiveImages(imageUrls);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '未知错误';
       alert(`Live 上传失败：${msg}`);
     }
-    finally { setUploading(false); }
+    finally {
+      setUploading(false);
+      setUploadTotal(0);
+      setUploadDone(0);
+    }
   };
 
   return (
@@ -229,17 +264,21 @@ function LivePhotoUploader({
         {uploading ? <FaSpinner className="text-[#FFD700] text-3xl animate-spin" /> : (
           <>
             <div className="w-14 h-14 rounded-xl bg-[#FFD700]/20 flex items-center justify-center"><FaBolt className="text-[#FFD700] text-2xl" /></div>
-            <p className="text-white/50 text-sm text-center">点击上传 Live Photo<br /><span className="text-white/25 text-xs">支持 .mov / .mp4 / .webm（≤30MB）</span></p>
+            <p className="text-white/50 text-sm text-center">点击上传 Live Photo<br /><span className="text-white/25 text-xs">支持 .mov / .mp4 / .webm / .heic / .heif（≤30MB）</span></p>
           </>
         )}
       </div>
-      {livePhotos.length > 0 && (
+      {liveItems.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          {livePhotos.map((url, i) => (
-            <div key={url} className="relative aspect-square rounded-xl overflow-hidden group">
-              <video src={url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+          {liveItems.map((item) => (
+            <div key={item.url} className="relative aspect-square rounded-xl overflow-hidden group">
+              {item.mediaType === 'video' ? (
+                <video src={item.url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              ) : (
+                <img src={item.url} className="w-full h-full object-cover" />
+              )}
               <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-[#FFD700] text-[10px] font-bold flex items-center gap-0.5"><FaBolt className="text-[8px]" /> LIVE</div>
-              <button onClick={() => onLivePhotosChange(livePhotos.filter((_, j) => j !== i))} className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"><FaTimes className="text-xs" /></button>
+              <button onClick={() => onRemoveLiveItem(item)} className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"><FaTimes className="text-xs" /></button>
             </div>
           ))}
         </div>
@@ -247,7 +286,7 @@ function LivePhotoUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="video/*,image/*,.mov,.mp4,.webm"
+        accept="video/*,image/*,.mov,.mp4,.webm,.heic,.heif"
         multiple
         className="hidden"
         onChange={e => handleFiles(e.target.files)}
@@ -266,25 +305,90 @@ export default function MediaUploader({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [activeTab, setActiveTab] = useState<'photo' | 'video' | 'live'>('photo');
-  const [livePhotos, setLivePhotos] = useState<string[]>([]);
-  const [liveBindings, setLiveBindings] = useState<Array<{ photoUrl: string; liveUrl: string }>>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [retryPayload, setRetryPayload] = useState<{ files: File[]; type: 'photo' | 'video' } | null>(null);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadDone, setUploadDone] = useState(0);
+  const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+  const [effectiveType, setEffectiveType] = useState<string | null>(null);
+  const [liveVideos, setLiveVideos] = useState<string[]>([]);
+  const [liveImages, setLiveImages] = useState<string[]>([]);
+  const [liveBindings, setLiveBindings] = useState<Array<{ photoUrl: string; liveUrl: string; liveType: 'video' | 'image' }>>([]);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [linkingLive, setLinkingLive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const liveVideoInputRef = useRef<HTMLInputElement>(null);
 
-  const livePhotoUrlSet = new Set(liveBindings.map(binding => binding.photoUrl));
+  useEffect(() => {
+    const updateNetwork = () => {
+      setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+      const conn = (navigator as any)?.connection;
+      setEffectiveType(conn?.effectiveType || null);
+    };
+    updateNetwork();
+    window.addEventListener('online', updateNetwork);
+    window.addEventListener('offline', updateNetwork);
+    const conn = (navigator as any)?.connection;
+    if (conn?.addEventListener) conn.addEventListener('change', updateNetwork);
+    return () => {
+      window.removeEventListener('online', updateNetwork);
+      window.removeEventListener('offline', updateNetwork);
+      if (conn?.removeEventListener) conn.removeEventListener('change', updateNetwork);
+    };
+  }, []);
 
-  const syncLiveUrls = (urls: string[]) => {
-    setLivePhotos(urls);
-    setLiveBindings(prev => prev.filter(binding => urls.includes(binding.liveUrl)));
-    const nonLive = videos.filter(v => !livePhotos.includes(v));
+  const livePhotoUrlSet = new Set(liveBindings.map(binding => binding.photoUrl));
+  const liveItems: LiveItem[] = [
+    ...liveImages.map(url => ({ url, mediaType: 'image' as const })),
+    ...liveVideos.map(url => ({ url, mediaType: 'video' as const })),
+  ];
+
+  const syncLiveVideos = (urls: string[]) => {
+    setLiveVideos(urls);
+    setLiveBindings(prev => prev.filter(binding => binding.liveType === 'image' || urls.includes(binding.liveUrl)));
+    const nonLive = videos.filter(v => !liveVideos.includes(v) && !urls.includes(v));
     onVideosChange([...nonLive, ...urls]);
   };
 
-  const handleLiveChange = (urls: string[]) => {
-    syncLiveUrls(urls);
+  const syncLiveImages = (urls: string[]) => {
+    setLiveImages(urls);
+    setLiveBindings(prev => prev.filter(binding => binding.liveType === 'video' || urls.includes(binding.liveUrl)));
+    const nonLivePhotos = photos.filter(p => !liveImages.includes(p) && !urls.includes(p));
+    onPhotosChange([...nonLivePhotos, ...urls]);
+  };
+
+  const handleAddLiveVideos = (urls: string[]) => {
+    if (!urls.length) return;
+    const next = Array.from(new Set([...liveVideos, ...urls]));
+    syncLiveVideos(next);
+  };
+
+  const handleAddLiveImages = (urls: string[]) => {
+    if (!urls.length) return;
+    const next = Array.from(new Set([...liveImages, ...urls]));
+    syncLiveImages(next);
+    setLiveBindings(prev => {
+      const nextBindings = [...prev];
+      urls.forEach(url => {
+        if (!nextBindings.some(b => b.liveType === 'image' && b.liveUrl === url)) {
+          nextBindings.push({ photoUrl: url, liveUrl: url, liveType: 'image' });
+        }
+      });
+      return nextBindings;
+    });
+  };
+
+  const handleRemoveLiveItem = (item: LiveItem) => {
+    if (item.mediaType === 'video') {
+      const next = liveVideos.filter(url => url !== item.url);
+      syncLiveVideos(next);
+      setLiveBindings(prev => prev.filter(binding => !(binding.liveType === 'video' && binding.liveUrl === item.url)));
+    } else {
+      const next = liveImages.filter(url => url !== item.url);
+      syncLiveImages(next);
+      setLiveBindings(prev => prev.filter(binding => !(binding.liveType === 'image' && binding.liveUrl === item.url)));
+    }
   };
 
   const handleAttachLiveToPhoto = async (files: FileList | null, sourcePhotoUrl: string | null) => {
@@ -305,13 +409,13 @@ export default function MediaUploader({
     try {
       const { uploadVideo } = await import('../api/supabase');
       const uploadedUrls = await Promise.all(validFiles.map(file => withTimeout(uploadVideo(userId, file))));
-      const nextLiveUrls = [...livePhotos, ...uploadedUrls];
-      syncLiveUrls(nextLiveUrls);
+      const nextLiveUrls = Array.from(new Set([...liveVideos, ...uploadedUrls]));
+      syncLiveVideos(nextLiveUrls);
 
       if (sourcePhotoUrl) {
         setLiveBindings(prev => {
           const filtered = prev.filter(binding => binding.photoUrl !== sourcePhotoUrl);
-          return [...filtered, ...uploadedUrls.map(liveUrl => ({ photoUrl: sourcePhotoUrl, liveUrl }))];
+          return [...filtered, ...uploadedUrls.map(liveUrl => ({ photoUrl: sourcePhotoUrl, liveUrl, liveType: 'video' }))];
         });
       }
 
@@ -326,64 +430,138 @@ export default function MediaUploader({
   };
 
   const handleRemovePhoto = (photoUrl: string) => {
-    const relatedLiveUrls = liveBindings.filter(binding => binding.photoUrl === photoUrl).map(binding => binding.liveUrl);
+    const relatedLiveVideos = liveBindings.filter(binding => binding.photoUrl === photoUrl && binding.liveType === 'video').map(binding => binding.liveUrl);
+    const relatedLiveImages = liveBindings.filter(binding => binding.photoUrl === photoUrl && binding.liveType === 'image').map(binding => binding.liveUrl);
     onPhotosChange(photos.filter(url => url !== photoUrl));
-    if (relatedLiveUrls.length > 0) {
-      const nextLiveUrls = livePhotos.filter(url => !relatedLiveUrls.includes(url));
-      syncLiveUrls(nextLiveUrls);
+    if (relatedLiveVideos.length > 0) {
+      const nextLiveUrls = liveVideos.filter(url => !relatedLiveVideos.includes(url));
+      syncLiveVideos(nextLiveUrls);
+    }
+    if (relatedLiveImages.length > 0) {
+      const nextLiveImages = liveImages.filter(url => !relatedLiveImages.includes(url));
+      syncLiveImages(nextLiveImages);
+    }
+    if (relatedLiveVideos.length > 0 || relatedLiveImages.length > 0) {
       setLiveBindings(prev => prev.filter(binding => binding.photoUrl !== photoUrl));
     }
     if (previewPhoto === photoUrl) setPreviewPhoto(null);
   };
 
-  const handleFileSelect = async (files: FileList | null, type: 'photo' | 'video') => {
+  const handleFileSelect = async (files: File[] | null, type: 'photo' | 'video') => {
     if (!files || uploading) return;
+    const fileArr = files;
+    setUploadError(null);
+    setRetryPayload(null);
+    setUploadTotal(0);
+    setUploadDone(0);
 
-    const validFiles = Array.from(files).filter(file => {
+    const validFiles = fileArr.filter(file => {
       if (type === 'photo' && !file.type.startsWith('image/')) {
         return false;
       }
       if (type === 'video' && !file.type.startsWith('video/')) {
         return false;
       }
-      if (type === 'video' && file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
-        return false;
-      }
       return true;
     });
 
     if (validFiles.length === 0) {
-      alert(type === 'photo' ? '请选择图片文件' : `请选择视频文件（单条≤${MAX_VIDEO_SIZE_MB}MB）`);
+      alert(type === 'photo' ? '请选择图片文件' : '请选择视频文件');
       return;
     }
     setUploading(true);
+    setUploadTotal(validFiles.length);
+    setUploadDone(0);
     try {
       if (type === 'photo') {
         const { uploadPhoto } = await import('../api/supabase');
-        const compressed = await Promise.all(validFiles.map(file => compressImage(file)));
-        const urls = await Promise.all(compressed.map(file => withTimeout(uploadPhoto(userId, file))));
+        const urls: string[] = [];
+        for (const file of validFiles) {
+          const compressed = await compressImage(file);
+          const url = await withTimeout(uploadPhoto(userId, compressed));
+          urls.push(url);
+          setUploadDone((prev) => Math.min(prev + 1, validFiles.length));
+        }
         onPhotosChange([...photos, ...urls]);
+        track('media_upload_success', { type: 'photo', count: urls.length });
       } else {
         const { uploadVideo } = await import('../api/supabase');
-        const urls = await Promise.all(validFiles.map(file => withTimeout(uploadVideo(userId, file))));
+        const urls: string[] = [];
+        for (const file of validFiles) {
+          const url = await withTimeout(uploadVideo(userId, file));
+          urls.push(url);
+          setUploadDone((prev) => Math.min(prev + 1, validFiles.length));
+        }
         onVideosChange([...videos, ...urls]);
+        track('media_upload_success', { type: 'video', count: urls.length });
       }
+      setUploadError(null);
+      setRetryPayload(null);
     } catch (err) {
       console.error('Upload error:', err);
       const msg = err instanceof Error ? err.message : String(err);
+      setUploadError(`上传失败：${msg}`);
+      setRetryPayload({ files: validFiles, type });
       alert(`上传失败：${msg}`);
+      track('media_upload_failed', { type, reason: msg });
     }
     finally { setUploading(false); }
   };
 
+  const handleRetryUpload = async () => {
+    if (!retryPayload || uploading) return;
+    setUploadError(null);
+    setRetryPayload(null);
+    const { files, type } = retryPayload;
+    await handleFileSelect(files, type);
+  };
+
   const tabs = [
     { key: 'photo' as const, label: '照片', count: photos.length, color: 'from-orbit-mint to-emerald-400', icon: <FaImage /> },
-    { key: 'video' as const, label: '视频', count: videos.filter(v => !livePhotos.includes(v)).length, color: 'from-orbit-orange to-amber-400', icon: <FaVideo /> },
-    { key: 'live'  as const, label: 'Live', count: livePhotos.length, color: 'from-[#FFD700] to-[#FFA500]', icon: <FaBolt /> },
+    { key: 'video' as const, label: '视频', count: videos.filter(v => !liveVideos.includes(v)).length, color: 'from-orbit-orange to-amber-400', icon: <FaVideo /> },
+    { key: 'live'  as const, label: 'Live', count: liveItems.length, color: 'from-[#FFD700] to-[#FFA500]', icon: <FaBolt /> },
   ];
 
   return (
     <div className="space-y-4">
+      {isOffline && (
+        <div className="rounded-2xl border border-[#FF6B6B]/30 bg-[#1a1010]/80 px-4 py-3 text-[#FFB4B4] text-sm">
+          当前离线中，无法上传。请联网后重试。
+        </div>
+      )}
+      {!isOffline && (effectiveType === '2g' || effectiveType === 'slow-2g') && (
+        <div className="rounded-2xl border border-[#FFD166]/30 bg-[#1a1610]/80 px-4 py-3 text-[#FFD166] text-sm">
+          当前网络较慢，上传可能失败或耗时较长。
+        </div>
+      )}
+      {uploading && uploadTotal > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <div className="flex items-center justify-between text-xs text-white/60 mb-2">
+            <span>上传中…</span>
+            <span>{uploadDone}/{uploadTotal}</span>
+          </div>
+          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] transition-all"
+              style={{ width: `${Math.min(100, Math.round((uploadDone / Math.max(1, uploadTotal)) * 100))}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {uploadError && (
+        <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm flex items-center justify-between gap-3">
+          <span className="flex-1">{uploadError}</span>
+          {retryPayload && (
+            <button
+              type="button"
+              onClick={handleRetryUpload}
+              className="shrink-0 px-3 py-1.5 rounded-full bg-red-400/20 text-red-100 text-xs font-semibold"
+            >
+              重试
+            </button>
+          )}
+        </div>
+      )}
       {/* Tab 切换 */}
       <div className="flex gap-1 p-1 rounded-2xl bg-white/5">
         {tabs.map(tab => (
@@ -424,7 +602,7 @@ export default function MediaUploader({
               ))}
             </div>
           )}
-          <div onClick={() => fileInputRef.current?.click()} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files, 'photo'); }}
+          <div onClick={() => fileInputRef.current?.click()} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(Array.from(e.dataTransfer.files || []), 'photo'); }}
             className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-all ${dragOver ? 'border-orbit-mint bg-orbit-mint/10' : 'border-white/20 bg-white/5 hover:border-orbit-mint/50'}`} style={{ minHeight: 110 }}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
               {uploading ? <FaSpinner className="text-orbit-mint text-2xl animate-spin" /> : (
@@ -436,19 +614,18 @@ export default function MediaUploader({
               )}
             </div>
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFileSelect(e.target.files, 'photo')} />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFileSelect(Array.from(e.target.files || []), 'photo')} />
         </>
       )}
 
       {/* ── 视频 ── */}
       {activeTab === 'video' && (
         <>
-          {videos.filter(v => !livePhotos.includes(v)).length > 0 && (
+          {videos.filter(v => !liveVideos.includes(v)).length > 0 && (
             <div className="grid grid-cols-2 gap-2">
-              {videos.filter(v => !livePhotos.includes(v)).map((url, i) => (
+              {videos.filter(v => !liveVideos.includes(v)).map((url, i) => (
                 <div key={url} className="relative aspect-video rounded-xl overflow-hidden group">
-                  <video src={url} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30"><FaPlay className="text-white/80 text-xl" /></div>
+                  <video src={url} controls playsInline preload="metadata" className="w-full h-full object-cover" />
                   <button onClick={() => onVideosChange(videos.filter((_, j) => j !== i))} className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-all"><FaTimes className="w-3 h-3" /></button>
                 </div>
               ))}
@@ -464,13 +641,19 @@ export default function MediaUploader({
               )}
             </div>
           </div>
-          <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={e => handleFileSelect(e.target.files, 'video')} />
+          <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={e => handleFileSelect(Array.from(e.target.files || []), 'video')} />
         </>
       )}
 
       {/* ── Live 图 ── */}
       {activeTab === 'live' && (
-        <LivePhotoUploader userId={userId} livePhotos={livePhotos} onLivePhotosChange={handleLiveChange} />
+        <LivePhotoUploader
+          userId={userId}
+          liveItems={liveItems}
+          onAddLiveVideos={handleAddLiveVideos}
+          onAddLiveImages={handleAddLiveImages}
+          onRemoveLiveItem={handleRemoveLiveItem}
+        />
       )}
 
       <input

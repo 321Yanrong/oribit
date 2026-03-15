@@ -1524,6 +1524,36 @@ const handleAddFriend = async (name: string, remark: string) => {
           </button>
         </div>
       </div>
+
+      {/* 合规与协议 */}
+      <div className="relative z-10 px-4 mt-4">
+        <div className="glass-card rounded-2xl overflow-hidden">
+          <a
+            href="/privacy/"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5 flex items-center"
+          >
+            <div className="flex-1">
+              <p className="text-white font-medium">🔒 隐私政策</p>
+              <p className="text-white/45 text-sm mt-1">我们如何收集、使用与保护你的数据</p>
+            </div>
+            <FaChevronRight className="text-white/20" />
+          </a>
+          <a
+            href="/terms/"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full p-4 text-left hover:bg-white/5 flex items-center"
+          >
+            <div className="flex-1">
+              <p className="text-white font-medium">📄 用户协议</p>
+              <p className="text-white/45 text-sm mt-1">使用条款与服务说明</p>
+            </div>
+            <FaChevronRight className="text-white/20" />
+          </a>
+        </div>
+      </div>
       
       {/* 退出按钮 */}
       <div className="relative z-10 px-4 mt-6 pb-20 space-y-3">

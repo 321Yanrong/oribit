@@ -7,6 +7,7 @@ import { createMemory, createLocation, createLedger, updateLedger, deleteLedger,
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
+import { track } from '../utils/analytics';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -186,6 +187,20 @@ const getLocalDateTimeValue = (dateInput?: string) => {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   return now.toISOString().slice(0, 16);
+};
+
+const toLocalIsoWithOffset = (value: string) => {
+  if (!value) return new Date().toISOString();
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return new Date().toISOString();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const offsetMin = -date.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMin);
+  const hh = pad(Math.floor(abs / 60));
+  const mm = pad(abs % 60);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${hh}:${mm}`;
 };
 
 // 地点搜索组件
@@ -580,6 +595,7 @@ const CreateMemoryModal = ({
   );
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -675,9 +691,19 @@ const CreateMemoryModal = ({
   };
   
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     const hasContent = content.trim().length > 0 || audios.length > 0 || photos.length > 0 || videos.length > 0;
     if (!currentUser || !hasContent) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      alert('当前离线，无法发布/保存。请联网后重试。');
+      return;
+    }
+    if (!memoryDate || Number.isNaN(new Date(memoryDate).getTime())) {
+      alert('请选择有效的时间');
+      return;
+    }
     setIsSubmitting(true);
+    setEditError(null);
     
     try {
       let locationId = editData?.location_id; 
@@ -708,7 +734,7 @@ const CreateMemoryModal = ({
 
         await useMemoryStore.getState().editMemory(editData.id, {
           content: finalContent,
-          memory_date: new Date(memoryDate).toISOString(),
+          memory_date: toLocalIsoWithOffset(memoryDate),
           location_id: locationId,
           location: selectedLocation ? { name: selectedLocation.name, address: selectedLocation.address } : editData.location,
           photos: photos,
@@ -734,6 +760,7 @@ const CreateMemoryModal = ({
         }
 
         await useMemoryStore.getState().fetchMemories();
+        track('memory_save_success', { mode: 'edit' });
         onSuccess();
         onClose();
         return;
@@ -746,7 +773,7 @@ const CreateMemoryModal = ({
           return;
         }
         const memory = await createMemory(
-          currentUser.id, finalContent, new Date(memoryDate).toISOString(), locationId, photos, selectedFriends, videos, audios, enableLedger
+          currentUser.id, finalContent, toLocalIsoWithOffset(memoryDate), locationId, photos, selectedFriends, videos, audios, enableLedger
         );
         if (enableLedger && totalAmount > 0) {
           await createLedger(currentUser.id, totalAmount, participants, memory.id, expenseType);
@@ -771,13 +798,19 @@ const CreateMemoryModal = ({
         } as any);
         void useMemoryStore.getState().fetchMemories();
         onClearDraft?.();
+        track('memory_save_success', { mode: 'create' });
       }
       
       onSuccess();
       onClose();
     } catch (error) {
       console.error('操作失败:', error);
-      alert(`发布失败：${(error as any)?.message || '请重试'}`);
+      const msg = (error as any)?.message || '请重试';
+      alert(`发布失败：${msg}`);
+      if (isEditMode) {
+        setEditError(`保存失败，已回滚到原数据：${msg}`);
+      }
+      track('memory_save_failed', { mode: isEditMode ? 'edit' : 'create', reason: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -817,6 +850,11 @@ const CreateMemoryModal = ({
         
         {/* 内容区 */}
         <div className="p-4 space-y-6">
+          {editError && (
+            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
+              {editError}
+            </div>
+          )}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
             <div className="p-2 rounded-full bg-[#00D9FF]/10"><FaCalendarAlt className="text-[#00D9FF]" /></div>
             <input type="datetime-local" value={memoryDate} onChange={(e) => setMemoryDate(e.target.value)} className="flex-1 bg-transparent text-white outline-none [color-scheme:dark]" />
@@ -1036,6 +1074,7 @@ export default function MemoryStreamPage() {
   // 在原有的 useState 旁边加上这两个：
   const { currentUser } = useUserStore(); // 获取当前用户，用来判断是不是自己发的回忆
   const [editingMemory, setEditingMemory] = useState<any>(null);
+  const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
   const scrollRestoredRef = useRef(false);
   const albumSectionRef = useRef<HTMLDivElement>(null);
 
@@ -1174,6 +1213,7 @@ export default function MemoryStreamPage() {
   };
 
   const handleShareMemory = async (memory: any) => {
+    track('memory_share_attempt', { memoryId: memory?.id });
     const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
     const raw = (memoryText || '').replace(/\s+/g, ' ').trim();
     const snippet = raw ? (raw.length > 30 ? `${raw.slice(0, 30)}...` : raw) : '我在 Orbit 记录了一段回忆';
@@ -1400,6 +1440,22 @@ export default function MemoryStreamPage() {
     if (!albumSectionRef.current) return;
     albumSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  const handleDeleteMemory = async (memoryId: string) => {
+    if (deletingMemoryId) return;
+    if (!window.confirm('确定删除这条记忆？')) return;
+    setDeletingMemoryId(memoryId);
+    try {
+      await deleteMemory(memoryId);
+      track('memory_delete_success');
+    } catch (error) {
+      console.error('删除记忆失败:', error);
+      alert(`删除失败：${(error as any)?.message || '请稍后重试'}`);
+      await fetchMemories();
+    } finally {
+      setDeletingMemoryId(null);
+    }
+  };
   
   return (
     <div className="relative min-h-screen bg-[#121212] pt-[180px]">
@@ -1431,7 +1487,10 @@ export default function MemoryStreamPage() {
           <div className="flex items-center gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={() => setShowStoryEntry(true)}
+              onClick={() => {
+                setShowStoryEntry(true);
+                track('memory_story_open');
+              }}
               className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 text-white/80 font-semibold text-sm shrink-0 flex items-center gap-2 hover:border-white/30"
             >
               <FaBookOpen className="text-xs" />
@@ -1439,7 +1498,10 @@ export default function MemoryStreamPage() {
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={() => setIsCreateOpen(true)}
+              onClick={() => {
+                setIsCreateOpen(true);
+                track('memory_create_open');
+              }}
               className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold text-sm shrink-0"
             >记录此刻</motion.button>
           </div>
@@ -1568,7 +1630,11 @@ export default function MemoryStreamPage() {
                         </div>
                         {memory.user_id === currentUser?.id && (
                           <div className="flex items-center gap-0.5">
-                            <button onClick={(e) => { e.stopPropagation(); if (window.confirm('确定删除这条记忆？')) deleteMemory(memory.id); }} className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors"><FaTrash className="text-xs" /></button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }}
+                              disabled={deletingMemoryId === memory.id}
+                              className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+                            ><FaTrash className="text-xs" /></button>
                             <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="p-2 rounded-full text-white/30 hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors"><FaEdit className="text-xs" /></button>
                           </div>
                         )}
@@ -1687,8 +1753,9 @@ export default function MemoryStreamPage() {
                         {memory.user_id === currentUser?.id && (
                           <div className="flex items-center gap-0.5">
                             <button
-                              onClick={(e) => { e.stopPropagation(); if (window.confirm('确定删除这条记忆？')) deleteMemory(memory.id); }}
-                              className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }}
+                              disabled={deletingMemoryId === memory.id}
+                              className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
                             ><FaTrash className="text-xs" /></button>
                             <button
                               onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }}

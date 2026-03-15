@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FaDollarSign, FaMapMarkerAlt, FaTimes, FaPlay, FaPause } from 'react-icons/fa';
 import { decodeMemoryContent } from '../utils';
 import memoryFlowBackground from '../../../../回忆流.jpg';
@@ -149,6 +149,8 @@ export const MemoryStoryDrawer = ({
     // 海报预览弹窗开关
     const [showPosterPreview, setShowPosterPreview] = useState(false);
   const [posterLoading, setPosterLoading] = useState(false);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeLastRef = useRef<{ x: number; y: number } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Always use a single audio element, update src/volume as needed
   const ensureAudio = useCallback(() => {
@@ -191,7 +193,7 @@ export const MemoryStoryDrawer = ({
   const currentItem = playlist[activeIndex];
   // Keep a loaded blur background to avoid a black flash when switching photos
   const [blurBgUrl, setBlurBgUrl] = useState(currentItem?.photoUrl || '');
-  const shareThumb = playlist[activeIndex + 1]?.photoUrl || currentItem?.photoUrl;
+  const shareThumb = '/icons/orbit-logo.svg';
   const { text: mText, weather, mood } = decodeMemoryContent(currentItem?.memory?.content || '');
 
   useEffect(() => {
@@ -290,28 +292,51 @@ export const MemoryStoryDrawer = ({
     setStoryCompleted(false);
   }, [activeIndex, memories]);
 
-  const handlePointerDown = () => setIsPaused(true);
+  const extractPoint = (e: React.MouseEvent | React.TouchEvent) => {
+    if ('touches' in e && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    if ('changedTouches' in e && e.changedTouches.length > 0) {
+      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    const me = e as React.MouseEvent;
+    return { x: me.clientX, y: me.clientY };
+  };
+
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsPaused(true);
+    const point = extractPoint(e);
+    swipeStartRef.current = point;
+    swipeLastRef.current = point;
+  };
+
+  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!swipeStartRef.current) return;
+    swipeLastRef.current = extractPoint(e);
+  };
+
   const handlePointerUp = (e: React.MouseEvent | React.TouchEvent) => {
     setIsPaused(false);
-    let clientX = 0;
-    if ('changedTouches' in e) clientX = e.changedTouches[0].clientX;
-    else clientX = (e as React.MouseEvent).clientX;
-    const w = (e.currentTarget as HTMLElement).clientWidth || window.innerWidth;
-    if (clientX < w / 3) {
+    const start = swipeStartRef.current;
+    const end = swipeLastRef.current || extractPoint(e);
+    swipeStartRef.current = null;
+    swipeLastRef.current = null;
+    if (!start || !end) return;
+    const deltaX = end.x - start.x;
+    const deltaY = end.y - start.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    const SWIPE_MIN = 36;
+    if (absX < SWIPE_MIN || absX < absY) return;
+    if (deltaX > 0) {
       if (activeIndex > 0) {
         setActiveIndex((a) => a - 1);
         setProgress(0);
       }
-    } else {
-      if (activeIndex < playlist.length - 1) {
-        setActiveIndex((a) => a + 1);
-        setProgress(0);
-      }
+    } else if (activeIndex < playlist.length - 1) {
+      setActiveIndex((a) => a + 1);
+      setProgress(0);
     }
-  };
-
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    if (info.offset.y > 100 || info.velocity.y > 500) onClose();
   };
 
   const loadImage = (src: string) =>
@@ -474,17 +499,6 @@ export const MemoryStoryDrawer = ({
     );
   }
 
-  const stackedPhotos = useMemo(() => {
-    const list: string[] = [];
-    if (playlist[activeIndex]) {
-      // 第一张为当前，第二张为下一张（若存在）
-      list.push(playlist[activeIndex].photoUrl);
-      if (playlist[activeIndex + 1]) list.push(playlist[activeIndex + 1].photoUrl);
-    }
-    return list;
-  }, [playlist, activeIndex]);
-  const stackedExtra = Math.max(playlist.length - (activeIndex + 1), 0);
-
   return (
     <AnimatePresence>
       <motion.div
@@ -505,10 +519,6 @@ export const MemoryStoryDrawer = ({
 
       <motion.div
         key="drawer-panel"
-        drag="y"
-        dragConstraints={{ top: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 20 }}
@@ -563,54 +573,50 @@ export const MemoryStoryDrawer = ({
           </button>
         </div>
 
+        {/* 画面区：增加 perspective 开启 3D 空间 */}
         <div
-          className="flex-1 relative bg-black"
+          className="flex-1 relative bg-black overflow-hidden"
+          style={{ perspective: 1200 }}
           onMouseDown={handlePointerDown}
           onMouseUp={handlePointerUp}
           onTouchStart={handlePointerDown}
           onTouchEnd={handlePointerUp}
         >
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: blurBgUrl ? `url(${blurBgUrl})` : undefined,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: 'blur(10px)',
-              transform: 'scale(1.03)',
-              transition: 'opacity 120ms ease-out',
-              opacity: blurBgUrl ? 1 : 0,
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/35 to-transparent pointer-events-none" />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeIndex}
+              // ✨ 核心翻页特效：从右侧带 45度角切入，退出时向左翻转
+              initial={{ opacity: 0, x: 80, rotateY: 45, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, rotateY: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -80, rotateY: -45, scale: 0.9 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="absolute inset-0 flex items-center justify-center origin-center"
+            >
+              {/* 1. 动态高斯模糊背景 */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${currentItem.photoUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'blur(15px)',
+                  transform: 'scale(1.1)',
+                }}
+              />
+              <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
-          {stackedPhotos.length > 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="relative w-[82%] max-w-[540px] h-[80%]">
-                {stackedPhotos.map((src, idx) => (
-                  <div
-                    key={`${src}-${idx}`}
-                    className="absolute inset-6 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
-                    style={{
-                      transform: `rotate(${idx === 0 ? '-6deg' : '6deg'}) translate(${idx === 0 ? '-10px' : '10px'}, ${idx === 0 ? '10px' : '-10px'})`,
-                      zIndex: idx === 0 ? 20 : 10,
-                      boxShadow: '0 28px 48px rgba(0,0,0,0.45)',
-                    }}
-                  >
-                    <img src={src} className="w-full h-full object-cover" />
-                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/55 backdrop-blur text-white text-xs font-semibold border border-white/15">
-                      photo-{activeIndex + idx + 1}
-                    </div>
-                  </div>
-                ))}
-                {stackedExtra > 0 && (
-                  <div className="absolute -bottom-2 -right-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#FF5F8F] to-[#FF8F5F] text-white text-xs font-semibold shadow-lg border border-white/20">
-                    +{stackedExtra}
-                  </div>
-                )}
+              {/* 2. 当前清晰的主照片 */}
+              <div className="relative z-10 w-full h-full p-4 flex items-center justify-center pointer-events-none">
+                <img
+                  src={currentItem.photoUrl}
+                  alt="回忆"
+                  className="max-w-full max-h-[75vh] rounded-2xl object-contain shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10"
+                />
               </div>
-            </div>
-          )}
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-transparent to-transparent pointer-events-none z-20" />
         </div>
 
         <div className="absolute bottom-6 left-4 right-4 z-30 pointer-events-none">
@@ -667,8 +673,8 @@ export const MemoryStoryDrawer = ({
                       )
                     ) && (
                       <div className="mt-3 flex items-center gap-3 p-3 rounded-2xl bg-white/4 border border-white/10 pointer-events-auto">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/15 shadow-lg">
-                          <img src={shareThumb} className="w-full h-full object-cover" />
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/15 shadow-lg bg-white/5 flex items-center justify-center">
+                          <img src={shareThumb} className="w-10 h-10 object-contain" />
                         </div>
                         <div className="flex-1 text-white/80 text-xs leading-snug">
                           <p className="font-semibold text-white/90">微信分享小贴士</p>
@@ -678,7 +684,7 @@ export const MemoryStoryDrawer = ({
                         </div>
                         <div className="hidden sm:block text-right text-[11px] text-white/60">
                           <p>封面图</p>
-                          <p className="font-semibold text-white/85">下一张/当前</p>
+                          <p className="font-semibold text-white/85">Orbit Logo</p>
                         </div>
                       </div>
                     )}
@@ -708,7 +714,7 @@ export const MemoryStoryDrawer = ({
                               <img
                                 src={posterDataUrl}
                                 alt="分享海报"
-                                className="w-full max-w-[320px] rounded-2xl shadow-2xl pointer-events-auto"
+                                className="w-[320px] max-w-[80vw] rounded-2xl shadow-2xl pointer-events-auto"
                                 onClick={(e) => e.stopPropagation()}
                                 style={{ WebkitTouchCallout: 'default' }}
                               />
@@ -729,7 +735,7 @@ export const MemoryStoryDrawer = ({
           </AnimatePresence>
         </div>
 
-        <div className="absolute top-16 right-4 z-[160] flex items-center justify-end pointer-events-auto">
+        <div className="fixed top-6 right-6 z-[160] flex items-center justify-end pointer-events-auto">
           <div className="flex items-center gap-2 bg-black/50 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/12 shadow-lg text-xs text-white">
             <button
               onClick={handleToggleMusic}

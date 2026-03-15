@@ -1,6 +1,6 @@
 // Temporary placeholder, main implementation moved to SharedMemoryAlbumBook.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FaDollarSign, FaMapMarkerAlt, FaTimes } from 'react-icons/fa';
 import { decodeMemoryContent } from '../utils';
 // import memoryFlowBackground from '../../../../回忆流.jpg';
@@ -190,10 +190,6 @@ export const MemoryStoryViewer = ({
     }
   };
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    if (info.offset.y > 100 || info.velocity.y > 500) onClose();
-  };
-
   if (!currentItem) return null;
 
   return (
@@ -213,10 +209,6 @@ export const MemoryStoryViewer = ({
         }}
       />
       <motion.div
-        drag="y"
-        dragConstraints={{ top: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}

@@ -52,6 +52,7 @@ function App() {
   const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
   const [showNewbieGuide, setShowNewbieGuide] = useState(false);
   const lastRefreshRef = useRef(0);
+  const bootstrappedUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -117,6 +118,19 @@ function App() {
       setShowAuth(true);
     }
   }, [loading, currentUser, isDemoMode]);
+
+  // 登录态兜底：应用重开时保证缓存回填 + 核心数据拉取
+  useEffect(() => {
+    if (!currentUser?.id || isDemoMode) return;
+    if (bootstrappedUserRef.current === currentUser.id) return;
+    bootstrappedUserRef.current = currentUser.id;
+
+    hydrateUserCache(currentUser.id);
+    useMemoryStore.getState().fetchMemories();
+    useUserStore.getState().fetchFriends();
+    useUserStore.getState().fetchPendingRequests();
+    useLedgerStore.getState().fetchLedgers();
+  }, [currentUser?.id, isDemoMode]);
 
   // 页面从后台 / bfcache 回到前台时，若状态被系统回收则自动重拉
   useEffect(() => {

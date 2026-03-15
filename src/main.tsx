@@ -1,9 +1,11 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { supabase } from "./api/supabase";
 import { clearOrbitStorage, isLikelyInvalidSession } from "./utils/auth";
 import { startWebVitalsBaseline } from "./utils/webVitals";
+import { initAnalytics } from "./utils/analytics";
 
 if (import.meta.env.DEV && typeof window !== "undefined" && "serviceWorker" in navigator) {
 	navigator.serviceWorker
@@ -32,7 +34,11 @@ const renderApp = () => {
 	// "AbortError: Lock broken by another request with the 'steal' option" in dev
 	// tools. Rendering the app once prevents orphaned locks while keeping the rest
 	// of the app unchanged.
-	createRoot(rootElement).render(<App />);
+	createRoot(rootElement).render(
+		<ErrorBoundary>
+			<App />
+		</ErrorBoundary>
+	);
 };
 
 const bootstrapAuthThenRender = async () => {
@@ -51,6 +57,7 @@ const bootstrapAuthThenRender = async () => {
 	} catch {
 		// 启动阶段不能因为鉴权预热失败而阻断渲染
 	} finally {
+		initAnalytics();
 		renderApp();
 	}
 };
