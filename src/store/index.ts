@@ -7,6 +7,27 @@ import { supabase } from '../api/supabase';
 const isRealUUID = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
+const CACHE_PREFIX = 'orbit_cache';
+const buildCacheKey = (type: string, userId: string) => `${CACHE_PREFIX}:${type}:${userId}`;
+const readCache = <T>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+const writeCache = (key: string, value: unknown) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+};
+
 // ==========================================
 // 1. 类型定义
 // ==========================================
@@ -89,6 +110,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     const { getPendingFriendRequests } = await import('../api/supabase');
     const data = await getPendingFriendRequests(currentUser.id);
     set({ pendingRequests: data });
+    writeCache(buildCacheKey('pending', currentUser.id), data || []);
   },
   fetchFriends: async () => {
     const { currentUser } = get();
@@ -132,7 +154,9 @@ export const useUserStore = create<UserState>((set, get) => ({
         }
       });
 
-      set({ friends: Array.from(dedupedMap.values()) });
+      const nextFriends = Array.from(dedupedMap.values());
+      set({ friends: nextFriends });
+      writeCache(buildCacheKey('friends', currentUser.id), nextFriends);
     }
   },
   addFriend: async (friendshipData) => {
@@ -160,7 +184,13 @@ export const useUserStore = create<UserState>((set, get) => ({
       throw new Error(error.message || '添加好友失败');
     }
     const formatted = mapFriendRecord(data);
-    set((state) => ({ friends: [formatted, ...state.friends] }));
+    set((state) => {
+      const nextFriends = [formatted, ...state.friends];
+      if (currentUser && isRealUUID(currentUser.id)) {
+        writeCache(buildCacheKey('friends', currentUser.id), nextFriends);
+      }
+      return { friends: nextFriends };
+    });
   },
   deleteFriend: async (friendshipId) => {
     const { deleteFriendship } = await import('../api/supabase');
@@ -200,8 +230,14 @@ export const useMemoryStore = create<MemoryState>((set) => ({
     if (!userId || !isRealUUID(userId)) return;
     const data = await getMemories(userId);
     set({ memories: data || [] });
+    writeCache(buildCacheKey('memories', userId), data || []);
   },
-  addMemory: (memory) => set((state) => ({ memories: [memory, ...state.memories] })),
+  addMemory: (memory) => set((state) => {
+    const next = [memory, ...state.memories];
+    const userId = useUserStore.getState().currentUser?.id;
+    if (userId && isRealUUID(userId)) writeCache(buildCacheKey('memories', userId), next);
+    return { memories: next };
+  }),
   editMemory: async (id, updatedData) => {
     // 1. 更新 memories 表基本字段
     const { supabase } = await import('../api/supabase');
@@ -241,12 +277,18 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       const { getMemories } = await import('../api/supabase');
       const data = await getMemories(userId);
       set({ memories: data || [] });
+      writeCache(buildCacheKey('memories', userId), data || []);
     }
   },
   deleteMemory: async (id) => {
     const { deleteMemory: deleteMemoryApi } = await import('../api/supabase');
     await deleteMemoryApi(id);
-    set((state) => ({ memories: state.memories.filter((m) => m.id !== id) }));
+    set((state) => {
+      const next = state.memories.filter((m) => m.id !== id);
+      const userId = useUserStore.getState().currentUser?.id;
+      if (userId && isRealUUID(userId)) writeCache(buildCacheKey('memories', userId), next);
+      return { memories: next };
+    });
   },
 }));
 
@@ -294,6 +336,7 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
           return true;
         });
         set({ ledgers: unique });
+        writeCache(buildCacheKey('ledgers', userId), unique);
       })();
       set({ _fetchLedgersInFlight: task } as any);
       await task;
@@ -303,13 +346,50 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
       set({ _fetchLedgersInFlight: null } as any);
     }
   },
-  addLedger: (ledger) => set((state) => ({ ledgers: [...state.ledgers, ledger] })),
+  addLedger: (ledger) => set((state) => {
+    const next = [...state.ledgers, ledger];
+    const userId = useUserStore.getState().currentUser?.id;
+    if (userId && isRealUUID(userId)) writeCache(buildCacheKey('ledgers', userId), next);
+    return { ledgers: next };
+  }),
   deleteLedger: async (id) => {
     const { deleteLedger: deleteApi } = await import('../api/supabase');
     await deleteApi(id);
-    set((state) => ({ ledgers: state.ledgers.filter((l) => l.id !== id) }));
+    set((state) => {
+      const next = state.ledgers.filter((l) => l.id !== id);
+      const userId = useUserStore.getState().currentUser?.id;
+      if (userId && isRealUUID(userId)) writeCache(buildCacheKey('ledgers', userId), next);
+      return { ledgers: next };
+    });
   },
 }));
+
+export const hydrateUserCache = (userId: string) => {
+  if (!userId || !isRealUUID(userId)) return;
+
+  const friendCache = readCache<Friend[]>(buildCacheKey('friends', userId), []);
+  const pendingCache = readCache<any[]>(buildCacheKey('pending', userId), []);
+  const memoryCache = readCache<any[]>(buildCacheKey('memories', userId), []);
+  const ledgerCache = readCache<any[]>(buildCacheKey('ledgers', userId), []);
+
+  const userState = useUserStore.getState();
+  if ((!userState.friends || userState.friends.length === 0) && friendCache.length > 0) {
+    useUserStore.setState({ friends: friendCache });
+  }
+  if ((!userState.pendingRequests || userState.pendingRequests.length === 0) && pendingCache.length > 0) {
+    useUserStore.setState({ pendingRequests: pendingCache });
+  }
+
+  const memoryState = useMemoryStore.getState();
+  if ((!memoryState.memories || memoryState.memories.length === 0) && memoryCache.length > 0) {
+    useMemoryStore.setState({ memories: memoryCache });
+  }
+
+  const ledgerState = useLedgerStore.getState();
+  if ((!ledgerState.ledgers || ledgerState.ledgers.length === 0) && ledgerCache.length > 0) {
+    useLedgerStore.setState({ ledgers: ledgerCache });
+  }
+};
 
 // ==========================================
 // 6. 导航/页面 Store

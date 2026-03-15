@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavStore, useUserStore, useMemoryStore, useLedgerStore } from './store';
+import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav from './components/BottomNav';
@@ -51,6 +51,7 @@ function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
   const [showNewbieGuide, setShowNewbieGuide] = useState(false);
+  const lastRefreshRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -121,9 +122,23 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const rehydrateIfEmpty = () => {
+    const rehydrateIfEmpty = async () => {
       const { currentUser } = useUserStore.getState();
       if (!currentUser) return;
+
+      // 尝试从缓存回填
+      hydrateUserCache(currentUser.id);
+
+      // 前台恢复时先刷新会话，避免“断线”后全部清空
+      const now = Date.now();
+      if (now - lastRefreshRef.current > 30000) {
+        lastRefreshRef.current = now;
+        try {
+          await supabase.auth.refreshSession();
+        } catch {
+          // ignore
+        }
+      }
 
       const { memories, fetchMemories } = useMemoryStore.getState();
       if (!memories || memories.length === 0) fetchMemories();
@@ -137,7 +152,7 @@ function App() {
 
     const handleResume = () => {
       if (document.visibilityState === 'visible') {
-        rehydrateIfEmpty();
+        void rehydrateIfEmpty();
       }
     };
 
@@ -150,40 +165,7 @@ function App() {
     };
   }, []);
 
-  // 页面从后台 / bfcache 恢复时，如果状态被系统回收则自动重拉
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
 
-    const rehydrateIfEmpty = () => {
-      const { currentUser } = useUserStore.getState();
-      if (!currentUser) return;
-
-      const { memories, fetchMemories } = useMemoryStore.getState();
-      if (!memories || memories.length === 0) fetchMemories();
-
-      const { friends, fetchFriends } = useUserStore.getState();
-      if (!friends || friends.length === 0) fetchFriends();
-
-      const { ledgers, fetchLedgers } = useLedgerStore.getState();
-      if (!ledgers || ledgers.length === 0) fetchLedgers();
-    };
-
-    const handlePageShow = () => {
-      if (!document.hidden) rehydrateIfEmpty();
-    };
-
-    const handleVisibility = () => {
-      if (!document.hidden) rehydrateIfEmpty();
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      window.removeEventListener('pageshow', handlePageShow);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, []);
 
   const handleDemo = () => {
     // 演示用户

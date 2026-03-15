@@ -1,7 +1,173 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSyncAlt, FaGamepad, FaTrash } from 'react-icons/fa';
 import { useUserStore } from '../store';
+
+// ============================================================
+// 游戏音效（轻量 Web Audio）
+// ============================================================
+type SfxType = 'tap' | 'pop' | 'roll' | 'flip' | 'match' | 'win' | 'lose' | 'spin' | 'line' | 'drop' | 'rotate' | 'move';
+
+const SFX_STORAGE_KEY = 'orbit_sfx_settings';
+const SFX_EVENT = 'orbit:sfx-settings';
+const DEFAULT_SFX = { muted: false, volume: 0.45 };
+
+const readSfxSettings = () => {
+  if (typeof window === 'undefined') return DEFAULT_SFX;
+  try {
+    const raw = localStorage.getItem(SFX_STORAGE_KEY);
+    if (!raw) return DEFAULT_SFX;
+    const parsed = JSON.parse(raw);
+    return {
+      muted: Boolean(parsed?.muted),
+      volume: typeof parsed?.volume === 'number' ? Math.min(1, Math.max(0, parsed.volume)) : DEFAULT_SFX.volume,
+    };
+  } catch {
+    return DEFAULT_SFX;
+  }
+};
+
+const writeSfxSettings = (next: { muted: boolean; volume: number }) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(SFX_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+  window.dispatchEvent(new CustomEvent(SFX_EVENT, { detail: next }));
+};
+
+const useGameSfx = () => {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const lastPlayRef = useRef(0);
+  const settingsRef = useRef(readSfxSettings());
+
+  useEffect(() => {
+    settingsRef.current = readSfxSettings();
+    const onUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ muted: boolean; volume: number }>).detail;
+      if (detail) settingsRef.current = detail;
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener(SFX_EVENT, onUpdate as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(SFX_EVENT, onUpdate as EventListener);
+      }
+    };
+  }, []);
+
+  const ensureCtx = () => {
+    if (typeof window === 'undefined') return null;
+    const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!ctxRef.current) ctxRef.current = new AudioCtx();
+    return ctxRef.current;
+  };
+
+  const play = useCallback((type: SfxType) => {
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // 避免极短时间内过密触发
+    if (now - lastPlayRef.current < 0.02) return;
+    lastPlayRef.current = now;
+
+    const settings = settingsRef.current || DEFAULT_SFX;
+    if (settings.muted || settings.volume <= 0) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const setEnvelope = (duration = 0.12, peak = 0.12) => {
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(peak * settings.volume, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.stop(now + duration + 0.02);
+    };
+
+    switch (type) {
+      case 'pop':
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(520, now);
+        setEnvelope(0.08, 0.08);
+        break;
+      case 'roll':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(420, now + 0.2);
+        setEnvelope(0.22, 0.08);
+        break;
+      case 'flip':
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+        setEnvelope(0.14, 0.08);
+        break;
+      case 'match':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.14);
+        setEnvelope(0.18, 0.12);
+        break;
+      case 'win':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(1040, now + 0.22);
+        setEnvelope(0.26, 0.14);
+        break;
+      case 'lose':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
+        setEnvelope(0.26, 0.12);
+        break;
+      case 'spin':
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.26);
+        setEnvelope(0.3, 0.08);
+        break;
+      case 'line':
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(700, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.12);
+        setEnvelope(0.16, 0.1);
+        break;
+      case 'drop':
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(360, now);
+        setEnvelope(0.1, 0.08);
+        break;
+      case 'rotate':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        setEnvelope(0.1, 0.06);
+        break;
+      case 'move':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, now);
+        setEnvelope(0.08, 0.05);
+        break;
+      default:
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        setEnvelope(0.08, 0.05);
+        break;
+    }
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => undefined);
+    }
+    osc.start(now);
+  }, []);
+
+  return { play };
+};
 
 // ============================================================
 // 1. 摇骰子
@@ -38,9 +204,11 @@ const DiceGame = ({ onClose }: { onClose: () => void }) => {
   const [count, setCount] = useState(2);
   const [values, setValues] = useState<number[]>([1, 1]);
   const [rolling, setRolling] = useState(false);
+  const { play } = useGameSfx();
 
   const roll = () => {
     if (rolling) return;
+    play('roll');
     setRolling(true);
     const ticks = 12;
     let t = 0;
@@ -50,6 +218,7 @@ const DiceGame = ({ onClose }: { onClose: () => void }) => {
       if (t >= ticks) {
         clearInterval(id);
         setRolling(false);
+        play('tap');
       }
     }, 60);
   };
@@ -57,6 +226,7 @@ const DiceGame = ({ onClose }: { onClose: () => void }) => {
   const handleCountChange = (n: number) => {
     setCount(n);
     setValues(Array.from({ length: n }, () => 1));
+    play('tap');
   };
 
   return (
@@ -140,14 +310,17 @@ const TruthDareGame = ({ onClose }: { onClose: () => void }) => {
   const [mode, setMode] = useState<'truth' | 'dare' | null>(null);
   const [card, setCard] = useState<string | null>(null);
   const [flipping, setFlipping] = useState(false);
+  const { play } = useGameSfx();
 
   const draw = (type: 'truth' | 'dare') => {
     setMode(type);
+    play('flip');
     setFlipping(true);
     setTimeout(() => {
       const pool = type === 'truth' ? truthCards : dareCards;
       setCard(pool[Math.floor(Math.random() * pool.length)]);
       setFlipping(false);
+      play('tap');
     }, 300);
   };
 
@@ -222,16 +395,19 @@ const BubbleWrapGame = ({ onClose }: { onClose: () => void }) => {
   const total = BUBBLE_ROWS * BUBBLE_COLS;
   const [popped, setPopped] = useState<Set<number>>(new Set());
   const [combo, setCombo] = useState(0);
+  const { play } = useGameSfx();
 
   const popBubble = (i: number) => {
     if (popped.has(i)) return;
     // haptic feedback if available
     if (navigator.vibrate) navigator.vibrate(15);
+    play('pop');
+    if (popped.size + 1 === total) play('win');
     setPopped(prev => new Set([...prev, i]));
     setCombo(c => c + 1);
   };
 
-  const reset = () => { setPopped(new Set()); setCombo(0); };
+  const reset = () => { setPopped(new Set()); setCombo(0); play('tap'); };
   const allPopped = popped.size === total;
 
   return (
@@ -287,6 +463,294 @@ const BubbleWrapGame = ({ onClose }: { onClose: () => void }) => {
 };
 
 // ============================================================
+// 4. 俄罗斯方块
+// ============================================================
+const TETRIS_COLS = 10;
+const TETRIS_ROWS = 20;
+const TETRIS_BASE_DROP_MS = 650;
+const TETRIS_MIN_DROP_MS = 140;
+const TETRIS_LEVEL_LINES = 8;
+const TETRIS_BEST_KEY = 'orbit_tetris_best_score';
+
+const TETROMINOES = [
+  { color: '#00D9FF', shape: [[1, 1, 1, 1]] }, // I
+  { color: '#FF9F43', shape: [[1, 0, 0], [1, 1, 1]] }, // J
+  { color: '#F368E0', shape: [[0, 0, 1], [1, 1, 1]] }, // L
+  { color: '#00FFB3', shape: [[1, 1], [1, 1]] }, // O
+  { color: '#6C5CE7', shape: [[0, 1, 1], [1, 1, 0]] }, // S
+  { color: '#FFD166', shape: [[0, 1, 0], [1, 1, 1]] }, // T
+  { color: '#FF6B6B', shape: [[1, 1, 0], [0, 1, 1]] }, // Z
+];
+
+type TetrisCell = { filled: boolean; color?: string };
+type TetrisPiece = { shape: number[][]; x: number; y: number; color: string };
+
+const createEmptyBoard = () =>
+  Array.from({ length: TETRIS_ROWS }, () =>
+    Array.from({ length: TETRIS_COLS }, () => ({ filled: false } as TetrisCell))
+  );
+
+const rotateMatrix = (matrix: number[][]) =>
+  matrix[0].map((_, idx) => matrix.map((row) => row[idx]).reverse());
+
+const randomPiece = (): TetrisPiece => {
+  const pick = TETROMINOES[Math.floor(Math.random() * TETROMINOES.length)];
+  const width = pick.shape[0].length;
+  return {
+    shape: pick.shape.map((row) => [...row]),
+    x: Math.floor((TETRIS_COLS - width) / 2),
+    y: -1,
+    color: pick.color,
+  };
+};
+
+const hasCollision = (board: TetrisCell[][], piece: TetrisPiece, offsetX = 0, offsetY = 0) => {
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (!piece.shape[y][x]) continue;
+      const newX = piece.x + x + offsetX;
+      const newY = piece.y + y + offsetY;
+      if (newX < 0 || newX >= TETRIS_COLS || newY >= TETRIS_ROWS) return true;
+      if (newY >= 0 && board[newY][newX].filled) return true;
+    }
+  }
+  return false;
+};
+
+const mergePiece = (board: TetrisCell[][], piece: TetrisPiece) => {
+  const next = board.map((row) => row.map((cell) => ({ ...cell })));
+  for (let y = 0; y < piece.shape.length; y++) {
+    for (let x = 0; x < piece.shape[y].length; x++) {
+      if (!piece.shape[y][x]) continue;
+      const by = piece.y + y;
+      const bx = piece.x + x;
+      if (by >= 0 && by < TETRIS_ROWS && bx >= 0 && bx < TETRIS_COLS) {
+        next[by][bx] = { filled: true, color: piece.color };
+      }
+    }
+  }
+  return next;
+};
+
+const clearLines = (board: TetrisCell[][]) => {
+  const remaining = board.filter((row) => row.some((cell) => !cell.filled));
+  const cleared = TETRIS_ROWS - remaining.length;
+  if (cleared === 0) return { board, cleared: 0 };
+  const newRows = Array.from({ length: cleared }, () =>
+    Array.from({ length: TETRIS_COLS }, () => ({ filled: false } as TetrisCell))
+  );
+  return { board: [...newRows, ...remaining], cleared };
+};
+
+const TetrisGame = ({ onClose }: { onClose: () => void }) => {
+  const [board, setBoard] = useState<TetrisCell[][]>(createEmptyBoard());
+  const [current, setCurrent] = useState<TetrisPiece>(randomPiece());
+  const [next, setNext] = useState<TetrisPiece>(randomPiece());
+  const [isRunning, setIsRunning] = useState(false);
+  const [isOver, setIsOver] = useState(false);
+  const [score, setScore] = useState(0);
+  const [lines, setLines] = useState(0);
+  const [bestScore, setBestScore] = useState(0);
+  const { play } = useGameSfx();
+
+  const level = Math.max(1, Math.floor(lines / TETRIS_LEVEL_LINES) + 1);
+  const dropMs = Math.max(TETRIS_MIN_DROP_MS, TETRIS_BASE_DROP_MS - (level - 1) * 55);
+
+  const reset = () => {
+    setBoard(createEmptyBoard());
+    setCurrent(randomPiece());
+    setNext(randomPiece());
+    setScore(0);
+    setLines(0);
+    setIsOver(false);
+    setIsRunning(true);
+    play('tap');
+  };
+
+  const spawnNext = (nextPiece = next) => {
+    const fresh = { ...nextPiece, x: Math.floor((TETRIS_COLS - nextPiece.shape[0].length) / 2), y: -1 };
+    setCurrent(fresh);
+    setNext(randomPiece());
+    if (hasCollision(board, fresh, 0, 0)) {
+      setIsRunning(false);
+      setIsOver(true);
+      play('lose');
+    }
+  };
+
+  const stepDown = () => {
+    if (hasCollision(board, current, 0, 1)) {
+      const merged = mergePiece(board, current);
+      const { board: clearedBoard, cleared } = clearLines(merged);
+      if (cleared > 0) {
+        setLines((l) => l + cleared);
+        setScore((s) => s + cleared * 120 * Math.max(1, Math.floor(lines / TETRIS_LEVEL_LINES) + 1));
+        play('line');
+      }
+      setBoard(clearedBoard);
+      spawnNext();
+    } else {
+      setCurrent((p) => ({ ...p, y: p.y + 1 }));
+    }
+  };
+
+  const move = (dx: number) => {
+    if (!hasCollision(board, current, dx, 0)) {
+      setCurrent((p) => ({ ...p, x: p.x + dx }));
+      play('move');
+    }
+  };
+
+  const rotate = () => {
+    const rotated = { ...current, shape: rotateMatrix(current.shape) };
+    if (!hasCollision(board, rotated, 0, 0)) {
+      setCurrent(rotated);
+      play('rotate');
+    }
+  };
+
+  const hardDrop = () => {
+    let drop = 0;
+    while (!hasCollision(board, current, 0, drop + 1)) drop++;
+    if (drop > 0) setCurrent((p) => ({ ...p, y: p.y + drop }));
+    if (drop > 0) setScore((s) => s + drop * 2);
+    if (drop > 0) play('drop');
+    stepDown();
+  };
+
+  const softDrop = () => {
+    if (!hasCollision(board, current, 0, 1)) {
+      setCurrent((p) => ({ ...p, y: p.y + 1 }));
+      setScore((s) => s + 1);
+      play('drop');
+    } else {
+      stepDown();
+    }
+  };
+
+  useEffect(() => {
+    if (!isRunning || isOver) return;
+    const id = setInterval(() => stepDown(), dropMs);
+    return () => clearInterval(id);
+  }, [isRunning, isOver, current, board, dropMs]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isRunning || isOver) return;
+      if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) {
+        e.preventDefault();
+      }
+      if (e.key === 'ArrowLeft') move(-1);
+      if (e.key === 'ArrowRight') move(1);
+      if (e.key === 'ArrowDown') softDrop();
+      if (e.key === 'ArrowUp') rotate();
+      if (e.key === ' ') hardDrop();
+    };
+    window.addEventListener('keydown', onKey, { passive: false });
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isRunning, isOver, current, board]);
+
+  useEffect(() => {
+    const stored = Number(localStorage.getItem(TETRIS_BEST_KEY) || 0);
+    if (!Number.isNaN(stored)) setBestScore(stored);
+  }, []);
+
+  useEffect(() => {
+    if (score > bestScore) {
+      setBestScore(score);
+      localStorage.setItem(TETRIS_BEST_KEY, String(score));
+    }
+  }, [score, bestScore]);
+
+  const renderBoard = () => {
+    return board.map((row, y) =>
+      row.map((cell, x) => {
+        let filled = cell.filled;
+        let color = cell.color;
+        const localX = x - current.x;
+        const localY = y - current.y;
+        if (localY >= 0 && localY < current.shape.length && localX >= 0 && localX < current.shape[0].length) {
+          if (current.shape[localY][localX]) {
+            filled = true;
+            color = current.color;
+          }
+        }
+        return { filled, color };
+      })
+    );
+  };
+
+  const displayBoard = renderBoard();
+
+  return (
+    <div className="flex flex-col items-center gap-4 p-5">
+      <div className="w-full flex items-center justify-between">
+        <div className="text-white/60 text-xs">等级 {level} · 行数 {lines} · 分数 {score} · 最高 {bestScore}</div>
+        <button
+          onClick={() => { setIsRunning((r) => !r); play('tap'); }}
+          className="px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-xs"
+          disabled={isOver}
+        >
+          {isRunning ? '暂停' : '继续'}
+        </button>
+      </div>
+
+      <div className="w-full flex items-start gap-4">
+        <div className="bg-black/50 border border-white/10 rounded-2xl p-3">
+          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${TETRIS_COLS}, 1fr)` }}>
+            {displayBoard.flatMap((row, y) =>
+              row.map((cell, x) => (
+                <div
+                  key={`${x}-${y}`}
+                  className="w-4 h-4 sm:w-5 sm:h-5 rounded-[4px]"
+                  style={{
+                    background: cell.filled ? cell.color : 'rgba(255,255,255,0.06)',
+                    boxShadow: cell.filled ? `0 0 8px ${cell.color}` : 'none',
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white/70 text-xs">
+            <p className="text-white/80 font-semibold mb-2">下一块</p>
+            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${next.shape[0].length}, 1fr)` }}>
+              {next.shape.map((row, y) =>
+                row.map((v, x) => (
+                  <div
+                    key={`${x}-${y}`}
+                    className="w-3.5 h-3.5 rounded-[3px]"
+                    style={{ background: v ? next.color : 'rgba(255,255,255,0.08)' }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+          <button onClick={reset} className="px-4 py-2 rounded-2xl bg-[#00FFB3] text-black font-bold text-sm">重新开始</button>
+          {isOver && <div className="text-xs text-[#FF6B6B]">游戏结束</div>}
+        </div>
+      </div>
+
+      <div className="w-full flex items-center justify-center gap-2">
+        <button onClick={() => move(-1)} className="px-4 py-3 rounded-2xl bg-white/10 text-white">←</button>
+        <button onClick={() => rotate()} className="px-4 py-3 rounded-2xl bg-white/10 text-white">旋转</button>
+        <button onClick={() => move(1)} className="px-4 py-3 rounded-2xl bg-white/10 text-white">→</button>
+      </div>
+      <div className="w-full flex items-center justify-center gap-2">
+        <button onClick={() => stepDown()} className="flex-1 px-4 py-3 rounded-2xl bg-white/10 text-white">下落</button>
+        <button onClick={() => hardDrop()} className="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold">一键到底</button>
+      </div>
+
+      {!isRunning && !isOver && (
+        <button onClick={() => { setIsRunning(true); play('tap'); }} className="text-white/60 text-xs">点击开始</button>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
 // 4. 今天谁买单（转盘）
 // ============================================================
 const COLORS = ['#00FFB3', '#FF9F43', '#FF6B6B', '#00D9FF', '#a29bfe', '#fd79a8', '#55efc4', '#fdcb6e'];
@@ -299,6 +763,7 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
   const [history, setHistory] = useState<string[]>([]);
   const [extraNames, setExtraNames] = useState<string[]>([]);
   const [newName, setNewName] = useState('');
+  const { play } = useGameSfx();
 
   const baseNames = useMemo(
     () => Array.from(new Set(friends.map((f: any) => (f.friend?.username || '好友').trim()).filter(Boolean))),
@@ -311,18 +776,21 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
     const clean = newName.trim();
     if (clean && !names.includes(clean)) {
       setExtraNames(prev => [...prev, clean]);
+      play('tap');
     }
     setNewName('');
   };
 
   const removeExtraName = (name: string) => {
     setExtraNames(prev => prev.filter((n) => n !== name));
+    play('tap');
   };
 
-  const clearHistory = () => setHistory([]);
+  const clearHistory = () => { setHistory([]); play('tap'); };
 
   const spin = () => {
     if (spinning || n < 2) return;
+    play('spin');
     setResult(null);
     setSpinning(true);
     const spins = 5 + Math.random() * 5; // 5~10 圈
@@ -341,6 +809,7 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
       const winner = names[idx];
       setResult(winner);
       setHistory((prev) => [winner, ...prev].slice(0, 5));
+      play('win');
     }, 4000);
   };
 
@@ -618,6 +1087,7 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
   const [timerRunning, setTimerRunning] = useState(false);
   const [hasRecordedWin, setHasRecordedWin] = useState(false);
   const [bestRecords, setBestRecords] = useState<MatchBestRecord[]>(() => loadBestRecords());
+  const { play } = useGameSfx();
   const currentLevel = MATCH_LEVELS[level];
   const matched = cards.filter(c => c.matched).length / 2;
   const total = cards.length / 2;
@@ -665,10 +1135,18 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
     });
 
     setHasRecordedWin(true);
+    play('win');
   }, [won, level, hasRecordedWin, theme, elapsedMs, moves]);
+
+  useEffect(() => {
+    if (won && level !== '6x6') {
+      play('win');
+    }
+  }, [won, level]);
 
   const flip = (idx: number) => {
     if (locked || cards[idx].flipped || cards[idx].matched) return;
+    play('flip');
     if (level === '6x6' && !timerRunning && !won) {
       setTimerRunning(true);
     }
@@ -685,12 +1163,14 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
           setCards(prev => prev.map((c, i) => (i === a || i === b) ? { ...c, matched: true } : c));
           setFlipped([]);
           setLocked(false);
+          play('match');
         }, 400);
       } else {
         setTimeout(() => {
           setCards(prev => prev.map((c, i) => (i === a || i === b) ? { ...c, flipped: false } : c));
           setFlipped([]);
           setLocked(false);
+          play('tap');
         }, 800);
       }
     }
@@ -704,16 +1184,19 @@ const MemoryMatchGame = ({ onClose }: { onClose: () => void }) => {
     setElapsedMs(0);
     setTimerRunning(false);
     setHasRecordedWin(false);
+    play('tap');
   };
 
   const handleChangeTheme = (nextTheme: MatchTheme) => {
     setTheme(nextTheme);
     restart(nextTheme, level);
+    play('tap');
   };
 
   const handleChangeLevel = (nextLevel: MatchLevel) => {
     setLevel(nextLevel);
     restart(theme, nextLevel);
+    play('tap');
   };
 
   return (
@@ -906,10 +1389,26 @@ const games = [
     border: 'border-[#fd79a8]/20',
     component: MemoryMatchGame,
   },
+  {
+    id: 'tetris',
+    icon: '🧱',
+    title: '俄罗斯方块',
+    desc: '左右移动、旋转与一键到底，看看你能消几行',
+    color: '#00D9FF',
+    bg: 'from-[#00D9FF]/20 to-[#6C5CE7]/10',
+    border: 'border-[#00D9FF]/20',
+    component: TetrisGame,
+  },
 ];
 
 export default function GamesPage() {
   const [activeGame, setActiveGame] = useState<typeof games[0] | null>(null);
+  const [sfxMuted, setSfxMuted] = useState(() => readSfxSettings().muted);
+  const [sfxVolume, setSfxVolume] = useState(() => readSfxSettings().volume);
+
+  useEffect(() => {
+    writeSfxSettings({ muted: sfxMuted, volume: sfxVolume });
+  }, [sfxMuted, sfxVolume]);
 
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
@@ -925,6 +1424,28 @@ export default function GamesPage() {
           </h1>
           <p className="text-white/40 text-sm mt-1">朋友聚会的快乐，从这里开始</p>
         </motion.div>
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <button
+            onClick={() => setSfxMuted((v) => !v)}
+            className="px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-xs border border-white/10 w-fit"
+          >
+            {sfxMuted ? '🔇 已静音' : '🔊 音效开'}
+          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-white/40 text-xs">音量</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={sfxVolume}
+              onChange={(e) => setSfxVolume(Number(e.target.value))}
+              className="w-40 accent-[#00FFB3]"
+              disabled={sfxMuted}
+            />
+            <span className="text-white/40 text-xs w-10 text-right">{Math.round(sfxVolume * 100)}%</span>
+          </div>
+        </div>
       </div>
 
       {/* 游戏卡片列表 */}
