@@ -11,6 +11,7 @@ const MUSIC_TRACKS = [
   { label: '本地音乐 · bgm3', url: '/music/bgm3.mp3' },
   { label: '本地音乐 · bgm4', url: '/music/bgm4.mp3' },
 ];
+const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 type FriendChip = { id: string; name: string; avatar?: string };
 
 // ==========================================
@@ -523,7 +524,7 @@ export const MemoryStoryDrawer = ({
               radial-gradient(at 50% 76%, rgba(88,255,214,0.18) 0, transparent 46%),
               linear-gradient(135deg, rgba(8,12,24,0.92), rgba(12,7,28,0.88)),
               url(${memoryFlowBackground})`,
-            backgroundBlendMode: 'screen, screen, screen, normal, soft-light',
+            backgroundBlendMode: isSafari ? 'normal' : 'screen, screen, screen, normal, soft-light',
             backgroundSize: '140% 140%, 140% 140%, 140% 140%, cover, cover',
             backgroundPosition: 'center',
           }}
