@@ -1642,27 +1642,47 @@ export default function MemoryStreamPage() {
       alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
       return;
     }
+    
     setIsRefreshingPull(true);
+    
     try {
-      await Promise.all([
-        useMemoryStore.getState().fetchMemories(),
-        useUserStore.getState().fetchFriends(),
-        useLedgerStore.getState().fetchLedgers(),
-      ]);
-      const latestMemories = useMemoryStore.getState().memories || [];
-      const memoryIds = latestMemories.map((m: any) => m.id).filter(Boolean);
-      if (memoryIds.length > 0) {
-        const comments = await getMemoryComments(memoryIds);
-        const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
-          const memoryId = item.memory_id;
-          if (!memoryId) return acc;
-          if (!acc[memoryId]) acc[memoryId] = [];
-          acc[memoryId].push(item as MemoryCommentItem);
-          return acc;
-        }, {});
-        setCommentsByMemory(grouped);
-      }
+      // 1. 把所有要拉取的数据打包成一个内部函数
+      const fetchAllData = async () => {
+        await Promise.all([
+          useMemoryStore.getState().fetchMemories(),
+          useUserStore.getState().fetchFriends(),
+          useLedgerStore.getState().fetchLedgers(),
+        ]);
+        
+        const latestMemories = useMemoryStore.getState().memories || [];
+        const memoryIds = latestMemories.map((m: any) => m.id).filter(Boolean);
+        
+        if (memoryIds.length > 0) {
+          const comments = await getMemoryComments(memoryIds);
+          const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
+            const memoryId = item.memory_id;
+            if (!memoryId) return acc;
+            if (!acc[memoryId]) acc[memoryId] = [];
+            acc[memoryId].push(item as MemoryCommentItem);
+            return acc;
+          }, {});
+          setCommentsByMemory(grouped);
+        }
+      };
+
+      // 2. 设定 10 秒的强制死亡线（防止 iOS 假死）
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('刷新超时，网络可能在后台断开了')), 10000)
+      );
+
+      // 3. 竞速执行：只要 10 秒内没拉完，强行打断！
+      await Promise.race([fetchAllData(), timeoutPromise]);
+
+    } catch (error) {
+      console.error('下拉刷新被强行中断:', error);
+      // 这里不需要弹窗打扰用户，只需要在控制台记录即可
     } finally {
+      // 4. 有了前面的保护，代码现在 100% 能走到这里，把下拉胶囊收回去！
       setIsRefreshingPull(false);
     }
   };

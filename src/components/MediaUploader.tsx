@@ -533,39 +533,48 @@ export default function MediaUploader({
     setUploadDone(0);
 
     try {
-      const { uploadPhoto } = await import('../api/supabase');
+      // 1. import 也加 5 秒超时，避免断网卡死
+      const importPromise = import('../api/supabase');
+      const timeoutImport = new Promise((_, reject) => setTimeout(() => reject(new Error('网络初始化超时')), 5000));
+      const { uploadPhoto } = (await Promise.race([importPromise, timeoutImport])) as any;
+
       const uploadedUrls: string[] = [];
 
       for (const file of files) {
+        let timeoutId: NodeJS.Timeout | null = null;
         try {
-          const options = {
-            maxSizeMB: 0.5,
-            maxWidthOrHeight: 1920,
-            useWebWorker: false,
-            initialQuality: 0.8,
+          const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: false, initialQuality: 0.8 };
+
+          // 压缩+上传完整链路
+          const processPromise = async () => {
+            const compressedFile = await imageCompression(file, options);
+            return await uploadPhoto(userId, compressedFile);
           };
 
-          const compressPromise = imageCompression(file, options);
-          const timeoutPromise = new Promise<File>((_, reject) =>
-            setTimeout(() => reject(new Error('图片压缩超时，请选小一点的图')), 15000)
-          );
+          // 30 秒强制超时（压缩+上传）
+          const timeoutPromise = new Promise<string>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('图片处理或上传超时，请检查网络')), 30000);
+          });
 
-          const compressedFile = await Promise.race([compressPromise, timeoutPromise]);
-          const url = await uploadPhoto(userId, compressedFile);
+          const url = await Promise.race([processPromise(), timeoutPromise]);
+
           uploadedUrls.push(url);
-          setUploadDone((prev) => Math.min(prev + 1, files.length));
+          setUploadDone(prev => Math.min(prev + 1, files.length));
         } catch (innerErr) {
           console.error('单张图片处理失败:', innerErr);
           alert(`图片 ${file.name} 处理失败：${(innerErr as any)?.message || '请重试'}`);
+        } finally {
+          // 清理定时器，避免未捕获异常
+          if (timeoutId) clearTimeout(timeoutId);
         }
       }
 
       if (uploadedUrls.length > 0) {
         onPhotosChange([...photos, ...uploadedUrls]);
       }
-    } catch (error) {
-      console.error('整体上传流程报错:', error);
-      alert('上传过程发生异常，请检查网络后重试');
+    } catch (err) {
+      console.error('上传环境加载失败:', err);
+      alert('系统网络异常，请重试');
     } finally {
       setUploading(false);
       if (inputEl) inputEl.value = '';
