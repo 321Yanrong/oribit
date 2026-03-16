@@ -4,11 +4,13 @@ import { FaImage, FaVideo, FaTimes, FaSpinner, FaMicrophone, FaStop, FaTrash, Fa
 import { track } from '../utils/analytics';
 import { shouldAllowUpload } from '../utils/settings';
 import imageCompression from 'browser-image-compression';
+import { savePendingPhotos, loadPendingPhotos, clearPendingPhotos } from '../utils/pendingUploads';
 
 const LIVE_MAX_SIZE_MB = 30;
 const UPLOAD_TIMEOUT_MS = 45000;
 const MAX_IMAGE_EDGE = 1600;
 const MIN_IMAGE_COMPRESS_SIZE = 0.6 * 1024 * 1024; // 600KB 以上才压缩
+const MAX_PENDING_FILES = 8;
 
 const withTimeout = async <T,>(promise: Promise<T>, ms = UPLOAD_TIMEOUT_MS): Promise<T> => {
   const timeout = new Promise<never>((_, reject) => {
@@ -225,12 +227,14 @@ function LivePhotoUploader({
   onAddLiveVideos,
   onAddLiveImages,
   onRemoveLiveItem,
+  onPickerOpen,
 }: {
   userId: string;
   liveItems: LiveItem[];
   onAddLiveVideos: (urls: string[]) => void;
   onAddLiveImages: (urls: string[]) => void;
   onRemoveLiveItem: (item: LiveItem) => void;
+  onPickerOpen?: () => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -272,7 +276,7 @@ function LivePhotoUploader({
 
   return (
     <div className="space-y-4">
-      <div onClick={() => inputRef.current?.click()} className="flex flex-col items-center gap-3 py-8 rounded-2xl border-2 border-dashed border-[#FFD700]/30 bg-[#FFD700]/5 cursor-pointer hover:border-[#FFD700]/60 transition-colors">
+      <div onClick={() => { onPickerOpen?.(); inputRef.current?.click(); }} className="flex flex-col items-center gap-3 py-8 rounded-2xl border-2 border-dashed border-[#FFD700]/30 bg-[#FFD700]/5 cursor-pointer hover:border-[#FFD700]/60 transition-colors">
         {uploading ? <FaSpinner className="text-[#FFD700] text-3xl animate-spin" /> : (
           <>
             <div className="w-14 h-14 rounded-xl bg-[#FFD700]/20 flex items-center justify-center"><FaBolt className="text-[#FFD700] text-2xl" /></div>
@@ -301,6 +305,7 @@ function LivePhotoUploader({
         accept="video/*,image/*,.mov,.mp4,.webm,.heic,.heif"
         multiple
         className="hidden"
+        onClick={() => onPickerOpen?.()}
         onChange={e => handleFiles(e.target.files)}
       />
     </div>
@@ -328,9 +333,17 @@ export default function MediaUploader({
   const [liveBindings, setLiveBindings] = useState<Array<{ photoUrl: string; liveUrl: string; liveType: 'video' | 'image' }>>([]);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [linkingLive, setLinkingLive] = useState(false);
+  const [restoringPending, setRestoringPending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const liveVideoInputRef = useRef<HTMLInputElement>(null);
+  const markPickingMedia = () => {
+    try {
+      sessionStorage.setItem('orbit_picking_media', 'true');
+    } catch (err) {
+      console.warn('set picking media flag failed:', err);
+    }
+  };
 
   useEffect(() => {
     const updateNetwork = () => {
@@ -350,6 +363,26 @@ export default function MediaUploader({
     };
   }, []);
 
+  // 恢复未完成的压缩/上传队列
+  useEffect(() => {
+    const restorePending = async () => {
+      if (uploading || restoringPending) return;
+      setRestoringPending(true);
+      try {
+        const files = await loadPendingPhotos();
+        if (files.length > 0) {
+          console.log('[MediaUploader] 自动恢复上次未完成的上传队列');
+          await handlePhotoFiles(files, null, { skipPersist: true });
+        }
+      } catch (err) {
+        console.warn('恢复未完成上传失败:', err);
+      } finally {
+        setRestoringPending(false);
+      }
+    };
+    void restorePending();
+  }, [uploading]);
+
   const livePhotoUrlSet = new Set(liveBindings.map(binding => binding.photoUrl));
   const liveItems: LiveItem[] = [
     ...liveImages.map(url => ({ url, mediaType: 'image' as const })),
@@ -362,7 +395,7 @@ export default function MediaUploader({
     const nonLive = videos.filter(v => !liveVideos.includes(v) && !urls.includes(v));
     onVideosChange([...nonLive, ...urls]);
   };
-
+              await handlePhotoFiles(files, null, { skipPersist: true });
   const syncLiveImages = (urls: string[]) => {
     setLiveImages(urls);
     setLiveBindings(prev => prev.filter(binding => binding.liveType === 'video' || urls.includes(binding.liveUrl)));
@@ -522,9 +555,13 @@ export default function MediaUploader({
     finally { setUploading(false); }
   };
 
-  const handlePhotoFiles = async (files: File[], inputEl?: HTMLInputElement | null) => {
+  const handlePhotoFiles = async (files: File[], inputEl?: HTMLInputElement | null, options?: { skipPersist?: boolean }) => {
     if (!files.length || uploading) return;
     if (!ensureWifiUpload()) return;
+
+    if (!options?.skipPersist) {
+      await savePendingPhotos(files, MAX_PENDING_FILES);
+    }
 
     setUploading(true);
     setUploadError(null);
@@ -542,6 +579,7 @@ export default function MediaUploader({
       const { uploadPhoto } = (await Promise.race([importPromise, timeoutImport])) as any;
 
       const uploadedUrls: string[] = [];
+      const failedFiles: File[] = [];
 
       for (const file of files) {
         let timeoutId: NodeJS.Timeout | null = null;
@@ -568,6 +606,7 @@ export default function MediaUploader({
         } catch (innerErr) {
           console.error('单张图片处理失败:', innerErr);
           alert(`图片 ${file.name} 处理失败：${(innerErr as any)?.message || '请重试'}`);
+          failedFiles.push(file);
         } finally {
           // 清理定时器，避免未捕获异常
           if (timeoutId) clearTimeout(timeoutId);
@@ -576,6 +615,11 @@ export default function MediaUploader({
 
       if (uploadedUrls.length > 0) {
         onPhotosChange([...photos, ...uploadedUrls]);
+      }
+      if (failedFiles.length > 0) {
+        await savePendingPhotos(failedFiles, MAX_PENDING_FILES);
+      } else {
+        await clearPendingPhotos();
       }
     } catch (err) {
       console.error('上传环境加载失败:', err);
@@ -662,6 +706,10 @@ export default function MediaUploader({
       {/* ── 照片 ── */}
       {activeTab === 'photo' && (
         <>
+          <div className="rounded-xl border border-[#FFD166]/30 bg-[#1a1610]/80 px-4 py-2 text-[#FFD166] text-xs flex items-center gap-2">
+            <FaBolt className="text-[10px]" />
+            挑图请尽快完成，iOS 长时间停留相册可能回收应用；未完成队列会自动尝试恢复。
+          </div>
           {photos.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
               {photos.map((url, i) => (
@@ -686,7 +734,7 @@ export default function MediaUploader({
               ))}
             </div>
           )}
-          <div onClick={() => fileInputRef.current?.click()} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handlePhotoFiles(Array.from(e.dataTransfer.files || [])); }}
+          <div onClick={() => { markPickingMedia(); fileInputRef.current?.click(); }} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handlePhotoFiles(Array.from(e.dataTransfer.files || [])); }}
             className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-all ${dragOver ? 'border-orbit-mint bg-orbit-mint/10' : 'border-white/20 bg-white/5 hover:border-orbit-mint/50'}`} style={{ minHeight: 110 }}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
               {uploading ? <FaSpinner className="text-orbit-mint text-2xl animate-spin" /> : (
@@ -698,7 +746,7 @@ export default function MediaUploader({
               )}
             </div>
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoSelect} />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onClick={markPickingMedia} onChange={handlePhotoSelect} />
         </>
       )}
 
@@ -715,7 +763,7 @@ export default function MediaUploader({
               ))}
             </div>
           )}
-          <div onClick={() => videoInputRef.current?.click()} className="relative rounded-2xl border-2 border-dashed border-white/20 bg-white/5 hover:border-orbit-orange/50 cursor-pointer transition-all" style={{ minHeight: 110 }}>
+          <div onClick={() => { markPickingMedia(); videoInputRef.current?.click(); }} className="relative rounded-2xl border-2 border-dashed border-white/20 bg-white/5 hover:border-orbit-orange/50 cursor-pointer transition-all" style={{ minHeight: 110 }}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
               {uploading ? <FaSpinner className="text-orbit-orange text-2xl animate-spin" /> : (
                 <>
@@ -725,7 +773,7 @@ export default function MediaUploader({
               )}
             </div>
           </div>
-          <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={e => handleFileSelect(Array.from(e.target.files || []), 'video')} />
+          <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onClick={markPickingMedia} onChange={e => handleFileSelect(Array.from(e.target.files || []), 'video')} />
         </>
       )}
 
@@ -737,6 +785,7 @@ export default function MediaUploader({
           onAddLiveVideos={handleAddLiveVideos}
           onAddLiveImages={handleAddLiveImages}
           onRemoveLiveItem={handleRemoveLiveItem}
+          onPickerOpen={markPickingMedia}
         />
       )}
 
@@ -746,6 +795,7 @@ export default function MediaUploader({
         accept="video/*,.mov,.mp4,.webm"
         multiple={false}
         className="hidden"
+        onClick={markPickingMedia}
         onChange={e => handleAttachLiveToPhoto(e.target.files, previewPhoto)}
       />
 

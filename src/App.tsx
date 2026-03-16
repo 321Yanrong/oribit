@@ -48,7 +48,7 @@ const usePWAKeeper = (onResume: () => void) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const PWA_RELOAD_THRESHOLD_MS = 3 * 60 * 1000;
+    const HARD_RELOAD_THRESHOLD_MS = 5 * 60 * 1000;
     const SESSION_TIMEOUT_MS = 5000;
 
     const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -58,18 +58,24 @@ const usePWAKeeper = (onResume: () => void) => {
       ]);
     };
 
-    const maybeHardReload = () => {
+    const shouldHardReload = () => {
       const hiddenFor = Date.now() - lastHiddenAtRef.current;
-      if (!hasReloadedRef.current && hiddenFor > PWA_RELOAD_THRESHOLD_MS) {
-        hasReloadedRef.current = true;
-        window.location.reload();
+      const isPickingMedia = sessionStorage.getItem('orbit_picking_media') === 'true';
+      if (!hasReloadedRef.current && hiddenFor > HARD_RELOAD_THRESHOLD_MS && !isPickingMedia) {
         return true;
       }
       return false;
     };
 
     const handleWake = async (reason: string) => {
-      if (maybeHardReload()) return;
+      if (shouldHardReload()) {
+        hasReloadedRef.current = true;
+        window.location.reload();
+        return;
+      }
+
+      sessionStorage.removeItem('orbit_picking_media');
+
       try {
         await withTimeout(supabase.removeAllChannels(), 4000);
       } catch (err) {
@@ -92,6 +98,7 @@ const usePWAKeeper = (onResume: () => void) => {
     };
 
     const handleOnline = () => {
+      sessionStorage.removeItem('orbit_picking_media');
       void handleWake('online');
     };
 

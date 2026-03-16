@@ -529,7 +529,7 @@ const FriendSelector = ({
   return (
     <div className="space-y-2">
       <div className="text-white/40 text-sm mb-2">选择一起的人</div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {friends.map((friendship: any) => {
           const friend = friendship.friend;
           const isVirtual = friend.id?.startsWith('temp-');
@@ -541,7 +541,7 @@ const FriendSelector = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onToggle(friend.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all cursor-pointer ${
+              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-full border transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-[#00FFB3]/20 border-[#00FFB3] text-[#00FFB3]'
                   : 'bg-white/5 border-white/10 text-white/60'
