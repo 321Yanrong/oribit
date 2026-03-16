@@ -919,6 +919,11 @@ export const updateMemoryContent = async (memoryId: string, newContent: string) 
 export const deleteFriendship = async (friendshipId: string): Promise<void> => {
   ensureOnlineForWrite('删除好友')
 
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const currentUserId = authData?.user?.id;
+  if (!currentUserId) throw new Error('当前未登录，无法删除好友');
+
   const { data: row, error: fetchError } = await supabase
     .from('friendships')
     .select('id, user_id, friend_id, status')
@@ -927,11 +932,16 @@ export const deleteFriendship = async (friendshipId: string): Promise<void> => {
   if (fetchError) throw fetchError;
   if (!row) return;
 
-  const { error } = await supabase
+  const { data: deletedRows, error } = await supabase
     .from('friendships')
     .delete()
-    .eq('id', friendshipId);
+    .eq('id', friendshipId)
+    .eq('user_id', currentUserId)
+    .select('id');
   if (error) throw error;
+  if (!deletedRows || deletedRows.length === 0) {
+    throw new Error('删除失败：没有权限或记录不存在');
+  }
 
   // 如果是已绑定的真实好友，尝试把对方侧的关系降级为虚拟好友
   if (row.friend_id) {
@@ -945,7 +955,7 @@ export const deleteFriendship = async (friendshipId: string): Promise<void> => {
 
     const { data: reverse } = await supabase
       .from('friendships')
-      .select('id, status, friend_id')
+      .select('id, status, friend_id, user_id')
       .eq('user_id', row.friend_id)
       .eq('friend_id', row.user_id)
       .maybeSingle();
