@@ -1,3 +1,4 @@
+/*
 Attached HTML and CSS Context
 
 <input type="password" class="input-glass pl-12" placeholder="至少6位密码" minlength="6" required="" value="">
@@ -60,6 +61,7 @@ input, input[type="email" i], input[type="number" i], input[type="password" i], 
 
 /* Matched Rule from user-agent */
 input:not([type="file" i], [type="image" i], [type="checkbox" i], [type="radio" i]) {
+  --reference-placeholder: 1;
 }
 
 /* Matched Rule from user-agent */
@@ -1130,3 +1132,4 @@ html {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
+*/

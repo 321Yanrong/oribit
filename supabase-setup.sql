@@ -194,6 +194,25 @@ CREATE TRIGGER sync_memory_tag_owner
   BEFORE INSERT OR UPDATE OF memory_id ON memory_tags
   FOR EACH ROW EXECUTE FUNCTION public.sync_memory_tag_owner();
 
+-- 帮助函数：绕过 RLS 检查当前用户是否被标记在同一条记忆中
+CREATE OR REPLACE FUNCTION public.is_user_tagged_in_memory(
+  p_memory_id UUID,
+  p_user_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET row_security = off
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM memory_tags mt
+    WHERE mt.memory_id = p_memory_id
+      AND mt.user_id = p_user_id
+  );
+$$;
+
 -- Tagged user sees own tags; memory creator sees all tags on their memories
 DROP POLICY IF EXISTS "Users can view memory tags" ON memory_tags;
 CREATE POLICY "Users can view memory tags" ON memory_tags
@@ -201,11 +220,7 @@ CREATE POLICY "Users can view memory tags" ON memory_tags
     auth.uid() = owner_id
     OR auth.uid() = user_id
     OR (
-      EXISTS (
-        SELECT 1 FROM memory_tags mt_self
-        WHERE mt_self.memory_id = memory_tags.memory_id
-          AND mt_self.user_id = auth.uid()
-      )
+      public.is_user_tagged_in_memory(memory_tags.memory_id, auth.uid())
       AND EXISTS (
         SELECT 1 FROM friendships f
         WHERE f.user_id = auth.uid()

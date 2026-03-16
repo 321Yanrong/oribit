@@ -4,17 +4,31 @@
 -- ==============================================
 
 -- 1) memory_tags：允许同一条记忆的共同好友互相看到 @ 列表
+CREATE OR REPLACE FUNCTION public.is_user_tagged_in_memory(
+  p_memory_id UUID,
+  p_user_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET row_security = off
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM memory_tags mt
+    WHERE mt.memory_id = p_memory_id
+      AND mt.user_id = p_user_id
+  );
+$$;
+
 DROP POLICY IF EXISTS "Users can view memory tags" ON memory_tags;
 CREATE POLICY "Users can view memory tags" ON memory_tags
   FOR SELECT USING (
     auth.uid() = owner_id
     OR auth.uid() = user_id
     OR (
-      EXISTS (
-        SELECT 1 FROM memory_tags mt_self
-        WHERE mt_self.memory_id = memory_tags.memory_id
-          AND mt_self.user_id = auth.uid()
-      )
+      public.is_user_tagged_in_memory(memory_tags.memory_id, auth.uid())
       AND EXISTS (
         SELECT 1 FROM friendships f
         WHERE f.user_id = auth.uid()

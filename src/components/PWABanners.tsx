@@ -154,7 +154,7 @@ export default function PWABanners() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-24 z-[120] pointer-events-none px-4 space-y-2">
+    <div className="fixed inset-x-0 top-4 z-[120] pointer-events-none px-4 space-y-2">
       {canInstall && (
         <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#00FFB3]/30 bg-[#0f1715]/95 p-3 shadow-xl">
           <div className="flex items-center justify-between gap-3">
@@ -190,10 +190,10 @@ export default function PWABanners() {
       )}
 
       {needRefresh && (
-        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#FFD166]/30 bg-[#1a1610]/95 p-3 shadow-xl">
+        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#FFD166]/40 bg-gradient-to-r from-[#1a1610]/95 via-[#251a12]/95 to-[#1a1610]/95 p-3 shadow-xl">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-white/90">✨ 有新版本可用，点击更新立即生效</p>
-            <button onClick={handleRefresh} className="rounded-lg bg-[#FFD166] px-3 py-1.5 text-xs font-semibold text-black">更新</button>
+            <p className="text-sm text-white/95">✨ 发现新版本，点击更新</p>
+            <button onClick={handleRefresh} className="rounded-lg bg-[#FFD166] px-3 py-1.5 text-xs font-semibold text-black shadow-sm">更新</button>
           </div>
         </div>
       )}
