@@ -532,6 +532,9 @@ export default function MediaUploader({
     setUploadTotal(files.length);
     setUploadDone(0);
 
+    // 🚨 唤醒 iOS PWA：给底层留 500ms 恢复网络/内存
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     try {
       // 1. import 也加 5 秒超时，避免断网卡死
       const importPromise = import('../api/supabase');
@@ -547,13 +550,15 @@ export default function MediaUploader({
 
           // 压缩+上传完整链路
           const processPromise = async () => {
+            console.log('开始压缩图片...');
             const compressedFile = await imageCompression(file, options);
+            console.log('压缩完成，开始上传...');
             return await uploadPhoto(userId, compressedFile);
           };
 
-          // 30 秒强制超时（压缩+上传）
+          // 20 秒强制超时（压缩+上传）
           const timeoutPromise = new Promise<string>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('图片处理或上传超时，请检查网络')), 30000);
+            timeoutId = setTimeout(() => reject(new Error('图片处理超时，请检查网络')), 20000);
           });
 
           const url = await Promise.race([processPromise(), timeoutPromise]);
@@ -574,7 +579,7 @@ export default function MediaUploader({
       }
     } catch (err) {
       console.error('上传环境加载失败:', err);
-      alert('系统网络异常，请重试');
+      alert('系统异常，请稍后重试');
     } finally {
       setUploading(false);
       if (inputEl) inputEl.value = '';

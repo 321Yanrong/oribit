@@ -1426,34 +1426,28 @@ export default function MemoryStreamPage() {
   // 按城市分组
   const cityGroupedMemories = useMemo(() => groupMemoriesByCity(filteredMemories), [filteredMemories]);
 
-  // 强化版：拉取评论的 useEffect
+  // 强化版：拉取评论的 useEffect（带延迟与自动重试）
   useEffect(() => {
     const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
-    
-    if (memoryIds.length === 0) {
-      // 只有在真的没有任何记忆时才清空评论
-      setCommentsByMemory({});
-      return;
-    }
+    if (memoryIds.length === 0) return;
 
     let cancelled = false;
 
-    const fetchCommentsSafe = async () => {
+    const fetchCommentsSafe = async (retryCount = 0) => {
+      // 唤醒后等 800ms，给网络和底层资源预热
+      await new Promise(r => setTimeout(r, 800));
+
       try {
-        // 1. 给评论接口也加上 8 秒的强制生命线
         const fetchPromise = getMemoryComments(memoryIds);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('评论拉取超时')), 8000)
+          setTimeout(() => reject(new Error('评论拉取超时')), 5000)
         );
 
-        // 2. 竞速：如果网络假死，8秒后强制报错，避免代码永远卡住
         const comments = await Promise.race([fetchPromise, timeoutPromise]) as any[];
-        
         if (cancelled) return;
 
         const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
           const memoryId = item.memory_id;
-          if (!memoryId) return acc;
           if (!acc[memoryId]) acc[memoryId] = [];
           acc[memoryId].push(item as MemoryCommentItem);
           return acc;
@@ -1462,13 +1456,16 @@ export default function MemoryStreamPage() {
         setCommentsByMemory(grouped);
       } catch (error) {
         if (!cancelled) {
-          console.error('加载评论被系统或网络中断:', error);
-          // 🚨 关键：遇到错误时，千万不要 setCommentsByMemory({})，保留已经加载好的旧评论！
+          console.error(`第 ${retryCount + 1} 次拉取评论失败:`, error);
+          if (retryCount < 2) {
+            console.log('2秒后自动重试拉取评论...');
+            setTimeout(() => fetchCommentsSafe(retryCount + 1), 2000);
+          }
         }
       }
     };
 
-    fetchCommentsSafe();
+    fetchCommentsSafe(0);
 
     return () => { cancelled = true; };
   }, [memories, resumeTrigger]);
