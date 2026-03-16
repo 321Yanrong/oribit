@@ -131,6 +131,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     if (error) {
       console.error('拉取好友失败:', error.message);
+      const fallback = readCache<Friend[]>(buildCacheKey('friends', currentUser.id), []);
+      if (fallback.length > 0) set({ friends: fallback });
       return;
     }
 
@@ -228,9 +230,15 @@ export const useMemoryStore = create<MemoryState>((set) => ({
   fetchMemories: async () => {
     const userId = useUserStore.getState().currentUser?.id; 
     if (!userId || !isRealUUID(userId)) return;
-    const data = await getMemories(userId);
-    set({ memories: data || [] });
-    writeCache(buildCacheKey('memories', userId), data || []);
+    try {
+      const data = await getMemories(userId);
+      set({ memories: data || [] });
+      writeCache(buildCacheKey('memories', userId), data || []);
+    } catch (error: any) {
+      console.error('拉取记忆失败:', error?.message || error);
+      const fallback = readCache<any[]>(buildCacheKey('memories', userId), []);
+      if (fallback.length > 0) set({ memories: fallback });
+    }
   },
   addMemory: (memory) => set((state) => {
     const next = [memory, ...state.memories];
@@ -342,6 +350,8 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
       await task;
     } catch (e) {
       console.error('fetchLedgers error:', e);
+      const fallback = readCache<Ledger[]>(buildCacheKey('ledgers', userId), []);
+      if (fallback.length > 0) set({ ledgers: fallback });
     } finally {
       set({ _fetchLedgersInFlight: null } as any);
     }

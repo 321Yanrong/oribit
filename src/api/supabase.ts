@@ -275,8 +275,15 @@ export const deleteMyAccount = async (confirmEmail: string) => {
     throw new Error('邮箱不匹配，请输入当前登录邮箱后重试')
   }
 
-  const { error } = await (supabase as any).rpc('delete_my_account')
-  if (error) throw error
+  // 优先走 Edge Function 做级联清理
+  const { error: fnError } = await supabase.functions.invoke('delete-account', {
+    body: { confirmEmail: email },
+  })
+  if (fnError) {
+    // 兜底：如果 Edge Function 未部署，回退 RPC
+    const { error } = await (supabase as any).rpc('delete_my_account')
+    if (error) throw error
+  }
 
   // 账号删除后清理本地会话
   await supabase.auth.signOut({ scope: 'local' })
