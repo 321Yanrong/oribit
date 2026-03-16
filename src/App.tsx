@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
+import { useAppStore } from './store/app';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav from './components/BottomNav';
@@ -56,6 +57,7 @@ function App() {
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
+  const triggerResume = useAppStore((state) => state.triggerResume);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -167,6 +169,7 @@ function App() {
       if (now - lastRefreshRef.current > 5 * 60 * 1000) {
         lastRefreshRef.current = now;
         try {
+          await supabase.auth.getSession();
           await supabase.auth.refreshSession();
         } catch {
           // ignore
@@ -190,21 +193,31 @@ function App() {
       resumeTimerRef.current = window.setTimeout(() => {
         if (document.visibilityState === 'visible') {
           void rehydrateIfEmpty();
+          triggerResume();
         }
       }, 800);
     };
 
+    const handleOnline = () => {
+      if (document.visibilityState === 'visible') {
+        void rehydrateIfEmpty();
+        triggerResume();
+      }
+    };
+
     document.addEventListener('visibilitychange', handleResume);
     window.addEventListener('pageshow', handleResume);
+    window.addEventListener('online', handleOnline);
 
     return () => {
       document.removeEventListener('visibilitychange', handleResume);
       window.removeEventListener('pageshow', handleResume);
+      window.removeEventListener('online', handleOnline);
       if (resumeTimerRef.current) {
         window.clearTimeout(resumeTimerRef.current);
       }
     };
-  }, []);
+  }, [triggerResume]);
 
 
 

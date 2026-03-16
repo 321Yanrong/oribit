@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
+import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
 import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
@@ -1175,6 +1176,7 @@ export default function MemoryStreamPage() {
   const albumSectionRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState(readSettings());
   const lastAutoRefreshRef = useRef(0);
+  const resumeTrigger = useAppStore((state) => state.resumeTrigger);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1458,50 +1460,57 @@ export default function MemoryStreamPage() {
   useEffect(() => {
     if (!currentUser?.id) return;
 
-    const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
-    if (memoryIds.length === 0) return;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const idList = memoryIds.join(',');
-    const channel = supabase
-      .channel(`memory-comments-${currentUser.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'memory_comments', filter: `memory_id=in.(${idList})` },
-        (payload) => {
-          const item = payload.new as MemoryCommentItem;
-          if (!item?.id || !item.memory_id) return;
-          setCommentsByMemory((prev) => {
-            const existing = prev[item.memory_id] || [];
-            if (existing.some((c) => c.id === item.id)) return prev;
-            return {
-              ...prev,
-              [item.memory_id]: [...existing, item],
-            };
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'memory_comments', filter: `memory_id=in.(${idList})` },
-        (payload) => {
-          const item = payload.old as MemoryCommentItem;
-          if (!item?.id || !item.memory_id) return;
-          setCommentsByMemory((prev) => {
-            const existing = prev[item.memory_id] || [];
-            if (!existing.some((c) => c.id === item.id)) return prev;
-            return {
-              ...prev,
-              [item.memory_id]: existing.filter((c) => c.id !== item.id),
-            };
-          });
-        }
-      )
-      .subscribe();
+    const subscribe = () => {
+      const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
+      if (memoryIds.length === 0) return;
+
+      const idList = memoryIds.join(',');
+      if (channel) supabase.removeChannel(channel);
+      channel = supabase
+        .channel(`memory-comments-${currentUser.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'memory_comments', filter: `memory_id=in.(${idList})` },
+          (payload) => {
+            const item = payload.new as MemoryCommentItem;
+            if (!item?.id || !item.memory_id) return;
+            setCommentsByMemory((prev) => {
+              const existing = prev[item.memory_id] || [];
+              if (existing.some((c) => c.id === item.id)) return prev;
+              return {
+                ...prev,
+                [item.memory_id]: [...existing, item],
+              };
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'memory_comments', filter: `memory_id=in.(${idList})` },
+          (payload) => {
+            const item = payload.old as MemoryCommentItem;
+            if (!item?.id || !item.memory_id) return;
+            setCommentsByMemory((prev) => {
+              const existing = prev[item.memory_id] || [];
+              if (!existing.some((c) => c.id === item.id)) return prev;
+              return {
+                ...prev,
+                [item.memory_id]: existing.filter((c) => c.id !== item.id),
+              };
+            });
+          }
+        )
+        .subscribe();
+    };
+
+    subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
-  }, [memories, currentUser?.id]);
+  }, [memories, currentUser?.id, resumeTrigger]);
 
   useEffect(() => {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
