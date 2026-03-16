@@ -5,6 +5,7 @@ import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
+import PullToRefresh from '../components/PullToRefresh';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -1537,6 +1538,7 @@ const handleAddFriend = async (name: string, remark: string) => {
 
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
+      <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} />
       <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.2) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(0, 255, 179, 0.15) 0%, transparent 40%)` }} />
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       

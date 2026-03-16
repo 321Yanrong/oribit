@@ -8,6 +8,7 @@ import { supabase, createMemory, createLocation, createLedger, updateLedger, del
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
+import PullToRefresh from '../components/PullToRefresh';
 import { track } from '../utils/analytics';
 import { readSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
@@ -1166,6 +1167,7 @@ export default function MemoryStreamPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshingPull, setIsRefreshingPull] = useState(false);
   const [activeStoryMemories, setActiveStoryMemories] = useState<any[] | null>(null);
   const [showStoryEntry, setShowStoryEntry] = useState(false);
   // 在原有的 useState 旁边加上这两个：
@@ -1633,9 +1635,41 @@ export default function MemoryStreamPage() {
       setDeletingMemoryId(null);
     }
   };
+
+  const handlePullRefresh = async () => {
+    if (isRefreshingPull) return;
+    if (!shouldAllowRefresh()) {
+      alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
+      return;
+    }
+    setIsRefreshingPull(true);
+    try {
+      await Promise.all([
+        useMemoryStore.getState().fetchMemories(),
+        useUserStore.getState().fetchFriends(),
+        useLedgerStore.getState().fetchLedgers(),
+      ]);
+      const latestMemories = useMemoryStore.getState().memories || [];
+      const memoryIds = latestMemories.map((m: any) => m.id).filter(Boolean);
+      if (memoryIds.length > 0) {
+        const comments = await getMemoryComments(memoryIds);
+        const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
+          const memoryId = item.memory_id;
+          if (!memoryId) return acc;
+          if (!acc[memoryId]) acc[memoryId] = [];
+          acc[memoryId].push(item as MemoryCommentItem);
+          return acc;
+        }, {});
+        setCommentsByMemory(grouped);
+      }
+    } finally {
+      setIsRefreshingPull(false);
+    }
+  };
   
   return (
     <div className="relative min-h-screen bg-[#121212] pt-[180px]">
+      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00FFB3]/5 rounded-full blur-3xl" />

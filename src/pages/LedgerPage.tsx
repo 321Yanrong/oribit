@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaClock, FaUsers, FaUser, FaMapMarkerAlt, FaWallet, FaPlus, FaTimes, FaSpinner, FaImages, FaChevronRight, FaEdit, FaTrash } from 'react-icons/fa';
 import { useLedgerStore, useUserStore, getUserById, useMemoryStore } from '../store';
+import PullToRefresh from '../components/PullToRefresh';
+import { shouldAllowRefresh } from '../utils/settings';
 
 const getCityFromMemory = (memory: any): string => {
   const addr = memory?.location?.address || '';
@@ -262,6 +264,7 @@ export default function LedgerPage() {
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [editingLedger, setEditingLedger] = useState<any>(null);
   const [groupBy, setGroupBy] = useState<'memory' | 'city'>('memory');
+  const [isRefreshingPull, setIsRefreshingPull] = useState(false);
 
   const handleDeleteLedger = async (id: string) => {
     if (!window.confirm('确定删除这笔账单？')) return;
@@ -273,6 +276,24 @@ export default function LedgerPage() {
   };
 
   useEffect(() => { fetchLedgers(); }, []);
+
+  const handlePullRefresh = async () => {
+    if (isRefreshingPull) return;
+    if (!shouldAllowRefresh()) {
+      alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
+      return;
+    }
+    setIsRefreshingPull(true);
+    try {
+      await Promise.all([
+        useMemoryStore.getState().fetchMemories(),
+        useUserStore.getState().fetchFriends(),
+        useLedgerStore.getState().fetchLedgers(),
+      ]);
+    } finally {
+      setIsRefreshingPull(false);
+    }
+  };
   
   // 按城市分组
   const cityGrouped = useMemo(() => {
@@ -337,6 +358,7 @@ export default function LedgerPage() {
 
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
+      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
       <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_20%,rgba(255,179,71,0.2)_0%,transparent_50%)]" />
 
       {/* 顶部标题栏 */}

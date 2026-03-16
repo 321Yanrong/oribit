@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSyncAlt, FaGamepad, FaTrash } from 'react-icons/fa';
 import { useUserStore } from '../store';
+import PullToRefresh from '../components/PullToRefresh';
+import { shouldAllowRefresh } from '../utils/settings';
 
 // ============================================================
 // 游戏音效（轻量 Web Audio）
@@ -1405,13 +1407,29 @@ export default function GamesPage() {
   const [activeGame, setActiveGame] = useState<typeof games[0] | null>(null);
   const [sfxMuted, setSfxMuted] = useState(() => readSfxSettings().muted);
   const [sfxVolume, setSfxVolume] = useState(() => readSfxSettings().volume);
+  const [isRefreshingPull, setIsRefreshingPull] = useState(false);
 
   useEffect(() => {
     writeSfxSettings({ muted: sfxMuted, volume: sfxVolume });
   }, [sfxMuted, sfxVolume]);
 
+  const handlePullRefresh = async () => {
+    if (isRefreshingPull) return;
+    if (!shouldAllowRefresh()) {
+      alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
+      return;
+    }
+    setIsRefreshingPull(true);
+    try {
+      await useUserStore.getState().fetchFriends();
+    } finally {
+      setIsRefreshingPull(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
+      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
       <div className="absolute inset-0 opacity-20 pointer-events-none"
         style={{ background: `radial-gradient(circle at 30% 20%, rgba(162,155,254,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(0,255,179,0.2) 0%, transparent 40%)` }}
       />
