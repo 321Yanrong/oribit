@@ -21,6 +21,7 @@
   body {
     @apply bg-orbit-black text-white font-sans;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    overscroll-behavior-y: none;
   }
   
   /* 隐藏滚动条但保持滚动功能 */

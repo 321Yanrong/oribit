@@ -20,11 +20,18 @@ export default function PullToRefresh({
   const startYRef = useRef(0);
   const activeRef = useRef(false);
   const distanceRef = useRef(0);
+  const getScrollTop = () => (
+    window.scrollY
+    || document.documentElement?.scrollTop
+    || document.body?.scrollTop
+    || 0
+  );
 
   useEffect(() => {
     const onTouchStart = (event: TouchEvent) => {
       if (disabled || isRefreshing) return;
-      if (window.scrollY > 0) return;
+      if (event.touches.length !== 1) return;
+      if (getScrollTop() > 0) return;
       startYRef.current = event.touches[0]?.clientY || 0;
       activeRef.current = true;
       setIsPulling(false);
@@ -34,10 +41,11 @@ export default function PullToRefresh({
 
     const onTouchMove = (event: TouchEvent) => {
       if (!activeRef.current || disabled || isRefreshing) return;
+      if (event.touches.length !== 1) return;
       const currentY = event.touches[0]?.clientY || 0;
       const dy = currentY - startYRef.current;
       if (dy <= 0) return;
-      if (window.scrollY > 0) return;
+      if (getScrollTop() > 0) return;
       event.preventDefault();
       const dist = Math.min(maxPull, dy);
       distanceRef.current = dist;
@@ -65,16 +73,16 @@ export default function PullToRefresh({
       }
     };
 
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onTouchEnd);
-    window.addEventListener('touchcancel', onTouchEnd);
+    document.addEventListener('touchstart', onTouchStart, { passive: false });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
     return () => {
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
     };
   }, [disabled, isRefreshing, maxPull, onRefresh, threshold]);
 
@@ -93,8 +101,8 @@ export default function PullToRefresh({
       className="fixed left-0 right-0 top-0 z-[60] flex justify-center pointer-events-none"
       style={{ transform: `translateY(${show ? Math.min(pullDistance, threshold) : 0}px)` }}
     >
-      <div className={`mt-2 rounded-full border border-white/10 bg-black/70 px-4 py-2 text-xs text-white/80 shadow-lg ${show ? 'opacity-100' : 'opacity-0'}`}>
-        <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full border-2 border-white/50 border-t-transparent ${isRefreshing ? 'animate-spin' : ''}`} />
+      <div className={`mt-2 rounded-full border border-black/10 bg-white/90 px-4 py-2 text-xs text-black/80 shadow-lg ${show ? 'opacity-100' : 'opacity-0'}`}>
+        <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full border-2 border-black/40 border-t-transparent ${isRefreshing ? 'animate-spin' : ''}`} />
         {indicatorText || '下拉刷新'}
       </div>
     </div>
