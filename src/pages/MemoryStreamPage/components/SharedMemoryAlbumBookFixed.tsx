@@ -554,10 +554,6 @@ backgroundBlendMode: 'screen',
 
 <motion.div
 key="drawer-panel"
-drag="y"
-dragConstraints={{ top: 0 }}
-dragElastic={0.2}
-onDragEnd={handleDragEnd}
 initial={{ opacity: 0, scale: 0.96, y: 20 }}
 animate={{ opacity: 1, scale: 1, y: 0 }}
 exit={{ opacity: 0, scale: 0.96, y: 20 }}

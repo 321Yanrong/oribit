@@ -203,6 +203,49 @@ const toLocalIsoWithOffset = (value: string) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00${sign}${hh}:${mm}`;
 };
 
+const isInChina = (lat: number, lng: number) => {
+  // Rough bounding box for mainland China
+  return lat >= 18 && lat <= 54 && lng >= 73 && lng <= 135;
+};
+
+const searchNominatim = async (keyword: string) => {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=10&addressdetails=1&q=${encodeURIComponent(keyword)}`;
+  const res = await fetch(url, {
+    headers: { 'Accept-Language': 'zh-CN,zh;q=0.8,en;q=0.6' },
+  });
+  if (!res.ok) return [] as AMapPoi[];
+  const data = (await res.json()) as any[];
+  return data.map((item) => {
+    const display = item.display_name || '';
+    const name = display.split(',')[0] || item.name || '未知地点';
+    return {
+      id: item.place_id?.toString() || `osm-${item.osm_id}`,
+      name,
+      address: display,
+      location: `${item.lon},${item.lat}`,
+      type: item.type || '',
+    } as AMapPoi;
+  });
+};
+
+const reverseNominatim = async (lat: number, lng: number) => {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+  const res = await fetch(url, {
+    headers: { 'Accept-Language': 'zh-CN,zh;q=0.8,en;q=0.6' },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const display = data?.display_name || '';
+  const name = display.split(',')[0] || '我的位置';
+  return {
+    id: `gps-${Date.now()}`,
+    name,
+    address: display,
+    location: `${lng},${lat}`,
+    type: data?.type || '',
+  } as AMapPoi;
+};
+
 // 地点搜索组件
 const LocationSearch = ({
   value,
@@ -219,6 +262,7 @@ const LocationSearch = ({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const placeSearchRef = useRef<any>(null);
   const aMapRef = useRef<any>(null); // 保存 AMap 实例，供 Geocoder 使用
+  const lastKnownCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // 初始化高德地点搜索
   useEffect(() => {
@@ -245,18 +289,32 @@ const LocationSearch = ({
   }, []);
 
   // 搜索地点
-  const searchLocation = (keyword: string) => {
-    if (!keyword.trim() || !placeSearchRef.current) {
+  const searchLocation = async (keyword: string) => {
+    if (!keyword.trim()) {
       setResults([]);
       return;
     }
 
+    const last = lastKnownCoordsRef.current;
+    const preferGlobal = !!last && !isInChina(last.lat, last.lng);
+    const hasAmap = !!placeSearchRef.current;
+
     setSearching(true);
-    
-    placeSearchRef.current.search(keyword, (status: string, result: any) => {
-      setSearching(false);
-      
-      if (status === 'complete' && result.poiList?.pois) {
+
+    if (!hasAmap || preferGlobal) {
+      try {
+        const pois = await searchNominatim(keyword.trim());
+        setResults(pois);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+      return;
+    }
+
+    placeSearchRef.current.search(keyword, async (status: string, result: any) => {
+      if (status === 'complete' && result.poiList?.pois?.length) {
         const pois = result.poiList.pois.map((poi: any) => ({
           id: poi.id,
           name: poi.name,
@@ -265,9 +323,22 @@ const LocationSearch = ({
           type: poi.type,
         }));
         setResults(pois);
+        setSearching(false);
+        return;
+      }
+
+      // 若在海外或 AMap 无结果，尝试全球服务
+      if (preferGlobal) {
+        try {
+          const pois = await searchNominatim(keyword.trim());
+          setResults(pois);
+        } catch {
+          setResults([]);
+        }
       } else {
         setResults([]);
       }
+      setSearching(false);
     });
   };
 
@@ -306,12 +377,15 @@ const LocationSearch = ({
     if (!navigator.geolocation) { alert('浏览器不支持定位'); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         setLocating(false);
         const { latitude: lat, longitude: lng } = pos.coords;
-        // 优先用已加载的 AMap 实例，其次尝试 window.AMap
+        lastKnownCoordsRef.current = { lat, lng };
+        const inChina = isInChina(lat, lng);
+
+        // 优先用已加载的 AMap 实例（仅在国内）
         const AMap = aMapRef.current || (window as any).AMap;
-        if (AMap?.Geocoder) {
+        if (inChina && AMap?.Geocoder) {
           const gc = new AMap.Geocoder({ radius: 500 });
           gc.getAddress([lng, lat], (status: string, result: any) => {
             if (status === 'complete' && result.regeocode) {
@@ -333,11 +407,31 @@ const LocationSearch = ({
               onSelect(poi);
             }
           });
-        } else {
-          const poi: AMapPoi = { id: `gps-${Date.now()}`, name: '我的位置', address: `${lat.toFixed(5)},${lng.toFixed(5)}`, location: `${lng},${lat}`, type: '' };
-          onChange(poi.name);
-          onSelect(poi);
+          return;
         }
+
+        // 海外：使用全球服务
+        try {
+          const poi = await reverseNominatim(lat, lng);
+          if (poi) {
+            onChange(poi.name);
+            onSelect(poi);
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
+        // 兜底：显示坐标
+        const fallbackPoi: AMapPoi = {
+          id: `gps-${Date.now()}`,
+          name: '我的位置',
+          address: `${lat.toFixed(5)},${lng.toFixed(5)}`,
+          location: `${lng},${lat}`,
+          type: '',
+        };
+        onChange(fallbackPoi.name);
+        onSelect(fallbackPoi);
       },
       () => { setLocating(false); alert('定位失败，请检查定位权限'); },
       { enableHighAccuracy: true, timeout: 10000 }
