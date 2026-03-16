@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
@@ -18,7 +19,8 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
     // 3. 验证当前是谁在发请求（防止别人乱删）
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization') || ''
+    if (!authHeader) throw new Error('未授权请求')
     const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
       global: { headers: { Authorization: authHeader } }
     })
