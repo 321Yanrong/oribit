@@ -99,10 +99,41 @@ CREATE POLICY "Users can create friendships" ON friendships
   FOR INSERT WITH CHECK (
     auth.uid() = user_id OR auth.uid() = friend_id
   );
-CREATE POLICY "Users can update own friendships" ON friendships
-  FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own friendships" ON friendships
-  FOR DELETE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can update own or received friendships" ON friendships;
+CREATE POLICY "Users can update own or received friendships" ON friendships
+  FOR UPDATE USING (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+    OR friend_id IS NULL
+  );
+
+DROP POLICY IF EXISTS "Users can delete own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can delete own or received friendships" ON friendships;
+CREATE POLICY "Users can delete own or received friendships" ON friendships
+  FOR DELETE USING (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+  );
+
+DROP POLICY IF EXISTS "Users can view own or received friendships" ON friendships;
+CREATE POLICY "Users can view own or received friendships" ON friendships
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+  );
+
+DROP POLICY IF EXISTS "Users can insert own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can insert friendships" ON friendships;
+CREATE POLICY "Users can insert friendships" ON friendships
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+    OR auth.uid() = friend_id
+  );
 
 -- =============================================
 -- 3. LOCATIONS TABLE
