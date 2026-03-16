@@ -395,7 +395,6 @@ export default function MediaUploader({
     const nonLive = videos.filter(v => !liveVideos.includes(v) && !urls.includes(v));
     onVideosChange([...nonLive, ...urls]);
   };
-              await handlePhotoFiles(files, null, { skipPersist: true });
   const syncLiveImages = (urls: string[]) => {
     setLiveImages(urls);
     setLiveBindings(prev => prev.filter(binding => binding.liveType === 'video' || urls.includes(binding.liveUrl)));
