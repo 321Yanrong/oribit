@@ -1,6 +1,29 @@
 /* 导入字体 */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+:root {
+  /* 默认深色主题变量 */
+  --orbit-bg: #121212;
+  --orbit-surface: #1b1b1b;
+  --orbit-card: rgba(255, 255, 255, 0.08);
+  --orbit-border: rgba(255, 255, 255, 0.12);
+  --orbit-text: #ffffff;
+  --orbit-text-muted: #cbd5e1;
+  --orbit-glow: rgba(0, 255, 179, 0.3);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --orbit-bg: #f5f7fb;
+  --orbit-surface: #ffffff;
+  --orbit-card: rgba(0, 0, 0, 0.04);
+  --orbit-border: rgba(0, 0, 0, 0.08);
+  --orbit-text: #0f172a;
+  --orbit-text-muted: #475569;
+  --orbit-glow: rgba(0, 200, 140, 0.25);
+  color-scheme: light;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,7 +42,9 @@
   }
   
   body {
-    @apply bg-orbit-black text-white font-sans;
+    @apply font-sans;
+    background-color: var(--orbit-bg);
+    color: var(--orbit-text);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     overscroll-behavior-y: none;
   }
@@ -39,15 +64,23 @@
 @layer components {
   /* 毛玻璃效果 */
   .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    background-color: var(--orbit-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--orbit-border);
   }
   
   .glass-dark {
-    @apply bg-black/40 backdrop-blur-xl border border-white/5;
+    background-color: var(--orbit-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--orbit-border);
   }
   
   .glass-card {
-    @apply bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-xl;
+    background-color: var(--orbit-card);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--orbit-border);
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   }
   
   /* 发光效果 */
@@ -96,15 +129,20 @@
   }
   
   .btn-secondary {
-    @apply px-6 py-3 glass text-white font-medium rounded-full 
-           transition-all duration-300 hover:bg-white/10 active:scale-95;
+    @apply px-6 py-3 font-medium rounded-full transition-all duration-300 active:scale-95;
+    background-color: var(--orbit-card);
+    border: 1px solid var(--orbit-border);
+    color: var(--orbit-text);
   }
   
   /* 输入框样式 */
   .input-glass {
-    @apply w-full px-4 py-3 glass rounded-xl text-white placeholder-white/40
+    @apply w-full px-4 py-3 rounded-xl
            focus:outline-none focus:ring-2 focus:ring-orbit-mint/50
            transition-all duration-300;
+    background-color: var(--orbit-card);
+    border: 1px solid var(--orbit-border);
+    color: var(--orbit-text);
   }
   
   /* 头像样式 */
@@ -113,7 +151,19 @@
   }
   
   .avatar-active {
-    @apply ring-orbit-mint glow-mint;
+    @apply ring-orbit-mint;
+    box-shadow: 0 0 10px var(--orbit-glow);
+  }
+
+  /* 主题辅助：让通用背景/文字颜色跟随变量 */
+  .bg-orbit-black {
+    background-color: var(--orbit-bg) !important;
+  }
+  .text-white {
+    color: var(--orbit-text) !important;
+  }
+  .text-white\/40 {
+    color: color-mix(in srgb, var(--orbit-text) 40%, transparent) !important;
   }
 }
 
