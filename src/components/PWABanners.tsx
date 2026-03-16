@@ -25,10 +25,14 @@ export default function PWABanners() {
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [updateServiceWorker, setUpdateServiceWorker] = useState<((reloadPage?: boolean) => Promise<void>) | null>(null);
   const [offlineReadyDismissed, setOfflineReadyDismissed] = useState(false);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
     const updater = registerSW({
       immediate: true,
+      onRegisteredSW(_swUrl, registration) {
+        setSwRegistration(registration || null);
+      },
       onNeedRefresh() {
         setNeedRefresh(true);
       },
@@ -94,6 +98,42 @@ export default function PWABanners() {
       media.removeEventListener('change', onDisplayModeChanged);
     };
   }, []);
+
+  useEffect(() => {
+    if (!swRegistration) return;
+
+    const checkForUpdate = () => {
+      swRegistration.update().catch(() => undefined);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdate();
+      }
+    };
+
+    const onOnline = () => {
+      setIsOffline(false);
+      checkForUpdate();
+    };
+
+    const onOffline = () => setIsOffline(true);
+
+    const interval = window.setInterval(checkForUpdate, 5 * 60 * 1000);
+    const initial = window.setTimeout(checkForUpdate, 4000);
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(initial);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [swRegistration]);
 
   useEffect(() => {
     const onOnline = () => setIsOffline(false);

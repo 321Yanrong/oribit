@@ -1018,6 +1018,37 @@ export default function ProfilePage() {
     };
   }, [showSettings]);
 
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const incomingChannel = supabase
+      .channel(`friend-requests-${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships', filter: `friend_id=eq.${currentUser.id}` },
+        () => {
+          void useUserStore.getState().fetchPendingRequests();
+        }
+      )
+      .subscribe();
+
+    const friendsChannel = supabase
+      .channel(`friendships-${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships', filter: `user_id=eq.${currentUser.id}` },
+        () => {
+          void useUserStore.getState().fetchFriends();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(incomingChannel);
+      supabase.removeChannel(friendsChannel);
+    };
+  }, [currentUser?.id]);
+
   const updateSettings = (patch: Partial<typeof DEFAULT_SETTINGS>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
   };

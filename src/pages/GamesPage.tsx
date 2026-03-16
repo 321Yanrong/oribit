@@ -81,6 +81,7 @@ const useGameSfx = () => {
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
+    osc.start(now);
 
     const setEnvelope = (duration = 0.12, peak = 0.12) => {
       gain.gain.cancelScheduledValues(now);
@@ -163,7 +164,6 @@ const useGameSfx = () => {
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => undefined);
     }
-    osc.start(now);
   }, []);
 
   return { play };

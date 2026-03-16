@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
+import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
@@ -1453,6 +1453,54 @@ export default function MemoryStreamPage() {
 
     return () => { cancelled = true; };
   }, [memories]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
+    if (memoryIds.length === 0) return;
+
+    const idList = memoryIds.join(',');
+    const channel = supabase
+      .channel(`memory-comments-${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'memory_comments', filter: `memory_id=in.(${idList})` },
+        (payload) => {
+          const item = payload.new as MemoryCommentItem;
+          if (!item?.id || !item.memory_id) return;
+          setCommentsByMemory((prev) => {
+            const existing = prev[item.memory_id] || [];
+            if (existing.some((c) => c.id === item.id)) return prev;
+            return {
+              ...prev,
+              [item.memory_id]: [...existing, item],
+            };
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'memory_comments', filter: `memory_id=in.(${idList})` },
+        (payload) => {
+          const item = payload.old as MemoryCommentItem;
+          if (!item?.id || !item.memory_id) return;
+          setCommentsByMemory((prev) => {
+            const existing = prev[item.memory_id] || [];
+            if (!existing.some((c) => c.id === item.id)) return prev;
+            return {
+              ...prev,
+              [item.memory_id]: existing.filter((c) => c.id !== item.id),
+            };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [memories, currentUser?.id]);
 
   useEffect(() => {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
