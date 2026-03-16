@@ -5,6 +5,9 @@ import AMapLoader from '@amap/amap-jsapi-loader';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
 import FloatingParticles from '../components/FloatingParticles';
 
+import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
+
+
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
 
 const getCityFromMemory = (memory: any): string => {
@@ -140,8 +143,14 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         if (friendObj) pin.friends.push(friendObj);
       };
 
-      // 所有被 @ 的真实好友
-      memory.tagged_friends?.forEach((friendId: string) => addPersonToPin(pin, friendId));
+      // 所有可见的 @ 好友
+      const visibleTags = getVisibleTaggedFriendIds(
+        memory.tagged_friends || [],
+        memory.user_id,
+        currentUser?.id,
+        friends
+      );
+      visibleTags.forEach((friendId: string) => addPersonToPin(pin, friendId));
 
       // 如果是别人发布的共享记忆，也把发布者加进来
       if (memory.user_id && memory.user_id !== currentUser?.id) {
@@ -177,7 +186,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         const fo = getFriendDisplay(personId);
         if (fo) cp.friends.push(fo);
       };
-      memory.tagged_friends?.forEach((friendId: string) => addPersonToCity(cp, friendId));
+      const visibleTags = getVisibleTaggedFriendIds(
+        memory.tagged_friends || [],
+        memory.user_id,
+        currentUser?.id,
+        friends
+      );
+      visibleTags.forEach((friendId: string) => addPersonToCity(cp, friendId));
       if (memory.user_id && memory.user_id !== currentUser?.id) {
         addPersonToCity(cp, memory.user_id);
       }
@@ -417,10 +432,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                   <p className="text-center text-white/40 py-10">暂无记忆</p>
                 ) : pinMemories.map((memory: any) => {
                   const date = new Date(memory.memory_date || memory.created_at);
-                  const taggedNames = (memory.tagged_friends || []).map((id: string) => {
-                    const f = friends.find((fs: any) => fs.friend?.id === id || fs.friend_id === id);
-                    return f?.friend?.username || null;
-                  }).filter(Boolean);
+                  const taggedNames = getVisibleTaggedFriendIds(
+                    memory.tagged_friends || [],
+                    memory.user_id,
+                    currentUser?.id,
+                    friends
+                  ).map((id: string) => getTaggedDisplayName(id, memory.user_id, currentUser, friends))
+                   .filter(Boolean);
 
                   return (
                     <motion.div
@@ -544,9 +562,20 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                   <div className="flex items-center gap-3 py-3 border-t border-white/8">
                     <FaUsers className="text-white/30 text-sm shrink-0" />
                     <div className="flex flex-wrap gap-2">
-                      {(selectedMemory.tagged_friends as string[]).map((id: string) => {
+                      {getVisibleTaggedFriendIds(
+                        (selectedMemory.tagged_friends as string[]) || [],
+                        selectedMemory.user_id,
+                        currentUser?.id,
+                        friends
+                      ).map((id: string) => {
+                        const name = getTaggedDisplayName(id, selectedMemory.user_id, currentUser, friends);
+                        if (!name) return null;
                         const f = friends.find((fs: any) => fs.friend?.id === id || fs.friend_id === id);
-                        if (!f?.friend) return null;
+                        if (!f?.friend || name === '已不是好友') {
+                          return (
+                            <span key={id} className="text-[#00FFB3] text-sm">@{name}</span>
+                          );
+                        }
                         return (
                           <div key={id} className="flex items-center gap-1.5">
                             <img src={f.friend.avatar_url} alt={f.friend.username} className="w-6 h-6 rounded-full object-cover" />

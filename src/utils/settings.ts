@@ -1,6 +1,7 @@
 export type OrbitSettings = {
   fontSize: 'small' | 'normal' | 'large';
   darkMode: boolean;
+  themeMode: 'system' | 'light' | 'dark';
   wifiOnlyUpload: boolean;
   wifiOnlyRefresh: boolean;
   notifyAt: boolean;
@@ -14,6 +15,7 @@ export const SETTINGS_EVENT = 'orbit:settings';
 export const DEFAULT_SETTINGS: OrbitSettings = {
   fontSize: 'normal',
   darkMode: true,
+  themeMode: 'system',
   wifiOnlyUpload: false,
   wifiOnlyRefresh: false,
   notifyAt: true,

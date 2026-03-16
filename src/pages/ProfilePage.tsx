@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
+import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
-import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT } from '../utils/settings';
+import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
+import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -16,6 +17,92 @@ const stripOrbitMetaText = (content: string) => {
     .trim();
 
   return cleaned;
+};
+
+// 邮箱修改弹窗
+const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  const [email, setEmail] = useState('');
+  if (!isOpen) return null;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-white">更换邮箱</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+        </div>
+        <p className="text-white/40 text-sm mb-4">我们将向新邮箱发送一封确认邮件，点击邮件中的链接后即可生效。</p>
+        <input type="email" placeholder="输入新邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none mb-6" />
+        <button onClick={() => onSubmit(email)} disabled={!email || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
+          {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送确认邮件'}
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// 密码修改弹窗
+const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  const [pwd1, setPwd1] = useState('');
+  const [pwd2, setPwd2] = useState('');
+  if (!isOpen) return null;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-white">修改密码</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+        </div>
+        <div className="space-y-3 mb-6">
+          <input type="password" placeholder="输入新密码（至少 6 位）" value={pwd1} onChange={e => setPwd1(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none" />
+          <input type="password" placeholder="再次确认新密码" value={pwd2} onChange={e => setPwd2(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none" />
+        </div>
+        <button onClick={() => onSubmit(pwd1, pwd2)} disabled={!pwd1 || !pwd2 || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30">
+          {loading ? <FaSpinner className="animate-spin mx-auto" /> : '确认修改'}
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// 找回密码弹窗
+const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  const [email, setEmail] = useState('');
+  if (!isOpen) return null;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-white">找回密码</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+        </div>
+        <p className="text-white/40 text-sm mb-4">请输入你注册时的邮箱，我们将为你发送一封包含重置密码链接的邮件。</p>
+        <input type="email" placeholder="输入注册邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none mb-6" />
+        <button onClick={() => onSubmit(email)} disabled={!email || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
+          {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送重置邮件'}
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// 通用文档/协议展示弹窗
+const DocumentModal = ({ isOpen, onClose, title, content }: any) => {
+  if (!isOpen) return null;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md bg-[#1a1a1a] rounded-3xl border border-white/10 flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+        {/* 标题栏 (固定在顶部) */}
+        <div className="flex justify-between items-center p-6 border-b border-white/5 shrink-0">
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+        </div>
+        {/* 内容区 (可滚动) */}
+        <div className="p-6 overflow-y-auto text-white/70 text-sm leading-relaxed whitespace-pre-wrap">
+          {content}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 };
 
 
@@ -473,7 +560,7 @@ const InviteCodeModal = ({
 };
 
 // 4. 随机回忆弹窗
-const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose: () => void; friends: any[] }) => {
+const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: any; onClose: () => void; friends: any[]; currentUser?: any }) => {
   const META_PREFIX = '[orbit_meta:';
   const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
     if (!content?.startsWith(META_PREFIX)) return { text: stripOrbitMetaText(content || ''), weather: '', mood: '', route: '' };
@@ -487,15 +574,19 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
     }
   };
   const photos = memory?.photos || [];
-  const getFriendName = (friendId: string): string | null => {
-    if (friendId.startsWith('temp-')) {
-      const fid = friendId.replace('temp-', '');
-      const vf = friends.find((f: any) => f.id === fid);
-      return vf?.friend_name || null;
-    }
-    const friend = friends.find((f: any) => f.friend?.id === friendId);
-    return friend?.friend?.username || null;
-  };
+  const getVisibleTags = () => getVisibleTaggedFriendIds(
+    memory?.tagged_friends || [],
+    memory?.user_id,
+    currentUser?.id,
+    friends
+  );
+
+  const getTagName = (friendId: string) => getTaggedDisplayName(
+    friendId,
+    memory?.user_id,
+    currentUser || null,
+    friends
+  );
   if (!memory) return null;
   const date = new Date(memory.memory_date || memory.created_at);
   const { text, weather, mood, route } = decodeMemoryContent(memory.content || '');
@@ -541,8 +632,8 @@ const RandomMemoryModal = ({ memory, onClose, friends }: { memory: any; onClose:
           )}
           {memory.tagged_friends?.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {memory.tagged_friends.map((id: string) => {
-                const name = getFriendName(id);
+              {getVisibleTags().map((id: string) => {
+                const name = getTagName(id);
                 if (!name) return null;
                 return <span key={id} className="text-[#00FFB3] text-sm font-medium">@{name}</span>;
               })}
@@ -862,6 +953,15 @@ export default function ProfilePage() {
   const [remarkInput, setRemarkInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState(readSettings());
+  const [refreshingHome, setRefreshingHome] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  // 找回密码状态
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  // 文档弹窗状态
+  const [docModal, setDocModal] = useState({ isOpen: false, title: '', content: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -869,7 +969,29 @@ export default function ProfilePage() {
     if (typeof window !== 'undefined') {
       const fontSize = settings.fontSize === 'small' ? '14px' : settings.fontSize === 'large' ? '18px' : '16px';
       document.documentElement.style.fontSize = fontSize;
-      document.documentElement.dataset.theme = settings.darkMode ? 'dark' : 'light';
+
+      const applyTheme = () => {
+        const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const currentMode = settings.themeMode || 'system';
+
+        if (currentMode === 'system') {
+          document.documentElement.dataset.theme = isSystemDark ? 'dark' : 'light';
+        } else {
+          document.documentElement.dataset.theme = currentMode;
+        }
+      };
+
+      applyTheme();
+
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => {
+        if (settings.themeMode === 'system' || !settings.themeMode) {
+          applyTheme();
+        }
+      };
+
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     }
   }, [settings]);
 
@@ -888,33 +1010,100 @@ export default function ProfilePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('orbit:settings-visibility', { detail: showSettings }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('orbit:settings-visibility', { detail: false }));
+    };
+  }, [showSettings]);
+
   const updateSettings = (patch: Partial<typeof DEFAULT_SETTINGS>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
   };
 
-  const handleChangeEmail = async () => {
-    const nextEmail = window.prompt('请输入新的邮箱');
-    if (!nextEmail?.trim()) return;
+  const handleRefreshHome = async () => {
+    if (refreshingHome) return;
+    if (!shouldAllowRefresh()) {
+      alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
+      return;
+    }
+    setRefreshingHome(true);
+    try {
+      await Promise.all([
+        useMemoryStore.getState().fetchMemories(),
+        useUserStore.getState().fetchFriends(),
+        useLedgerStore.getState().fetchLedgers(),
+      ]);
+    } catch (err: any) {
+      alert(`刷新失败：${err?.message || '请稍后再试'}`);
+    } finally {
+      setRefreshingHome(false);
+    }
+  };
+
+  const handleSubmitEmail = async (nextEmail: string) => {
+    setActionLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ email: nextEmail.trim() });
       if (error) throw error;
       alert('已发送确认邮件，请前往新邮箱完成验证。');
+      setShowEmailModal(false);
     } catch (e: any) {
       alert(e?.message || '更换邮箱失败');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleChangePassword = async () => {
-    const nextPassword = window.prompt('请输入新密码（至少 6 位）');
-    if (!nextPassword?.trim()) return;
+  const handleSubmitPassword = async (p1: string, p2: string) => {
+    if (p1 !== p2) {
+      alert('两次输入的密码不一致！');
+      return;
+    }
+    if (p1.length < 6) {
+      alert('密码至少需要 6 位！');
+      return;
+    }
+    setActionLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: nextPassword.trim() });
+      const { error } = await supabase.auth.updateUser({ password: p1 });
       if (error) throw error;
-      alert('密码已更新，请重新登录确认。');
+      alert('密码已更新！下次请使用新密码登录。');
+      setShowPasswordModal(false);
     } catch (e: any) {
-      alert(e?.message || '更换密码失败');
+      alert(e?.message || '更换密码失败，出于安全原因，您可能需要退出重新登录后再修改。');
+    } finally {
+      setActionLoading(false);
     }
   };
+
+  // 执行发送重置邮件
+  const handleResetPassword = async (email: string) => {
+    if (!email.trim()) return;
+    setResetLoading(true);
+    try {
+      const { sendPasswordReset } = await import('../api/supabase');
+      await sendPasswordReset(email.trim());
+      alert('重置密码邮件已发送，请前往邮箱查看并修改密码！');
+      setShowResetModal(false);
+    } catch (e: any) {
+      alert(e?.message || '发送失败，请检查该邮箱是否已注册');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const openDocument = (title: string, content: string) => {
+    setDocModal({ isOpen: true, title, content });
+  };
+
+  // 占位的文档内容（你可以自己改成详细的真实内容）
+  const TERMS_TEXT = "【Orbit 服务条款】\n\n欢迎使用 Orbit！我们致力于为你提供最纯粹的记忆记录服务。\n\n1. 账号安全：请妥善保管你的登录邮箱和密码。\n2. 内容规范：请勿上传违法、色情或侵犯他人隐私的内容。\n3. 数据所有权：你的记忆属于你，我们绝不会将其用于商业广告分析。\n\n（此处为简略版，最终解释权归 Orbit 团队所有）";
+  
+  const PRIVACY_TEXT = "【Orbit 隐私政策】\n\n你的隐私对我们至关重要：\n\n1. 我们收集什么：仅收集维持基础运转所需的邮箱、公开昵称及你主动上传的照片和文字。\n2. 不追踪：我们不接入任何第三方广告追踪 SDK。\n3. 数据删除：当你选择“注销账号”时，系统会在毫秒级瞬间抹除你的所有记录，干干净净，绝不拖泥带水。\n\n请放心记录你的每一天。";
+
+  const COMMUNITY_TEXT = "【Orbit 社区公约】\n\nOrbit 是一个温暖、私密的熟人社交空间。\n\n1. 友善互动：在共同记忆下留下温暖的吐槽。\n2. 尊重边界：请不要恶意绑定他人的真实账号。\n3. 记录当下：少一些刻意的摆拍，多一些真实的生活碎片。\n\n让我们一起守护这片净土。";
 
   const handleSaveRemark = async (friendshipId: string) => {
     try {
@@ -1286,7 +1475,14 @@ const handleAddFriend = async (name: string, remark: string) => {
       {/* 顶部个人卡片 */}
       <div className="relative z-10 safe-top mx-4 mt-4">
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card rounded-3xl p-6 relative overflow-hidden">
-          <div className="mb-5 flex justify-end">
+          <div className="mb-5 flex items-center justify-between">
+            <button
+              onClick={handleRefreshHome}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-white/60 text-xs hover:text-white"
+            >
+              <FaSyncAlt className={refreshingHome ? 'animate-spin' : ''} />
+              刷新
+            </button>
             <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-white/40 text-xs shrink-0">我的页面</span>
           </div>
           <div className="flex items-center gap-4 mb-6 relative">
@@ -1600,35 +1796,6 @@ const handleAddFriend = async (name: string, remark: string) => {
         </div>
       </div>
 
-      {/* 合规与协议 */}
-      <div className="relative z-10 px-4 mt-4">
-        <div className="glass-card rounded-2xl overflow-hidden">
-          <a
-            href="/privacy/"
-            target="_blank"
-            rel="noreferrer"
-            className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5 flex items-center"
-          >
-            <div className="flex-1">
-              <p className="text-white font-medium">🔒 隐私政策</p>
-              <p className="text-white/45 text-sm mt-1">我们如何收集、使用与保护你的数据</p>
-            </div>
-            <FaChevronRight className="text-white/20" />
-          </a>
-          <a
-            href="/terms/"
-            target="_blank"
-            rel="noreferrer"
-            className="w-full p-4 text-left hover:bg-white/5 flex items-center"
-          >
-            <div className="flex-1">
-              <p className="text-white font-medium">📄 用户协议</p>
-              <p className="text-white/45 text-sm mt-1">使用条款与服务说明</p>
-            </div>
-            <FaChevronRight className="text-white/20" />
-          </a>
-        </div>
-      </div>
       
       {/* 退出按钮 */}
       <div className="relative z-10 px-4 mt-6 pb-20 space-y-3">
@@ -1684,11 +1851,11 @@ const handleAddFriend = async (name: string, remark: string) => {
                 {/* 1. 账户与安全 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
                   <div className="px-4 pt-4 pb-2 text-white/60 text-xs">账户与安全</div>
-                  <button onClick={handleChangeEmail} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                  <button onClick={() => setShowEmailModal(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
                     <p className="text-white font-medium">📧 更换邮箱</p>
                     <p className="text-white/45 text-sm mt-1">绑定新邮箱并验证</p>
                   </button>
-                  <button onClick={handleChangePassword} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                  <button onClick={() => setShowPasswordModal(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
                     <p className="text-white font-medium">🔑 更换密码</p>
                     <p className="text-white/45 text-sm mt-1">建议定期更新密码</p>
                   </button>
@@ -1711,14 +1878,28 @@ const handleAddFriend = async (name: string, remark: string) => {
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
-                    <div>
-                      <p className="text-white font-medium">深色模式</p>
-                      <p className="text-white/45 text-sm">夜间更舒适</p>
+                  <div className="p-4 border-t border-white/5">
+                    <p className="text-white font-medium mb-2">外观主题</p>
+                    <div className="flex gap-2">
+                      {(['system', 'light', 'dark'] as const).map((mode) => {
+                        const currentMode = settings.themeMode || 'system';
+                        const labels = { system: '跟随系统', light: '浅色', dark: '深色' };
+                        const isActive = currentMode === mode;
+                        return (
+                          <button
+                            key={mode}
+                            onClick={() => updateSettings({ themeMode: mode })}
+                            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                              isActive
+                                ? 'bg-[#00FFB3] text-black border-transparent font-semibold'
+                                : 'bg-white/5 text-white/60 border-white/15 hover:text-white hover:border-white/30'
+                            }`}
+                          >
+                            {labels[mode]}
+                          </button>
+                        );
+                      })}
                     </div>
-                    <button onClick={() => updateSettings({ darkMode: !settings.darkMode })} className={`w-12 h-6 rounded-full transition-colors ${settings.darkMode ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
-                      <motion.div animate={{ x: settings.darkMode ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
-                    </button>
                   </div>
                   <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
                     <div>
@@ -1780,15 +1961,15 @@ const handleAddFriend = async (name: string, remark: string) => {
                 {/* 5. 帮助与客服 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
                   <div className="px-4 pt-4 pb-2 text-white/60 text-xs">帮助与客服</div>
-                  <a href="/reset-password/" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                  <button onClick={() => setShowResetModal(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">🔐 找回密码</p>
                     <p className="text-white/45 text-sm mt-1">重置你的账号密码</p>
-                  </a>
-                  <a href="mailto:support@orbit.yanrong.fun?subject=意见反馈" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                  </button>
+                  <a href="mailto:3482407231@qq.com?subject=意见反馈" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">💬 意见反馈</p>
                     <p className="text-white/45 text-sm mt-1">告诉我们你的想法</p>
                   </a>
-                  <a href="mailto:support@orbit.yanrong.fun?subject=联系客服" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                  <a href="mailto:3482407231@qq.com?subject=联系客服" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">📞 联系客服</p>
                     <p className="text-white/45 text-sm mt-1">工作日 10:00-18:00</p>
                   </a>
@@ -1801,23 +1982,23 @@ const handleAddFriend = async (name: string, remark: string) => {
                 {/* 6. 关于 Orbit */}
                 <div className="glass-card rounded-2xl overflow-hidden">
                   <div className="px-4 pt-4 pb-2 text-white/60 text-xs">关于 Orbit</div>
-                  <button onClick={() => alert('谢谢你的鼓励！')} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                  <button onClick={() => alert('谢谢你的鼓励！')} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">🌟 鼓励一下</p>
                     <p className="text-white/45 text-sm mt-1">你的支持是我们最大的动力</p>
                   </button>
-                  <a href="/terms/" target="_blank" rel="noreferrer" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                  <button onClick={() => openDocument('社区公约', COMMUNITY_TEXT)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">📜 社区公约</p>
                     <p className="text-white/45 text-sm mt-1">文明友善的社区氛围</p>
-                  </a>
-                  <a href="/terms/" target="_blank" rel="noreferrer" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                  </button>
+                  <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">📄 服务条款</p>
                     <p className="text-white/45 text-sm mt-1">使用条款与服务说明</p>
-                  </a>
-                  <a href="/privacy/" target="_blank" rel="noreferrer" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                  </button>
+                  <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">🔏 隐私政策（简明版）</p>
                     <p className="text-white/45 text-sm mt-1">简要说明数据收集与使用</p>
-                  </a>
-                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                  </button>
+                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
                     <p className="text-white font-medium">🧪 网络诊断</p>
                     <p className="text-white/45 text-sm mt-1">检查网络与账号状态</p>
                   </button>
@@ -1900,7 +2081,14 @@ const handleAddFriend = async (name: string, remark: string) => {
         )}
         {showAddFriend && <AddFriendModal isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
         {showInviteCode && <InviteCodeModal isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
-        {randomMemory && <RandomMemoryModal memory={randomMemory} onClose={() => setRandomMemory(null)} friends={friends} />}
+        {randomMemory && (
+          <RandomMemoryModal
+            memory={randomMemory}
+            onClose={() => setRandomMemory(null)}
+            friends={friends}
+            currentUser={currentUser}
+          />
+        )}
         {showNewbieGuide && <NewbieGuideModal isOpen={showNewbieGuide} onClose={() => setShowNewbieGuide(false)} />}
         {showAccountDiagnostics && (
           <AccountDiagnosticsModal
@@ -1912,6 +2100,30 @@ const handleAddFriend = async (name: string, remark: string) => {
             ledgersCount={ledgers.length}
           />
         )}
+        <ChangeEmailModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSubmit={handleSubmitEmail}
+          loading={actionLoading}
+        />
+        <ChangePasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+          onSubmit={handleSubmitPassword}
+          loading={actionLoading}
+        />
+        <ResetPasswordModal
+          isOpen={showResetModal}
+          onClose={() => setShowResetModal(false)}
+          onSubmit={handleResetPassword}
+          loading={resetLoading}
+        />
+        <DocumentModal
+          isOpen={docModal.isOpen}
+          onClose={() => setDocModal({ ...docModal, isOpen: false })}
+          title={docModal.title}
+          content={docModal.content}
+        />
       </AnimatePresence>
     </div>
   );

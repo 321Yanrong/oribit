@@ -198,8 +198,21 @@ CREATE TRIGGER sync_memory_tag_owner
 DROP POLICY IF EXISTS "Users can view memory tags" ON memory_tags;
 CREATE POLICY "Users can view memory tags" ON memory_tags
   FOR SELECT USING (
-    auth.uid() = user_id
-    OR auth.uid() = owner_id
+    auth.uid() = owner_id
+    OR auth.uid() = user_id
+    OR (
+      EXISTS (
+        SELECT 1 FROM memory_tags mt_self
+        WHERE mt_self.memory_id = memory_tags.memory_id
+          AND mt_self.user_id = auth.uid()
+      )
+      AND EXISTS (
+        SELECT 1 FROM friendships f
+        WHERE f.user_id = auth.uid()
+          AND f.friend_id = memory_tags.user_id
+          AND f.status = 'accepted'
+      )
+    )
   );
 
 DROP POLICY IF EXISTS "Memory owners insert tags" ON memory_tags;
@@ -226,6 +239,12 @@ CREATE POLICY "Users can view own or tagged memories" ON memories
       SELECT 1 FROM memory_tags
       WHERE memory_tags.memory_id = memories.id
         AND memory_tags.user_id = auth.uid()
+        AND EXISTS (
+          SELECT 1 FROM friendships f
+          WHERE f.user_id = auth.uid()
+            AND f.friend_id = memories.user_id
+            AND f.status = 'accepted'
+        )
     )
   );
 
@@ -245,16 +264,36 @@ ALTER TABLE memory_comments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view memory comments" ON memory_comments;
 CREATE POLICY "Users can view memory comments" ON memory_comments
   FOR SELECT USING (
-    EXISTS (
+    auth.uid() = author_id
+    OR EXISTS (
       SELECT 1
       FROM memories m
       WHERE m.id = memory_comments.memory_id
+        AND m.user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM memories m
+      WHERE m.id = memory_comments.memory_id
+        AND EXISTS (
+          SELECT 1 FROM memory_tags mt
+          WHERE mt.memory_id = m.id
+            AND mt.user_id = auth.uid()
+        )
+        AND EXISTS (
+          SELECT 1 FROM friendships f
+          WHERE f.user_id = auth.uid()
+            AND f.friend_id = m.user_id
+            AND f.status = 'accepted'
+        )
         AND (
-          m.user_id = auth.uid()
+          memory_comments.author_id = auth.uid()
+          OR memory_comments.author_id = m.user_id
           OR EXISTS (
-            SELECT 1 FROM memory_tags mt
-            WHERE mt.memory_id = m.id
-              AND mt.user_id = auth.uid()
+            SELECT 1 FROM friendships f2
+            WHERE f2.user_id = auth.uid()
+              AND f2.friend_id = memory_comments.author_id
+              AND f2.status = 'accepted'
           )
         )
     )
@@ -270,10 +309,18 @@ CREATE POLICY "Visible users can create memory comments" ON memory_comments
       WHERE m.id = memory_comments.memory_id
         AND (
           m.user_id = auth.uid()
-          OR EXISTS (
-            SELECT 1 FROM memory_tags mt
-            WHERE mt.memory_id = m.id
-              AND mt.user_id = auth.uid()
+          OR (
+            EXISTS (
+              SELECT 1 FROM memory_tags mt
+              WHERE mt.memory_id = m.id
+                AND mt.user_id = auth.uid()
+            )
+            AND EXISTS (
+              SELECT 1 FROM friendships f
+              WHERE f.user_id = auth.uid()
+                AND f.friend_id = m.user_id
+                AND f.status = 'accepted'
+            )
           )
         )
     )

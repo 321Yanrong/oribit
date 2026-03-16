@@ -9,6 +9,7 @@ import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/componen
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import { track } from '../utils/analytics';
 import { readSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
+import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -1240,15 +1241,19 @@ export default function MemoryStreamPage() {
     }
   };
 
-  const getFriendName = (friendId: string): string | null => {
-    if (friendId.startsWith('temp-')) {
-      const fid = friendId.replace('temp-', '');
-      const vf = friends.find((f: any) => f.id === fid);
-      return vf?.friend_name || null;
-    }
-    const friend = friends.find((f: any) => f.friend?.id === friendId);
-    return friend?.friend?.username || null;
-  };
+  const getVisibleTagIds = (memory: any) => getVisibleTaggedFriendIds(
+    memory?.tagged_friends || [],
+    memory?.user_id,
+    currentUser?.id,
+    friends
+  );
+
+  const getTagName = (memory: any, friendId: string) => getTaggedDisplayName(
+    friendId,
+    memory?.user_id,
+    currentUser,
+    friends
+  );
 
   const getMemoryAuthor = (userId: string) => {
     if (userId === currentUser?.id) return { name: currentUser?.username || '我', avatar: currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest' };
@@ -1333,8 +1338,8 @@ export default function MemoryStreamPage() {
         content: item.content,
       };
     });
-    const taggedNames = (memory.tagged_friends || [])
-      .map((id: string) => getFriendName(id))
+    const taggedNames = getVisibleTagIds(memory)
+      .map((id: string) => getTagName(memory, id))
       .filter(Boolean)
       .slice(0, 8);
     const payload = encodeSharePayload({
@@ -1771,7 +1776,10 @@ export default function MemoryStreamPage() {
                       )}
                       {(memory.tagged_friends?.length > 0 || memory.has_ledger) && (
                         <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-                          {memory.tagged_friends?.map((id: string, tidx: number) => { const n = getFriendName(id); return n ? <span key={`${memory.id}-${id}-${tidx}`} className="text-[#00FFB3] text-sm font-medium">@{n}</span> : null; })}
+                          {getVisibleTagIds(memory).map((id: string, tidx: number) => {
+                            const n = getTagName(memory, id);
+                            return n ? <span key={`${memory.id}-${id}-${tidx}`} className="text-[#00FFB3] text-sm font-medium">@{n}</span> : null;
+                          })}
                           {memory.has_ledger && <span className="px-2 py-0.5 rounded-full bg-[#FF9F43]/10 text-[#FF9F43] text-xs flex items-center gap-1"><FaDollarSign className="text-xs" /> 记账</span>}
                         </div>
                       )}
@@ -1906,8 +1914,8 @@ export default function MemoryStreamPage() {
                       {/* ── @好友 + 记账标签 ── */}
                       {(memory.tagged_friends?.length > 0 || memory.has_ledger) && (
                         <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-                          {memory.tagged_friends?.map((id: string, tidx: number) => {
-                            const name = getFriendName(id);
+                          {getVisibleTagIds(memory).map((id: string, tidx: number) => {
+                            const name = getTagName(memory, id);
                             if (!name) return null;
                             return <span key={`${memory.id}-${id}-${tidx}`} className="text-[#00FFB3] text-sm font-medium">@{name}</span>;
                           })}
@@ -2108,6 +2116,7 @@ export default function MemoryStreamPage() {
             memory={selectedMemory}
             onClose={() => setSelectedMemory(null)}
             friends={friends}
+            currentUser={currentUser}
           />
         )}
       </AnimatePresence>

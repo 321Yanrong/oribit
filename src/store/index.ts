@@ -198,6 +198,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     const { deleteFriendship } = await import('../api/supabase');
     await deleteFriendship(friendshipId);
     await get().fetchFriends();
+    await useMemoryStore.getState().fetchMemories();
   },
 }));
 

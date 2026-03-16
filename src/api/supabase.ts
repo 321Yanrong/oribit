@@ -6,6 +6,10 @@ const supabaseUrl = 'https://qoaqmbepnsqymxzpncyf.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYXFtYmVwbnNxeW14enBuY3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQ5NTMsImV4cCI6MjA4ODUzMDk1M30.dmQ5kVi2dGQHJ8QM7gDSRx8nNSSIfZ5jVbh22NLeBIc'
 const PASSWORD_RESET_REDIRECT_URL = 'https://wehihi.com/reset-password'
 
+const INVALID_AUTH_GRACE_MS = 1200
+let invalidAuthTimer: ReturnType<typeof setTimeout> | null = null
+let pendingInvalidReason = ''
+
 const authAwareFetch: typeof fetch = async (input, init) => {
   const response = await fetch(input, init)
 
@@ -16,7 +20,13 @@ const authAwareFetch: typeof fetch = async (input, init) => {
       const authRelatedEndpoint = /\/auth\/v1\//.test(url) || /\/rest\/v1\//.test(url)
 
       if (authRelatedEndpoint && isLikelyInvalidSession(errorCode || `http_${response.status}`)) {
-        emitInvalidAuthEvent(errorCode || `http_${response.status}`)
+        pendingInvalidReason = errorCode || `http_${response.status}`
+        if (!invalidAuthTimer) {
+          invalidAuthTimer = setTimeout(() => {
+            invalidAuthTimer = null
+            emitInvalidAuthEvent(pendingInvalidReason || `http_${response.status}`)
+          }, INVALID_AUTH_GRACE_MS)
+        }
       }
     }
   } catch (e) {

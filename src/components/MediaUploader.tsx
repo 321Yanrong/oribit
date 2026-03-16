@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaVideo, FaTimes, FaSpinner, FaMicrophone, FaStop, FaTrash, FaBolt } from 'react-icons/fa';
 import { track } from '../utils/analytics';
 import { shouldAllowUpload } from '../utils/settings';
+import imageCompression from 'browser-image-compression';
 
 const LIVE_MAX_SIZE_MB = 30;
 const UPLOAD_TIMEOUT_MS = 45000;
@@ -521,6 +522,62 @@ export default function MediaUploader({
     finally { setUploading(false); }
   };
 
+  const handlePhotoFiles = async (files: File[], inputEl?: HTMLInputElement | null) => {
+    if (!files.length || uploading) return;
+    if (!ensureWifiUpload()) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setRetryPayload(null);
+    setUploadTotal(files.length);
+    setUploadDone(0);
+
+    try {
+      const { uploadPhoto } = await import('../api/supabase');
+      const uploadedUrls: string[] = [];
+
+      for (const file of files) {
+        try {
+          const options = {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: false,
+            initialQuality: 0.8,
+          };
+
+          const compressPromise = imageCompression(file, options);
+          const timeoutPromise = new Promise<File>((_, reject) =>
+            setTimeout(() => reject(new Error('图片压缩超时，请选小一点的图')), 15000)
+          );
+
+          const compressedFile = await Promise.race([compressPromise, timeoutPromise]);
+          const url = await uploadPhoto(userId, compressedFile);
+          uploadedUrls.push(url);
+          setUploadDone((prev) => Math.min(prev + 1, files.length));
+        } catch (innerErr) {
+          console.error('单张图片处理失败:', innerErr);
+          alert(`图片 ${file.name} 处理失败：${(innerErr as any)?.message || '请重试'}`);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        onPhotosChange([...photos, ...uploadedUrls]);
+      }
+    } catch (error) {
+      console.error('整体上传流程报错:', error);
+      alert('上传过程发生异常，请检查网络后重试');
+    } finally {
+      setUploading(false);
+      if (inputEl) inputEl.value = '';
+    }
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    await handlePhotoFiles(files, e.target);
+  };
+
   const handleRetryUpload = async () => {
     if (!retryPayload || uploading) return;
     setUploadError(null);
@@ -615,7 +672,7 @@ export default function MediaUploader({
               ))}
             </div>
           )}
-          <div onClick={() => fileInputRef.current?.click()} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(Array.from(e.dataTransfer.files || []), 'photo'); }}
+          <div onClick={() => fileInputRef.current?.click()} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handlePhotoFiles(Array.from(e.dataTransfer.files || [])); }}
             className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-all ${dragOver ? 'border-orbit-mint bg-orbit-mint/10' : 'border-white/20 bg-white/5 hover:border-orbit-mint/50'}`} style={{ minHeight: 110 }}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
               {uploading ? <FaSpinner className="text-orbit-mint text-2xl animate-spin" /> : (
@@ -627,7 +684,7 @@ export default function MediaUploader({
               )}
             </div>
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFileSelect(Array.from(e.target.files || []), 'photo')} />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoSelect} />
         </>
       )}
 

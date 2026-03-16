@@ -52,6 +52,7 @@ function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
   const [showNewbieGuide, setShowNewbieGuide] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
@@ -75,6 +76,18 @@ function App() {
 
     return () => {
       window.clearTimeout(splashTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleSettingsVisibility = (event: Event) => {
+      const detail = (event as CustomEvent<boolean>).detail;
+      setIsSettingsOpen(Boolean(detail));
+    };
+    window.addEventListener('orbit:settings-visibility', handleSettingsVisibility as EventListener);
+    return () => {
+      window.removeEventListener('orbit:settings-visibility', handleSettingsVisibility as EventListener);
     };
   }, []);
 
@@ -151,7 +164,7 @@ function App() {
 
       // 前台恢复时先刷新会话，避免“断线”后全部清空
       const now = Date.now();
-      if (now - lastRefreshRef.current > 30000) {
+      if (now - lastRefreshRef.current > 5 * 60 * 1000) {
         lastRefreshRef.current = now;
         try {
           await supabase.auth.refreshSession();
@@ -356,27 +369,36 @@ useEffect(() => {
     let isMounted = true;
     let invalidSessionHandled = false;
 
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     const handleInvalidSession = async (reason: string) => {
       if (invalidSessionHandled) return;
       invalidSessionHandled = true;
       console.warn('Detected invalid auth/session token, clearing Orbit caches.', reason);
       try {
-        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-        if (!refreshError && refreshed?.session?.user) {
-          const user = refreshed.session.user;
-          const profile = await getProfile(user.id, user.email || undefined);
-          if (profile && isMounted) {
-            setCurrentUser({ ...profile, avatar_url: sanitiseAvatarUrl(profile.avatar_url, user.id) });
-            setShowAuth(false);
+        const attemptRefresh = async () => {
+          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError && refreshed?.session?.user) {
+            const user = refreshed.session.user;
+            const profile = await getProfile(user.id, user.email || undefined);
+            if (profile && isMounted) {
+              setCurrentUser({ ...profile, avatar_url: sanitiseAvatarUrl(profile.avatar_url, user.id) });
+              setShowAuth(false);
+            }
+            useMemoryStore.getState().fetchMemories();
+            useUserStore.getState().fetchFriends();
+            useUserStore.getState().fetchPendingRequests();
+            useLedgerStore.getState().fetchLedgers();
+            saveInviteCode(user.id, generateInviteCode(user.id));
+            invalidSessionHandled = false;
+            return true;
           }
-          useMemoryStore.getState().fetchMemories();
-          useUserStore.getState().fetchFriends();
-          useUserStore.getState().fetchPendingRequests();
-          useLedgerStore.getState().fetchLedgers();
-          saveInviteCode(user.id, generateInviteCode(user.id));
-          invalidSessionHandled = false;
-          return;
-        }
+          return false;
+        };
+
+        if (await attemptRefresh()) return;
+        await delay(1200);
+        if (await attemptRefresh()) return;
       } catch (e) {
         console.warn('Session refresh failed, clearing local session:', e);
       }
@@ -632,7 +654,7 @@ useEffect(() => {
               </motion.div>
             </AnimatePresence>
             
-            <BottomNav />
+            {!isSettingsOpen && <BottomNav />}
             <PWABanners />
             
             {/* 认证模态框 */}

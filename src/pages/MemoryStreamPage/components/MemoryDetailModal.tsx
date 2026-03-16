@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, FaQuoteLeft } from 'react-icons/fa';
 import { decodeMemoryContent, formatDateGroup, formatTime, MOOD_OPTIONS, WEATHER_OPTIONS } from '../utils';
+import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../../../utils/tagVisibility';
 
 interface MemoryDetailModalProps {
   memory: any;
   onClose: () => void;
   friends: any[];
+  currentUser?: any;
 }
 
-const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps) => {
+const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDetailModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const photos = memory.photos || [];
@@ -17,15 +19,19 @@ const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps)
   const audios = memory.audios || [];
   const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
 
-  const getFriendName = (friendId: string): string | null => {
-    if (friendId.startsWith('temp-')) {
-      const fid = friendId.replace('temp-', '');
-      const vf = friends.find((f: any) => f.id === fid);
-      return vf?.friend_name || null;
-    }
-    const friend = friends.find((f: any) => f.friend?.id === friendId || f.id === friendId);
-    return friend?.friend?.username || friend?.username || null;
-  };
+  const getVisibleTags = () => getVisibleTaggedFriendIds(
+    memory?.tagged_friends || [],
+    memory?.user_id,
+    currentUser?.id,
+    friends
+  );
+
+  const getTagName = (friendId: string) => getTaggedDisplayName(
+    friendId,
+    memory?.user_id,
+    currentUser || null,
+    friends
+  );
 
   const routeStops = route ? route.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
 
@@ -241,8 +247,8 @@ const MemoryDetailModal = ({ memory, onClose, friends }: MemoryDetailModalProps)
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.35 }} className="mb-6">
               <div className="text-white/40 text-sm mb-2">一起的人</div>
               <div className="flex flex-wrap gap-2">
-                {memory.tagged_friends.map((friendId: string, index: number) => {
-                  const name = getFriendName(friendId);
+                {getVisibleTags().map((friendId: string, index: number) => {
+                  const name = getTagName(friendId);
                   if (!name) return null;
                   return (
                     <motion.span key={friendId} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4 + index * 0.1 }} className="px-3 py-1.5 rounded-full bg-[#00FFB3]/10 text-[#00FFB3] text-sm border border-[#00FFB3]/20">
