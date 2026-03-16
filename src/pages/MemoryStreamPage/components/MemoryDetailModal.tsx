@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, FaQuoteLeft } from 'react-icons/fa';
 import { decodeMemoryContent, formatDateGroup, formatTime, MOOD_OPTIONS, WEATHER_OPTIONS } from '../utils';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../../../utils/tagVisibility';
+import { getMemoryComments, addMemoryComment, deleteMemoryComment } from '../../../api/supabase';
 
 interface MemoryDetailModalProps {
   memory: any;
@@ -14,6 +15,9 @@ interface MemoryDetailModalProps {
 const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDetailModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentInput, setCommentInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const photos = memory.photos || [];
   const videos = memory.videos || [];
   const audios = memory.audios || [];
@@ -32,6 +36,58 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     currentUser || null,
     friends
   );
+
+  const getMemoryAuthor = (userId: string) => {
+    if (userId === currentUser?.id) {
+      return {
+        name: currentUser?.username || '我',
+        avatar: currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest',
+      };
+    }
+    const f = friends.find((item: any) => item.friend?.id === userId)?.friend || friends.find((item: any) => item.id === userId);
+    return {
+      name: f?.username || '好友',
+      avatar: f?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest',
+    };
+  };
+
+  const getCommentAuthor = (authorId: string) => {
+    if (authorId === memory.user_id) return getMemoryAuthor(memory.user_id);
+    return getMemoryAuthor(authorId);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!memory?.id) return;
+      try {
+        const list = await getMemoryComments([memory.id]);
+        if (!cancelled) setComments(list || []);
+      } catch {
+        if (!cancelled) setComments([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [memory?.id]);
+
+  const handleAddComment = async () => {
+    const text = commentInput.trim();
+    if (!text || !currentUser?.id) return;
+    try {
+      setIsSending(true);
+      const item = await addMemoryComment(memory.id, currentUser.id, text);
+      setComments((prev) => [...prev, item]);
+      setCommentInput('');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm('确定删除这条评论吗？')) return;
+    await deleteMemoryComment(commentId);
+    setComments((prev) => prev.filter((item) => item.id !== commentId));
+  };
 
   const routeStops = route ? route.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
 
@@ -259,6 +315,52 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
               </div>
             </motion.div>
           )}
+
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.38 }} className="mb-8">
+            <div className="text-white/40 text-sm mb-3">评论</div>
+            <div className="space-y-3">
+              {comments.length === 0 && (
+                <div className="text-white/40 text-sm">暂无评论</div>
+              )}
+              {comments.map((item: any) => {
+                const author = getCommentAuthor(item.author_id);
+                const canDelete = currentUser?.id === item.author_id || currentUser?.id === memory.user_id;
+                return (
+                  <div key={item.id} className="flex items-start gap-2">
+                    <img src={author.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                    <div className="flex-1 bg-white/5 rounded-2xl px-3 py-2">
+                      <div className="flex items-start justify-between gap-3 mb-0.5">
+                        <p className="text-[#00FFB3] text-xs font-medium">{author.name}</p>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteComment(item.id)}
+                            className="text-[11px] text-white/30 hover:text-red-300 transition-colors shrink-0"
+                          >撤回</button>
+                        )}
+                      </div>
+                      <p className="text-white/70 text-sm">{item.content}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                placeholder={currentUser?.id ? '写下你的评论...' : '登录后可评论'}
+                disabled={!currentUser?.id || isSending}
+                className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm outline-none focus:border-[#00FFB3]/50"
+              />
+              <button
+                type="button"
+                onClick={() => void handleAddComment()}
+                disabled={!currentUser?.id || !commentInput.trim() || isSending}
+                className="px-4 py-2 rounded-xl bg-[#00FFB3]/20 text-[#00FFB3] text-sm font-semibold border border-[#00FFB3]/30 disabled:opacity-40"
+              >发送</button>
+            </div>
+          </motion.div>
 
           {memory.has_ledger && (
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="p-4 rounded-2xl bg-gradient-to-r from-[#FF9F43]/10 to-[#FF6B6B]/10 border border-[#FF9F43]/20">

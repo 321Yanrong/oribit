@@ -26,6 +26,8 @@ export default function PWABanners() {
   const [updateServiceWorker, setUpdateServiceWorker] = useState<((reloadPage?: boolean) => Promise<void>) | null>(null);
   const [offlineReadyDismissed, setOfflineReadyDismissed] = useState(false);
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateRetryCount, setUpdateRetryCount] = useState(0);
 
   useEffect(() => {
     const updater = registerSW({
@@ -35,6 +37,7 @@ export default function PWABanners() {
       },
       onNeedRefresh() {
         setNeedRefresh(true);
+        setIsUpdating(true);
       },
       onOfflineReady() {
         if (localStorage.getItem(OFFLINE_READY_DISMISSED_KEY) === '1') return;
@@ -136,6 +139,39 @@ export default function PWABanners() {
   }, [swRegistration]);
 
   useEffect(() => {
+    if (!needRefresh || !updateServiceWorker) return;
+    if (isOffline) return;
+
+    let cancelled = false;
+    let reloadTimer: number | null = null;
+
+    const tryUpdate = async () => {
+      try {
+        await updateServiceWorker(true);
+      } catch {
+        if (!cancelled) {
+          setUpdateRetryCount((c) => c + 1);
+        }
+      }
+    };
+
+    const interval = window.setInterval(tryUpdate, 3000);
+    const initial = window.setTimeout(tryUpdate, 500);
+    reloadTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        window.location.reload();
+      }
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.clearTimeout(initial);
+      if (reloadTimer) window.clearTimeout(reloadTimer);
+    };
+  }, [needRefresh, updateServiceWorker, isOffline]);
+
+  useEffect(() => {
     const onOnline = () => setIsOffline(false);
     const onOffline = () => setIsOffline(true);
     window.addEventListener('online', onOnline);
@@ -230,10 +266,22 @@ export default function PWABanners() {
       )}
 
       {needRefresh && (
-        <div className="mx-auto max-w-md pointer-events-auto rounded-2xl border border-[#FFD166]/40 bg-gradient-to-r from-[#1a1610]/95 via-[#251a12]/95 to-[#1a1610]/95 p-3 shadow-xl">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-white/95">✨ 发现新版本，点击更新</p>
-            <button onClick={handleRefresh} className="rounded-lg bg-[#FFD166] px-3 py-1.5 text-xs font-semibold text-black shadow-sm">更新</button>
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
+          <div className="w-[90%] max-w-sm rounded-2xl border border-[#FFD166]/40 bg-gradient-to-r from-[#1a1610]/95 via-[#251a12]/95 to-[#1a1610]/95 p-5 shadow-2xl text-center">
+            <div className="mx-auto mb-3 h-10 w-10 rounded-full border-2 border-[#FFD166]/70 border-t-transparent animate-spin" />
+            <p className="text-white text-base font-semibold">正在更新到最新版本</p>
+            <p className="text-white/60 text-sm mt-2">
+              {isOffline ? '当前离线，联网后将自动完成更新' : '请稍候，更新完成后会自动刷新'}
+            </p>
+            {updateRetryCount > 0 && !isOffline && (
+              <p className="text-white/40 text-xs mt-2">正在重试更新（{updateRetryCount}）</p>
+            )}
+            {isOffline && (
+              <button
+                onClick={handleRefresh}
+                className="mt-4 rounded-lg bg-[#FFD166] px-4 py-2 text-xs font-semibold text-black shadow-sm"
+              >手动重试</button>
+            )}
           </div>
         </div>
       )}

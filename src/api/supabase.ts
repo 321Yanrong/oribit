@@ -443,6 +443,7 @@ export const bindVirtualFriend = async (
     .from('friendships')
     .update({ friend_id: realUserId, status: 'accepted' })
     .eq('id', friendshipId)
+    .eq('user_id', currentUserId)
   if (e1) throw e1
 
   // 2. 为真实用户 B 确保反向记录（B → A）且不重复
@@ -950,15 +951,22 @@ export const deleteFriendship = async (friendshipId: string): Promise<void> => {
       .maybeSingle();
 
     if (reverse?.id && reverse.friend_id) {
-      const { error: downgradeError } = await supabase
-        .from('friendships')
-        .update({ friend_id: null, status: 'virtual', friend_name: displayName })
-        .eq('id', reverse.id);
-      if (downgradeError) {
-        if (isPermissionError(downgradeError)) {
-          throw new Error('缺少权限将对方关系降级为虚拟好友，请在 Supabase 执行 friend-requests-migration.sql');
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const currentUserId = authData?.user?.id;
+
+      if (currentUserId && reverse.user_id === currentUserId) {
+        const { error: downgradeError } = await supabase
+          .from('friendships')
+          .update({ friend_id: null, status: 'virtual', friend_name: displayName })
+          .eq('id', reverse.id)
+          .eq('user_id', currentUserId);
+        if (downgradeError) {
+          if (isPermissionError(downgradeError)) {
+            throw new Error('缺少权限将对方关系降级为虚拟好友，请在 Supabase 执行 friend-requests-migration.sql');
+          }
+          throw downgradeError;
         }
-        throw downgradeError;
       }
     }
   }
@@ -967,10 +975,15 @@ export const deleteFriendship = async (friendshipId: string): Promise<void> => {
 // 好友备注更新
 export const updateFriendRemark = async (friendshipId: string, remark: string): Promise<void> => {
   ensureOnlineForWrite('更新好友备注')
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const currentUserId = authData?.user?.id;
+  if (!currentUserId) throw new Error('当前未登录，无法更新好友备注');
   const { error } = await supabase
     .from('friendships')
     .update({ remark: remark || null } as any)
     .eq('id', friendshipId)
+    .eq('user_id', currentUserId)
   if (error) throw error
 }
 
