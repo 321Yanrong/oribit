@@ -53,22 +53,22 @@ function CalcPad({ expr, onChange, onConfirm }: { expr: string; onChange: (v: st
     ['C', '0', '.', '+'],
   ];
   return (
-    <div className="bg-black/50 rounded-2xl p-3 space-y-2 border border-white/10">
-      <div className="text-right px-2 py-1 text-white font-mono text-xl min-h-[2.5rem] tracking-wide">{expr || '0'}</div>
+    <div className="rounded-2xl p-3 space-y-2 border shadow-sm" style={{ backgroundColor: 'var(--orbit-card, #ffffff)', borderColor: 'var(--orbit-border, #e5e7eb)' }}>
+      <div className="text-right px-2 py-1 font-mono text-xl min-h-[2.5rem] tracking-wide" style={{ color: 'var(--orbit-text, #0f172a)' }}>{expr || '0'}</div>
       {BTN_ROWS.map((row, ri) => (
         <div key={ri} className="grid grid-cols-4 gap-1.5">
           {row.map(btn => (
             <button key={btn} type="button" onClick={() => press(btn)}
-              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
-                ['÷', '×', '-', '+'].includes(btn) ? 'bg-[#FF9F43]/20 text-[#FF9F43] border border-[#FF9F43]/20' :
-                btn === 'C' ? 'bg-red-500/20 text-red-400' :
-                btn === '←' ? 'bg-white/10 text-white/60' :
-                'bg-white/10 text-white hover:bg-white/20'}`}>{btn}</button>
+              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all border ${
+                ['÷', '×', '-', '+'].includes(btn) ? 'bg-[#fff7ed] text-[#d97706] border-[#fbbf24]' :
+                btn === 'C' ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecdd3]' :
+                btn === '←' ? 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]' :
+                'bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'}`}>{btn}</button>
           ))}
         </div>
       ))}
       <button type="button" onClick={() => { const r = evaluate(expr); if (r !== null) onConfirm(r); }}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold">= 确认</button>
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#34d399] to-[#22d3ee] text-black font-bold border border-transparent">= 确认</button>
     </div>
   );
 }
@@ -134,56 +134,56 @@ const LedgerModal = ({
   if (!isOpen) return null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl" onClick={onClose}>
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1a] border-t border-white/10" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 flex items-center justify-between px-4 py-4 bg-[#1a1a1a] border-b border-white/5 z-10">
-          <button onClick={onClose} className="text-white/60 hover:text-white">取消</button>
-          <span className="text-white font-semibold">{isEdit ? '修改账单' : '记一笔'}</span>
-          <button onClick={handleSave} disabled={totalAmount <= 0 || !selectedMemoryId || isSubmitting} className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/40 backdrop-blur" onClick={onClose}>
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl shadow-2xl" style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', color: 'var(--orbit-text, #0f172a)', borderTop: '1px solid var(--orbit-border, #e5e7eb)' }} onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 flex items-center justify-between px-4 py-4 z-10" style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', borderBottom: '1px solid var(--orbit-border, #e5e7eb)' }}>
+          <button onClick={onClose} className="text-[#475569] hover:text-[#0f172a]">取消</button>
+          <span className="font-semibold" style={{ color: 'var(--orbit-text, #0f172a)' }}>{isEdit ? '修改账单' : '记一笔'}</span>
+          <button onClick={handleSave} disabled={totalAmount <= 0 || !selectedMemoryId || isSubmitting} className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#f97316] to-[#fb7185] text-white font-semibold disabled:opacity-50">
             {isSubmitting ? <FaSpinner className="animate-spin" /> : '保存'}
           </button>
         </div>
 
-        <div className="p-4 space-y-5">
-          <div className="flex p-1 bg-white/5 rounded-xl">
-            <button onClick={() => setExpenseType('shared')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'shared' ? 'bg-white/10 text-white shadow' : 'text-white/40'}`}>👫 多人 AA</button>
-            <button onClick={() => setExpenseType('personal')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'personal' ? 'bg-[#00FFB3]/20 text-[#00FFB3] shadow' : 'text-white/40'}`}>🙋 个人消费</button>
+        <div className="p-4 space-y-5" style={{ color: 'var(--orbit-text, #0f172a)' }}>
+          <div className="flex p-1 rounded-xl" style={{ backgroundColor: '#f6f7fb', border: '1px solid var(--orbit-border, #e5e7eb)' }}>
+            <button onClick={() => setExpenseType('shared')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'shared' ? 'bg-white shadow text-[#0f172a] border border-[var(--orbit-border,#e5e7eb)]' : 'text-[#94a3b8]'}`}>👫 多人 AA</button>
+            <button onClick={() => setExpenseType('personal')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'personal' ? 'bg-[#e6fff5] text-[#047857] shadow border border-[#a7f3d0]' : 'text-[#94a3b8]'}`}>🙋 个人消费</button>
           </div>
 
           {/* 关联记忆 */}
           <div className="relative">
-            <FaImages className="absolute left-4 top-1/2 -translate-y-1/2 text-[#00FFB3]" />
-            <select value={selectedMemoryId} onChange={(e) => setSelectedMemoryId(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none appearance-none cursor-pointer">
-              <option value="" disabled className="bg-[#1a1a1a] text-white/40">选择要关联的记忆...</option>
+            <FaImages className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10b981]" />
+            <select value={selectedMemoryId} onChange={(e) => setSelectedMemoryId(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border outline-none appearance-none cursor-pointer" style={{ backgroundColor: 'var(--orbit-card, #ffffff)', borderColor: 'var(--orbit-border, #e5e7eb)', color: 'var(--orbit-text, #0f172a)' }}>
+              <option value="" disabled className="text-[#94a3b8]">选择要关联的记忆...</option>
               {memories.map(m => (
-                <option key={m.id} value={m.id} className="bg-[#1a1a1a] text-white">
+                <option key={m.id} value={m.id} className="text-[#0f172a]">
                   {new Date(m.memory_date || m.created_at).toLocaleDateString()} · {m.location?.name || m.content?.substring(0, 15)}
                 </option>
               ))}
             </select>
-            <FaChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 rotate-90 pointer-events-none" />
+            <FaChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-[#cbd5e1] rotate-90 pointer-events-none" />
           </div>
 
           {/* 多项账单 */}
           <div className="space-y-3">
             {ledgerItems.map(item => (
-              <div key={item.id} className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-2">
+              <div key={item.id} className="rounded-2xl p-3 space-y-2 border" style={{ backgroundColor: 'var(--orbit-card, #ffffff)', borderColor: 'var(--orbit-border, #e5e7eb)' }}>
                 {/* 分类选择 */}
                 <div className="flex items-center gap-2">
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {CATEGORIES.map(cat => (
                       <button key={cat} type="button"
                         onClick={() => updateLedgerItem(item.id, 'category', cat)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
                           item.category === cat
-                            ? 'bg-[#FF9F43]/20 text-[#FF9F43] border border-[#FF9F43]/30'
-                            : 'bg-white/5 text-white/40 border border-transparent'
+                            ? 'bg-[#fff7ed] text-[#d97706] border-[#fdba74]'
+                            : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
                         }`}>{cat}</button>
                     ))}
                   </div>
                   {ledgerItems.length > 1 && (
                     <button type="button" onClick={() => removeLedgerItem(item.id)}
-                      className="shrink-0 p-1.5 text-white/30 hover:text-red-400 transition-colors">
+                      className="shrink-0 p-1.5 text-[#cbd5e1] hover:text-[#ef4444] transition-colors">
                       <FaTimes className="text-xs" />
                     </button>
                   )}
@@ -192,10 +192,11 @@ const LedgerModal = ({
                 <div className="flex gap-2">
                   <input type="text" placeholder="备注（选填）" value={item.note}
                     onChange={e => updateLedgerItem(item.id, 'note', e.target.value)}
-                    className="flex-1 bg-white/5 rounded-xl px-3 py-2 text-white text-sm outline-none border border-white/10 placeholder-white/30" />
+                    className="flex-1 rounded-xl px-3 py-2 text-sm outline-none border"
+                    style={{ backgroundColor: 'var(--orbit-card, #ffffff)', borderColor: 'var(--orbit-border, #e5e7eb)', color: 'var(--orbit-text, #0f172a)' }} />
                   <button type="button"
                     onClick={() => setActiveCalcId(activeCalcId === item.id ? null : item.id)}
-                    className="shrink-0 min-w-[80px] flex items-center justify-end px-3 py-2 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20 text-[#FF9F43] font-mono font-bold text-sm">
+                    className="shrink-0 min-w-[80px] flex items-center justify-end px-3 py-2 rounded-xl font-mono font-bold text-sm border" style={{ backgroundColor: '#fff7ed', borderColor: '#fdba74', color: '#d97706' }}>
                     ¥{item.amount || '0'}
                   </button>
                 </div>
@@ -212,25 +213,27 @@ const LedgerModal = ({
               </div>
             ))}
             <button type="button" onClick={addLedgerItem}
-              className="w-full py-2.5 rounded-xl border border-dashed border-white/20 text-white/40 text-sm flex items-center justify-center gap-1.5 hover:border-[#FF9F43]/40 hover:text-[#FF9F43] transition-colors">
+              className="w-full py-2.5 rounded-xl border border-dashed text-sm flex items-center justify-center gap-1.5 transition-colors"
+              style={{ borderColor: 'var(--orbit-border, #e5e7eb)', color: '#64748b' }}
+            >
               <FaPlus className="text-xs" /> 添加项目
             </button>
-            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20">
-              <span className="text-white/60 text-sm">合计</span>
-              <span className="text-[#FF9F43] font-bold text-xl">¥ {totalAmount.toFixed(2)}</span>
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl border" style={{ backgroundColor: '#fff7ed', borderColor: '#fdba74' }}>
+              <span className="text-[#d97706] text-sm">合计</span>
+              <span className="text-[#d97706] font-bold text-xl">¥ {totalAmount.toFixed(2)}</span>
             </div>
           </div>
 
           <AnimatePresence>
             {expenseType === 'shared' && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <p className="text-white/40 text-sm mb-3">选择参与者（默认含自己）</p>
+                <p className="text-[#64748b] text-sm mb-3">选择参与者（默认含自己）</p>
                 <div className="flex flex-wrap gap-2">
                   {friends.filter((fs: any) => !fs.friend?.id?.startsWith('temp-')).map((friendship: any) => {
                     const friend = friendship.friend;
                     const isSelected = selectedFriends.includes(friend.id);
                     return (
-                      <motion.button key={friend.id} onClick={() => toggleFriend(friend.id)} className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${isSelected ? 'bg-[#FF9F43]/20 border-[#FF9F43] text-[#FF9F43]' : 'bg-white/5 border-white/10 text-white/60'}`}>
+                      <motion.button key={friend.id} onClick={() => toggleFriend(friend.id)} className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${isSelected ? 'bg-[#e6fff5] border-[#34d399] text-[#047857]' : 'bg-[#f8fafc] border-[#e2e8f0] text-[#475569]'}`}>
                         <img src={friend.avatar_url} alt={friend.username} className="w-5 h-5 rounded-full" />
                         <span className="text-sm">{friend.username}</span>
                       </motion.button>
@@ -238,9 +241,9 @@ const LedgerModal = ({
                   })}
                 </div>
                 {totalAmount > 0 && (
-                  <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-center">
-                    <span className="text-white/60 text-sm">总计 {selectedFriends.length + 1} 人均摊，每人 </span>
-                    <span className="text-[#FF9F43] font-bold">¥{(totalAmount / (selectedFriends.length + 1)).toFixed(2)}</span>
+                  <div className="mt-4 p-4 rounded-xl border text-center" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--orbit-border, #e5e7eb)' }}>
+                    <span className="text-[#475569] text-sm">总计 {selectedFriends.length + 1} 人均摊，每人 </span>
+                    <span className="text-[#d97706] font-bold">¥{(totalAmount / (selectedFriends.length + 1)).toFixed(2)}</span>
                   </div>
                 )}
               </motion.div>

@@ -266,11 +266,8 @@ function LivePhotoUploader({
     } catch (err) {
       const msg = err instanceof Error ? err.message : '未知错误';
       alert(`Live 上传失败：${msg}`);
-    }
-    finally {
+    } finally {
       setUploading(false);
-      setUploadTotal(0);
-      setUploadDone(0);
     }
   };
 
@@ -460,7 +457,7 @@ export default function MediaUploader({
       if (sourcePhotoUrl) {
         setLiveBindings(prev => {
           const filtered = prev.filter(binding => binding.photoUrl !== sourcePhotoUrl);
-          return [...filtered, ...uploadedUrls.map(liveUrl => ({ photoUrl: sourcePhotoUrl, liveUrl, liveType: 'video' }))];
+          return [...filtered, ...uploadedUrls.map(liveUrl => ({ photoUrl: sourcePhotoUrl, liveUrl, liveType: 'video' as const }))];
         });
       }
 

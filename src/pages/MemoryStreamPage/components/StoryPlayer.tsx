@@ -117,7 +117,8 @@ const StoryPlayer = ({ memories, open, onClose }: StoryPlayerProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[130] bg-black"
+           className="fixed inset-0 z-[130]"
+           style={{ backgroundColor: 'color-mix(in srgb, #000 85%, transparent)' }}
         >
           <div className="absolute inset-0" onClick={handleTap} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
             {scene.photo && (
@@ -130,24 +131,43 @@ const StoryPlayer = ({ memories, open, onClose }: StoryPlayerProps) => {
                 className="w-full h-full object-cover"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
+            <div
+              className="absolute inset-0"
+             style={{
+               background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.65) 100%)'
+             }}
+            />
           </div>
 
           <div className="absolute top-0 left-0 right-0 px-4 pt-4">
             <div className="flex gap-1 mb-3">
               {scenes.map((_, i) => (
-                <div key={i} className="flex-1 h-1.5 bg-white/10 overflow-hidden rounded-full">
-                  <div className="h-full bg-white" style={{ width: i < index ? '100%' : i === index ? `${progress - index * (100 / scenes.length)}%` : '0%' }} />
+                  <div key={i} className="flex-1 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}>
+                  <div
+                    className="h-full"
+                    style={{
+                      width: i < index ? '100%' : i === index ? `${progress - index * (100 / scenes.length)}%` : '0%',
+                      background: 'linear-gradient(90deg, #00FFB3, #00D9FF)'
+                    }}
+                  />
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-between text-white/80 text-sm">
+            <div className="flex items-center justify-between text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
               <span>{scene.place || 'Story'}</span>
               <div className="flex items-center gap-3">
-                <button onClick={() => setPaused((p) => !p)} className="p-2 rounded-full bg-white/10 border border-white/15">
+                <button
+                  onClick={() => setPaused((p) => !p)}
+                  className="p-2 rounded-full"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
+                >
                   {isPaused ? <FaPlay /> : <FaPause />}
                 </button>
-                <button onClick={onClose} className="p-2 rounded-full bg-white/10 border border-white/15">
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
+                >
                   <FaTimes />
                 </button>
               </div>
@@ -161,25 +181,35 @@ const StoryPlayer = ({ memories, open, onClose }: StoryPlayerProps) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.35 }}
-              className="max-w-xl text-white space-y-3"
+              className="max-w-xl space-y-3"
+              style={{ color: '#fff' }}
             >
               {scene.type === 'receipt' && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs">
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.25)' }}
+                >
                   <FaReceipt /> <span>账单 · {scene.receipt?.category || '消费'}</span>
                 </div>
               )}
               {scene.type === 'photo' && scene.sub && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs">
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.25)' }}
+                >
                   <FaMapMarkerAlt /> <span>{scene.sub}</span>
                 </div>
               )}
-              <p className="text-lg font-semibold leading-relaxed drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">
+              <p className="text-lg font-semibold leading-relaxed">
                 {scene.text}
               </p>
               {scene.type === 'receipt' && (
-                <div className="mt-2 inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-black/60 border border-white/15 shadow-lg">
-                  <div className="text-2xl font-bold">¥{scene.receipt?.amount?.toFixed(2)}</div>
-                  <div className="text-left text-sm text-white/70 leading-relaxed">
+                <div
+                  className="mt-2 inline-flex items-center gap-3 px-4 py-2 rounded-2xl shadow-lg border"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.55)', borderColor: 'rgba(255,255,255,0.18)' }}
+                >
+                  <div className="text-2xl font-bold" style={{ color: '#fff' }}>¥{scene.receipt?.amount?.toFixed(2)}</div>
+                  <div className="text-left text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>
                     <div>这次花费记录在 Orbit</div>
                     <div>点击右侧继续翻页</div>
                   </div>
@@ -187,9 +217,9 @@ const StoryPlayer = ({ memories, open, onClose }: StoryPlayerProps) => {
               )}
               {scene.type === 'poster' && (
                 <div className="flex flex-col items-center gap-3 mt-3">
-                  <div className="text-sm text-white/70">故事结尾，生成分享海报</div>
+                  <div className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>故事结尾，生成分享海报</div>
                   <div className="flex gap-2">
-                    <button className="px-4 py-2 rounded-full bg-white text-black font-semibold">保存到手机</button>
+                    <button className="px-4 py-2 rounded-full font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>保存到手机</button>
                     <button className="px-4 py-2 rounded-full bg-[#00FFB3] text-black font-semibold">分享这份回忆</button>
                   </div>
                 </div>
@@ -197,8 +227,11 @@ const StoryPlayer = ({ memories, open, onClose }: StoryPlayerProps) => {
             </motion.div>
           </div>
 
-          <div className="absolute bottom-6 w-full flex justify-center text-white/60 text-xs">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/15">
+          <div className="absolute bottom-6 w-full flex justify-center text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-full"
+              style={{ backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)' }}
+            >
               <FaArrowDown className="text-[10px]" /> 下滑即可关闭
             </div>
           </div>

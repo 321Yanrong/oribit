@@ -13,7 +13,7 @@ import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
 import ProfilePage, { NewbieGuideModal } from './pages/ProfilePage';
 import GamesPage from './pages/GamesPage';
-import { shouldAllowRefresh } from './utils/settings';
+import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -39,6 +39,20 @@ const resetClientData = () => {
   useMemoryStore.setState({ memories: [] });
   useLedgerStore.setState({ ledgers: [] });
   useUserStore.setState({ friends: [], pendingRequests: [] });
+};
+
+const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
+  if (typeof document === 'undefined') return;
+  const fontSize = settings.fontSize === 'small' ? '14px' : settings.fontSize === 'large' ? '18px' : '16px';
+  document.documentElement.style.fontSize = fontSize;
+
+  const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const mode = settings.themeMode || 'system';
+  if (mode === 'system') {
+    document.documentElement.dataset.theme = isSystemDark ? 'dark' : 'light';
+  } else {
+    document.documentElement.dataset.theme = mode;
+  }
 };
 
 const usePWAKeeper = (onResume: () => void) => {
@@ -130,6 +144,19 @@ function App() {
   const resumeTimerRef = useRef<number | null>(null);
   const triggerResume = useAppStore((state) => state.triggerResume);
   usePWAKeeper(triggerResume);
+
+  // 初始化主题，避免首屏落在深色
+  useEffect(() => {
+    const settings = readSettings();
+    applyThemeFromSettings(settings);
+
+    const onSettings = (event: Event) => {
+      const detail = (event as CustomEvent<ReturnType<typeof readSettings>>).detail;
+      applyThemeFromSettings(detail || readSettings());
+    };
+    window.addEventListener(SETTINGS_EVENT, onSettings as EventListener);
+    return () => window.removeEventListener(SETTINGS_EVENT, onSettings as EventListener);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -696,13 +723,20 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-orbit-black text-white overflow-hidden">
+    <div
+      className="min-h-screen overflow-hidden"
+      style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', color: 'var(--orbit-text, #0f172a)' }}
+    >
       {loading ? (
-        <div className="min-h-screen bg-orbit-black flex items-center justify-center">
+        <div
+          className="min-h-screen flex items-center justify-center"
+          style={{ backgroundColor: 'var(--orbit-surface, #ffffff)' }}
+        >
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-12 h-12 rounded-full border-4 border-orbit-mint/30 border-t-orbit-mint"
+            className="w-12 h-12 rounded-full border-4"
+            style={{ borderColor: 'var(--orbit-border, #e5e7eb)', borderTopColor: '#111827' }}
           />
         </div>
       ) : (

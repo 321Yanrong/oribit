@@ -233,10 +233,14 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     }).then((AMap) => {
       if (!containerRef.current) return;
       
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const isDarkTheme = currentTheme === 'dark' || (!currentTheme && prefersDark);
+
       const map = new AMap.Map(containerRef.current, {
         zoom: 12,
         center: [121.4737, 31.2304], // 默认中心点 (上海)，后续可以根据数据自动调整视野
-        mapStyle: 'amap://styles/dark', 
+        mapStyle: isDarkTheme ? 'amap://styles/dark' : 'amap://styles/normal',
       });
       
       map.addControl(new AMap.Scale());
@@ -384,15 +388,22 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setMapGroupBy(g => g === 'location' ? 'city' : 'location')}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    mapGroupBy === 'city'
-                      ? 'bg-[#FFD700]/10 border-[#FFD700]/30 text-[#FFD700]'
-                      : 'bg-[#00FFB3]/10 border-[#00FFB3]/30 text-[#00FFB3]'
-                  }`}
+                  className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                  style={{
+                    color: '#0f9f6e',
+                    backgroundColor: 'color-mix(in srgb, #0f9f6e 12%, transparent)',
+                    borderColor: 'color-mix(in srgb, #0f9f6e 26%, transparent)'
+                  }}
                 >
                   {mapGroupBy === 'city' ? '🏙 按城市' : '📍 按地点'}
                 </button>
-                <div className="flex items-center gap-2 text-[#00FFB3] text-sm bg-[#00FFB3]/10 px-3 py-1.5 rounded-full">
+                <div
+                  className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-full"
+                  style={{
+                    color: '#0f9f6e',
+                    backgroundColor: 'color-mix(in srgb, #0f9f6e 12%, transparent)'
+                  }}
+                >
                   <FaCamera className="w-3 h-3" />
                   <span>{filteredPins.length} 个足迹</span>
                 </div>
@@ -444,7 +455,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[72vh] flex flex-col bg-[#1a1a1a] rounded-3xl border border-white/10 shadow-2xl"
+              className="w-full max-w-lg max-h-[72vh] flex flex-col bg-orbit-black rounded-3xl border shadow-2xl"
+              style={{ borderColor: 'var(--orbit-border)' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5">
@@ -535,7 +547,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: 'spring', damping: 20, stiffness: 250 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar bg-[#1a1a1a] rounded-3xl border border-white/10 shadow-2xl"
+              className="w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar bg-orbit-black rounded-3xl border shadow-2xl"
+              style={{ borderColor: 'var(--orbit-border)' }}
             >
               {/* 照片 */}
               {selectedMemory.photos?.[0] && (

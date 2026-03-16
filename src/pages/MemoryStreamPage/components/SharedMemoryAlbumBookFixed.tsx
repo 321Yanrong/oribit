@@ -38,26 +38,33 @@ const photosCount = storyMemories.reduce((sum, m) => sum + (m.photos?.length || 
 const memoriesCount = storyMemories.length;
 const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 
-return (
-<div className="px-4 mb-6">
-<motion.div
-whileHover={{ scale: 1.02 }}
-whileTap={{ scale: 0.98 }}
-onClick={() => onClick(storyMemories)}
-className="relative overflow-hidden rounded-2xl p-4 cursor-pointer group border border-white/10 min-h-[150px]"
-style={{
-backgroundColor: '#05070d',
-backgroundImage: `radial-gradient(at 20% 18%, rgba(120,155,255,0.28) 0, transparent 42%),
-           radial-gradient(at 82% 22%, rgba(255,137,191,0.32) 0, transparent 40%),
-           radial-gradient(at 50% 74%, rgba(88,255,214,0.24) 0, transparent 46%),
-           linear-gradient(135deg, rgba(8,12,24,0.88), rgba(12,7,28,0.82)),
+  return (
+    <div className="px-4 mb-6">
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => onClick(storyMemories)}
+        className="relative overflow-hidden rounded-2xl p-4 cursor-pointer group border min-h-[150px]"
+        style={{
+          borderColor: 'color-mix(in srgb, #dce7f5 26%, transparent)',
+          backgroundColor: 'color-mix(in srgb, var(--orbit-bg) 82%, #f5f7fb 18%)',
+          backgroundImage: `radial-gradient(at 18% 12%, rgba(120,176,255,0.28) 0, transparent 42%),
+           radial-gradient(at 82% 18%, rgba(255,177,214,0.24) 0, transparent 40%),
+           radial-gradient(at 46% 78%, rgba(94,214,190,0.24) 0, transparent 46%),
+           radial-gradient(at 72% 72%, rgba(255,196,120,0.20) 0, transparent 48%),
+           linear-gradient(145deg, rgba(18,22,32,0.82), rgba(18,22,32,0.72)),
            url(${memoryFlowBackground})`,
-backgroundBlendMode: 'screen, screen, screen, normal, soft-light',
-backgroundSize: '140% 140%, 140% 140%, 140% 140%, cover, cover',
-backgroundPosition: 'center',
-}}
->
-<div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/35 to-black/60" />
+          backgroundBlendMode: 'screen, screen, screen, screen, soft-light, overlay',
+          backgroundSize: '170% 170%, 170% 170%, 170% 170%, 190% 190%, cover, cover',
+          backgroundPosition: 'center',
+          boxShadow: '0 28px 64px rgba(6,12,20,0.5)',
+          color: 'var(--orbit-text)',
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/12 via-transparent to-white/14 mix-blend-screen" />
+        <div className="absolute inset-0 blur-3xl opacity-70" style={{
+          backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.12) 0, transparent 28%), radial-gradient(circle at 70% 60%, rgba(200,224,255,0.12) 0, transparent 32%)'
+        }} />
 
 <div className="relative flex items-center justify-between">
 <div>
@@ -76,33 +83,42 @@ backgroundPosition: 'center',
 </p>
 )}
 </div>
-<div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-[#00FFB3] font-bold text-xl shadow-inner">
-▶
-</div>
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner"
+          style={{
+            color: '#0f9f6e',
+            background: 'color-mix(in srgb, #0f9f6e 16%, transparent)',
+            border: '1px solid color-mix(in srgb, #dce7f5 24%, transparent)',
+            boxShadow: '0 12px 28px rgba(11,17,24,0.55), inset 0 1px 0 rgba(255,255,255,0.06)'
+          }}
+        >
+          ▶
+        </div>
 </div>
 
 {friends.length > 0 && onSelectFriend && (
 <div className="relative mt-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
 {friends.map((f) => {
-const active = selectedFriendIds.includes(f.id);
-return (
-<button
-key={f.id}
-onClick={(e) => {
-e.stopPropagation();
-if (active) onSelectFriend(selectedFriendIds.filter((id) => id !== f.id));
-else onSelectFriend([...selectedFriendIds, f.id]);
-}}
-className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                   active
-                     ? 'bg-[#00FFB3] text-black border-transparent'
-                     : 'bg-white/5 text-white/70 border-white/10 hover:border-white/30'
-                 }`}
->
-{f.avatar && <img src={f.avatar} className="w-4 h-4 rounded-full object-cover" />}
-{f.name}
-</button>
-);
+  const active = selectedFriendIds.includes(f.id);
+  return (
+    <button
+      key={f.id}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (active) onSelectFriend(selectedFriendIds.filter((id) => id !== f.id));
+        else onSelectFriend([...selectedFriendIds, f.id]);
+      }}
+      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm"
+      style={{
+        backgroundColor: active ? '#0f9f6e' : 'color-mix(in srgb, var(--orbit-card) 82%, rgba(255,255,255,0.75))',
+        color: active ? '#fff' : 'var(--orbit-text)',
+        borderColor: active ? 'transparent' : 'var(--orbit-border)'
+      }}
+    >
+      {f.avatar && <img src={f.avatar} className="w-6 h-6 rounded-full object-cover" />}
+      {f.name}
+    </button>
+  );
 })}
 </div>
 )}
@@ -572,6 +588,7 @@ backgroundImage: `radial-gradient(at 16% 18%, rgba(120,155,255,0.22) 0, transpar
             backgroundBlendMode: isSafari ? 'normal' : 'screen, screen, screen, normal, soft-light',
 backgroundSize: '140% 140%, 140% 140%, 140% 140%, cover, cover',
 backgroundPosition: 'center',
+            color: 'var(--orbit-text)',
 }}
 >
 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-white/35" />
@@ -602,7 +619,12 @@ style={{ width: i < activeIndex ? '100%' : i === activeIndex ? `${progress}%` : 
 </div>
 <button
 onClick={onClose}
-className="p-2 text-white/80 hover:text-white pointer-events-auto bg-black/30 rounded-full backdrop-blur-md border border-white/10"
+className="p-2 pointer-events-auto rounded-full backdrop-blur-md border shadow-sm"
+style={{
+  color: 'var(--orbit-text)',
+  backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))',
+  borderColor: 'color-mix(in srgb, var(--orbit-border) 40%, rgba(255,255,255,0.75))'
+}}
 >
 <FaTimes className="text-lg" />
 </button>
@@ -781,11 +803,13 @@ className="mt-8 w-12 h-12 rounded-full bg-white/10 text-white flex items-center 
 </motion.div>
 
 <div className="fixed top-6 right-6 z-[220] flex items-center justify-end pointer-events-auto">
-<div className="flex items-center gap-2 bg-black/55 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/12 shadow-lg text-xs text-white">
+<div className="flex items-center gap-2 bg-white/80 text-[#0f172a] dark:bg-black/60 dark:text-white backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/80 dark:border-white/12 shadow-lg text-xs">
 <button
 onClick={handleToggleMusic}
-className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
-               isMusicPlaying ? 'border-[#00FFB3]/60 text-[#00FFB3] bg-[#00ffb3]/10 shadow-[0_0_12px_rgba(0,255,179,0.25)]' : 'border-white/25 text-white bg-white/5'
+className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all ${
+               isMusicPlaying
+                 ? 'bg-[#0f9f6e]/15 border-[#0f9f6e]/70 text-[#0f9f6e] shadow-[0_0_0_1px_rgba(15,159,110,0.15)] dark:border-[#00FFB3]/60 dark:text-[#00FFB3] dark:bg-[#00ffb3]/10'
+                 : 'bg-white border-white/70 text-[#0f172a] shadow-sm dark:bg-white/5 dark:border-white/25 dark:text-white'
              }`}
 title={isMusicPlaying ? '暂停' : '播放'}
 >
@@ -793,16 +817,16 @@ title={isMusicPlaying ? '暂停' : '播放'}
 </button>
 <button
 onClick={handleNextTrack}
-className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full hover:bg-white/5 transition-colors"
+className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full hover:bg-white/60 dark:hover:bg-white/5 transition-colors"
 title="下一首"
 >
-<span className="font-semibold whitespace-nowrap">{MUSIC_TRACKS[selectedTrack].label}</span>
+<span className="font-semibold whitespace-nowrap text-sm">{MUSIC_TRACKS[selectedTrack].label}</span>
 {isMusicPlaying && (
-<div className="flex items-end gap-0.5 h-4 text-[#00FFB3]">
+<div className="flex items-end gap-0.5 h-4 text-[#0f9f6e] dark:text-[#00FFB3]">
 {[0, 1, 2].map((b) => (
 <motion.span
 key={b}
-className="w-1 rounded-full bg-[#00FFB3]"
+className="w-1 rounded-full bg-current"
 initial={{ height: '35%' }}
 animate={{ height: ['35%', '90%', '45%', '75%'] }}
 transition={{ duration: 1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: b * 0.12 }}

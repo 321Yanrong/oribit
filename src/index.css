@@ -14,13 +14,13 @@
 }
 
 :root[data-theme='light'] {
-  --orbit-bg: #f5f7fb;
+  --orbit-bg: #ffffff;
   --orbit-surface: #ffffff;
-  --orbit-card: rgba(0, 0, 0, 0.04);
-  --orbit-border: rgba(0, 0, 0, 0.08);
+  --orbit-card: rgba(0, 0, 0, 0.08);
+  --orbit-border: rgba(0, 0, 0, 0.14);
   --orbit-text: #0f172a;
-  --orbit-text-muted: #475569;
-  --orbit-glow: rgba(0, 200, 140, 0.25);
+  --orbit-text-muted: #334155;
+  --orbit-glow: rgba(0, 150, 110, 0.25);
   color-scheme: light;
 }
 
@@ -155,6 +155,47 @@
     box-shadow: 0 0 10px var(--orbit-glow);
   }
 
+  /* 主题辅助：让常见深色背景在浅色模式下转白底 */
+  :root[data-theme='light'] .bg\[\#121212\],
+  :root[data-theme='light'] .bg\[\#1a1a1a\],
+  :root[data-theme='light'] .bg-orbit-black,
+  :root[data-theme='light'] .bg-orbit-dark {
+    background-color: #ffffff !important;
+  }
+  :root[data-theme='light'] .text-white {
+    color: #0f172a !important;
+  }
+  :root[data-theme='light'] .text-white\/80 {
+    color: color-mix(in srgb, #0f172a 80%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/85 {
+    color: color-mix(in srgb, #0f172a 85%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/75 {
+    color: color-mix(in srgb, #0f172a 75%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/60 {
+    color: color-mix(in srgb, #0f172a 60%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/40 {
+    color: color-mix(in srgb, #0f172a 40%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/30 {
+    color: color-mix(in srgb, #0f172a 30%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/45 {
+    color: color-mix(in srgb, #0f172a 45%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/50 {
+    color: color-mix(in srgb, #0f172a 50%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/35 {
+    color: color-mix(in srgb, #0f172a 35%, transparent) !important;
+  }
+  :root[data-theme='light'] .text-white\/20 {
+    color: color-mix(in srgb, #0f172a 20%, transparent) !important;
+  }
+
   /* 主题辅助：让通用背景/文字颜色跟随变量 */
   .bg-orbit-black {
     background-color: var(--orbit-bg) !important;
@@ -164,6 +205,30 @@
   }
   .text-white\/40 {
     color: color-mix(in srgb, var(--orbit-text) 40%, transparent) !important;
+  }
+  .text-white\/30 {
+    color: color-mix(in srgb, var(--orbit-text) 30%, transparent) !important;
+  }
+  .text-white\/45 {
+    color: color-mix(in srgb, var(--orbit-text) 45%, transparent) !important;
+  }
+  .text-white\/75 {
+    color: color-mix(in srgb, var(--orbit-text) 75%, transparent) !important;
+  }
+  .text-white\/50 {
+    color: color-mix(in srgb, var(--orbit-text) 50%, transparent) !important;
+  }
+  .text-white\/85 {
+    color: color-mix(in srgb, var(--orbit-text) 85%, transparent) !important;
+  }
+  .text-white\/20 {
+    color: color-mix(in srgb, var(--orbit-text) 20%, transparent) !important;
+  }
+
+  /* 统一占位符颜色，随主题变换 */
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in srgb, var(--orbit-text) 40%, transparent);
   }
 }
 

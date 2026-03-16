@@ -444,7 +444,7 @@ const LocationSearch = ({
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+      <div className="flex items-center gap-2 p-3 rounded-xl border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
         <div className="p-2 rounded-full bg-[#00FFB3]/10">
           <FaMapMarkerAlt className="text-[#00FFB3]" />
         </div>
@@ -454,9 +454,10 @@ const LocationSearch = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => value.trim() && setShowResults(true)}
-          className="flex-1 bg-transparent text-white placeholder-white/30 outline-none min-w-0"
+          className="flex-1 bg-transparent outline-none min-w-0 placeholder:opacity-60"
+          style={{ color: 'var(--orbit-text)', caretColor: 'var(--orbit-text)' }}
         />
-        {searching && <FaSpinner className="text-white/30 animate-spin shrink-0" />}
+        {searching && <FaSpinner className="animate-spin shrink-0" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }} />}
         <button
           type="button"
           onClick={handleGPS}
@@ -474,16 +475,18 @@ const LocationSearch = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl bg-[#2a2a2a] border border-white/10 z-10"
+            className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl z-10 border"
+            style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
           >
             {results.map((poi) => (
               <button
                 key={poi.id}
                 onClick={() => handleSelect(poi)}
-                className="w-full p-3 text-left hover:bg-white/5 border-b border-white/5 last:border-0"
+                className="w-full p-3 text-left border-b last:border-0"
+                style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
               >
-                <div className="text-white font-medium">{poi.name}</div>
-                <div className="text-white/40 text-sm truncate">{poi.address}</div>
+                <div className="font-medium" style={{ color: 'var(--orbit-text)' }}>{poi.name}</div>
+                <div className="text-sm truncate" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{poi.address}</div>
               </button>
             ))}
           </motion.div>
@@ -497,9 +500,10 @@ const LocationSearch = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-2 p-4 rounded-xl bg-[#2a2a2a] border border-white/10 z-10 text-center"
+            className="absolute top-full left-0 right-0 mt-2 p-4 rounded-xl border z-10 text-center"
+            style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
           >
-            <p className="text-white/40 text-sm">未找到相关地点</p>
+            <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>未找到相关地点</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -519,16 +523,16 @@ const FriendSelector = ({
 }) => {
   if (friends.length === 0) {
     return (
-      <div className="p-4 rounded-xl bg-white/5 text-center">
-        <p className="text-white/40 text-sm">还没有好友</p>
-        <p className="text-white/20 text-xs mt-1">去主页添加好友吧</p>
+      <div className="p-4 rounded-xl border text-center" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
+        <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>还没有好友</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>去主页添加好友吧</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="text-white/40 text-sm mb-2">选择一起的人</div>
+      <div className="text-sm mb-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>选择一起的人</div>
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {friends.map((friendship: any) => {
           const friend = friendship.friend;
@@ -544,7 +548,7 @@ const FriendSelector = ({
               className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-full border transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-[#00FFB3]/20 border-[#00FFB3] text-[#00FFB3]'
-                  : 'bg-white/5 border-white/10 text-white/60'
+                  : 'bg-[color:var(--orbit-card)] border-[color:var(--orbit-border)] text-[color:var(--orbit-text-muted,#9ca3af)]'
               }`}
             >
               <img
@@ -601,22 +605,23 @@ function CalcPad({
     ['C','0','.', '+'],
   ];
   return (
-    <div className="bg-black/50 rounded-2xl p-3 space-y-2 border border-white/10">
-      <div className="text-right px-2 py-1 text-white font-mono text-xl min-h-[2.5rem] tracking-wide">{expr || '0'}</div>
+    <div className="rounded-2xl p-3 space-y-2 border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>
+      <div className="text-right px-2 py-1 font-mono text-xl min-h-[2.5rem] tracking-wide" style={{ color: 'var(--orbit-text)' }}>{expr || '0'}</div>
       {BTN_ROWS.map((row, ri) => (
         <div key={ri} className="grid grid-cols-4 gap-1.5">
           {row.map(btn => (
             <button key={btn} type="button" onClick={() => press(btn)}
               className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
-                ['÷','×','-','+'].includes(btn) ? 'bg-[#FF9F43]/20 text-[#FF9F43] border border-[#FF9F43]/20' :
-                btn === 'C' ? 'bg-red-500/20 text-red-400' :
-                btn === '←' ? 'bg-white/10 text-white/60' :
-                'bg-white/10 text-white hover:bg-white/20'}`}>{btn}</button>
+                ['÷','×','-','+'].includes(btn) ? 'bg-[#FF9F43]/15 text-[#FF9F43] border border-[#FF9F43]/30' :
+                btn === 'C' ? 'bg-red-500/10 text-red-500' :
+                btn === '←' ? 'bg-[color:var(--orbit-card)] text-[color:var(--orbit-text-muted,#9ca3af)] border border-[color:var(--orbit-border)]' :
+                'bg-[color:var(--orbit-card)] text-[color:var(--orbit-text)] border border-[color:var(--orbit-border)] hover:bg-[color-mix(in_srgb,var(--orbit-card)_90%,transparent)]'}`}>{btn}</button>
           ))}
         </div>
       ))}
       <button type="button" onClick={() => { const r = evaluate(expr); if (r !== null) onConfirm(r); }}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold">= 确认</button>
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] font-bold"
+        style={{ color: 'var(--orbit-text)' }}>= 确认</button>
     </div>
   );
 }
@@ -918,44 +923,51 @@ const CreateMemoryModal = ({
   
   // 3. UI 渲染 (注意这里的闭合结构)
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }} 
-      className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-xl" 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
-      <motion.div 
-        initial={{ y: '100%' }} 
-        animate={{ y: 0 }} 
-        exit={{ y: '100%' }} 
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }} 
-        className="absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1a] border-t border-white/10 pb-24" 
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto rounded-t-3xl pb-24 shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', color: 'var(--orbit-text)', borderTop: '1px solid var(--orbit-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 标题栏 */}
-        <div className="sticky top-0 flex items-center justify-between px-4 py-4 bg-[#1a1a1a] border-b border-white/5 z-20">
-          <button onClick={onClose} className="text-white/60">取消</button>
-          <span className="text-white font-semibold">{isEditMode ? '编辑回忆' : '记录此刻'}</span>
-          <button 
-            onClick={handleSubmit} 
-            disabled={(!content.trim() && audios.length === 0 && photos.length === 0 && videos.length === 0) || isSubmitting} 
-            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30"
+        <div className="sticky top-0 flex items-center justify-between px-4 py-4 z-20"
+          style={{ background: 'var(--orbit-surface)', borderBottom: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+        >
+          <button onClick={onClose} style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>取消</button>
+          <span className="font-semibold" style={{ color: 'var(--orbit-text)' }}>{isEditMode ? '编辑回忆' : '记录此刻'}</span>
+          <button
+            onClick={handleSubmit}
+            disabled={(!content.trim() && audios.length === 0 && photos.length === 0 && videos.length === 0) || isSubmitting}
+            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold disabled:opacity-30 shadow"
           >
             {isSubmitting ? <FaSpinner className="animate-spin" /> : (isEditMode ? '保存修改' : '发布')}
           </button>
         </div>
-        
+
         {/* 内容区 */}
         <div className="p-4 space-y-6">
           {editError && (
-            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
+            <div className="rounded-2xl border px-4 py-3 text-sm"
+              style={{ background: 'rgba(255, 59, 48, 0.08)', borderColor: 'rgba(255, 59, 48, 0.25)', color: '#b71c1c' }}
+            >
               {editError}
             </div>
           )}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-            <div className="p-2 rounded-full bg-[#00D9FF]/10"><FaCalendarAlt className="text-[#00D9FF]" /></div>
-            <input type="datetime-local" value={memoryDate} onChange={(e) => setMemoryDate(e.target.value)} className="flex-1 bg-transparent text-white outline-none [color-scheme:dark]" />
+          <div className="flex items-center gap-3 p-3 rounded-xl shadow-sm border"
+            style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+          >
+            <div className="p-2 rounded-full" style={{ background: 'rgba(0, 217, 255, 0.12)', color: '#008fb3' }}><FaCalendarAlt /></div>
+            <input type="datetime-local" value={memoryDate} onChange={(e) => setMemoryDate(e.target.value)} className="flex-1 bg-transparent outline-none" style={{ color: 'var(--orbit-text)' }} />
           </div>
 
           <div className="relative z-10">
@@ -964,19 +976,20 @@ const CreateMemoryModal = ({
           
           {/* 天气选择 */}
           <div>
-            <p className="text-white/40 text-xs mb-2">那天天气</p>
+            <p className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>那天天气</p>
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {WEATHER_OPTIONS.map((w) => (
                 <button
                   key={w.emoji}
                   type="button"
                   onClick={() => setWeather(weather === w.emoji ? '' : w.emoji)}
-                  className={`shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all ${
-                    weather === w.emoji ? 'bg-sky-500/20 border-sky-400/50 text-white' : 'bg-white/5 border-white/5 text-white/50'
-                  }`}
+                  className="shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all"
+                  style={weather === w.emoji
+                    ? { background: 'color-mix(in srgb, #00D9FF 18%, transparent)', borderColor: 'color-mix(in srgb, #00D9FF 38%, transparent)', color: '#0ea5e9' }
+                    : { background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                 >
                   <span className="text-xl">{w.emoji}</span>
-                  <span className="text-[10px]">{w.label}</span>
+                  <span className="text-[10px]" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{w.label}</span>
                 </button>
               ))}
             </div>
@@ -984,19 +997,20 @@ const CreateMemoryModal = ({
 
           {/* 心情选择 */}
           <div>
-            <p className="text-white/40 text-xs mb-2">那天心情</p>
+            <p className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>那天心情</p>
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {MOOD_OPTIONS.map((m) => (
                 <button
                   key={m.emoji}
                   type="button"
                   onClick={() => setMood(mood === m.emoji ? '' : m.emoji)}
-                  className={`shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all ${
-                    mood === m.emoji ? 'bg-[#00FFB3]/20 border-[#00FFB3]/50 text-white' : 'bg-white/5 border-white/5 text-white/50'
-                  }`}
+                  className="shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all"
+                  style={mood === m.emoji
+                    ? { background: 'color-mix(in srgb, #10B981 18%, transparent)', borderColor: 'color-mix(in srgb, #10B981 38%, transparent)', color: '#059669' }
+                    : { background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                 >
                   <span className="text-xl">{m.emoji}</span>
-                  <span className="text-[10px]">{m.label}</span>
+                  <span className="text-[10px]" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{m.label}</span>
                 </button>
               ))}
             </div>
@@ -1004,26 +1018,28 @@ const CreateMemoryModal = ({
 
           {/* 行程路线 */}
           <div>
-            <p className="text-white/40 text-xs mb-2">行程路线 <span className="text-white/20">（用 → 分隔地点，如：酒店 → 故宫 → 烤鸭店）</span></p>
+            <p className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>行程路线 <span className="text-gray-400">（用 → 分隔地点，如：酒店 → 故宫 → 烤鸭店）</span></p>
             <input
               type="text"
               placeholder="例：机场 → 酒店 → 景点 → 餐厅"
               value={route}
               onChange={(e) => setRoute(e.target.value)}
-              className="w-full bg-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none border border-white/10 placeholder-white/20"
+              className="w-full rounded-xl px-4 py-3 text-sm outline-none border"
+              style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
             />
           </div>
 
           {/* 内容输入：文字 + 语音 */}
-          <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+          <div className="rounded-2xl overflow-hidden border shadow-sm" style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
             <textarea
               placeholder="写点什么..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={4}
-              className="w-full bg-transparent text-white outline-none resize-none text-lg px-4 pt-4 pb-2"
+              className="w-full bg-transparent outline-none resize-none text-lg px-4 pt-4 pb-2"
+              style={{ color: 'var(--orbit-text)' }}
             />
-            <div className="border-t border-white/10 px-4 py-3">
+            <div className="px-4 py-3" style={{ borderTop: `1px solid var(--orbit-border)` }}>
               <VoiceRecorder
                 userId={currentUser?.id || ''}
                 audios={audios}
@@ -1037,12 +1053,12 @@ const CreateMemoryModal = ({
           
           <MediaUploader userId={currentUser?.id || ''} photos={photos} videos={videos} onPhotosChange={setPhotos} onVideosChange={setVideos} />
           
-          <div className="flex items-center justify-between py-4 border-t border-white/5">
+          <div className="flex items-center justify-between py-4 border-t" style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-[#FF9F43]/10"><FaDollarSign className="text-[#FF9F43]" /></div>
-              <span className="text-white/80">顺便记账</span>
+              <div className="p-2 rounded-full" style={{ background: 'rgba(255, 159, 67, 0.12)', color: '#fbbf24' }}><FaDollarSign /></div>
+              <span style={{ color: 'var(--orbit-text)' }}>顺便记账</span>
             </div>
-            <button onClick={() => setEnableLedger(!enableLedger)} className={`w-12 h-6 rounded-full transition-colors ${enableLedger ? 'bg-[#FF9F43]' : 'bg-white/10'}`}>
+            <button onClick={() => setEnableLedger(!enableLedger)} className="w-12 h-6 rounded-full transition-colors" style={{ backgroundColor: enableLedger ? '#FF9F43' : 'var(--orbit-border)' }}>
               <motion.div animate={{ x: enableLedger ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
             </button>
           </div>
@@ -1050,10 +1066,13 @@ const CreateMemoryModal = ({
           {enableLedger && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
               {/* 个人 / 均分 */}
-              <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+              <div className="flex gap-1 p-1 rounded-xl border" style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
                 {(['personal', 'equal'] as const).map(t => (
                   <button key={t} type="button" onClick={() => setSplitType(t)}
-                    className={`flex-1 py-2 text-sm rounded-lg font-medium transition-all ${splitType === t ? 'bg-[#FF9F43] text-black' : 'text-white/50 hover:text-white'}`}>
+                    className={`flex-1 py-2 text-sm rounded-lg font-medium transition-all ${splitType === t ? 'bg-[#FF9F43]' : ''}`}
+                    style={splitType === t
+                      ? { color: '#0f172a' }
+                      : { color: 'var(--orbit-text)', background: 'var(--orbit-card)' }}>
                     {t === 'personal' ? '👤 个人' : '👥 均分'}
                   </button>
                 ))}
@@ -1061,22 +1080,22 @@ const CreateMemoryModal = ({
 
               {/* 消费项目列表 */}
               {ledgerItems.map((item) => (
-                <div key={item.id} className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-2">
+                <div key={item.id} className="rounded-2xl border p-3 space-y-2 shadow-sm" style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>
                   {/* 类别 + 删除 */}
                   <div className="flex items-center gap-1">
                     <div className="flex gap-1 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none' }}>
                       {CATEGORIES.map(cat => (
                         <button key={cat} type="button" onClick={() => updateLedgerItem(item.id, 'category', cat)}
-                          className={`shrink-0 px-2 py-1 rounded-lg text-xs transition-all ${
-                            item.category === cat
-                              ? 'bg-[#FF9F43]/20 text-[#FF9F43] border border-[#FF9F43]/30'
-                              : 'bg-white/5 text-white/40 border border-transparent'
-                          }`}>{cat}</button>
+                          className="shrink-0 px-2 py-1 rounded-lg text-xs transition-all border"
+                          style={item.category === cat
+                            ? { background: 'color-mix(in srgb, #FF9F43 16%, transparent)', borderColor: 'color-mix(in srgb, #FF9F43 35%, transparent)', color: '#c2410c' }
+                            : { background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #9ca3af)' }}
+                        >{cat}</button>
                       ))}
                     </div>
                     {ledgerItems.length > 1 && (
                       <button type="button" onClick={() => removeLedgerItem(item.id)}
-                        className="shrink-0 p-1.5 text-white/30 hover:text-red-400 transition-colors">
+                        className="shrink-0 p-1.5 transition-colors" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
                         <FaTimes className="text-xs" />
                       </button>
                     )}
@@ -1085,10 +1104,13 @@ const CreateMemoryModal = ({
                   <div className="flex gap-2">
                     <input type="text" placeholder="备注（选填）" value={item.note}
                       onChange={e => updateLedgerItem(item.id, 'note', e.target.value)}
-                      className="flex-1 bg-white/5 rounded-xl px-3 py-2 text-white text-sm outline-none border border-white/10 placeholder-white/30" />
+                      className="flex-1 rounded-xl px-3 py-2 text-sm outline-none border"
+                      style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
                     <button type="button"
                       onClick={() => setActiveCalcId(activeCalcId === item.id ? null : item.id)}
-                      className="shrink-0 min-w-[80px] flex items-center justify-end px-3 py-2 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20 text-[#FF9F43] font-mono font-bold text-sm">
+                      className="shrink-0 min-w-[90px] flex items-center justify-end px-3 py-2 rounded-xl border font-mono font-bold text-sm"
+                      style={{ background: 'rgba(255, 159, 67, 0.12)', borderColor: 'rgba(255, 159, 67, 0.25)', color: '#c45a00' }}
+                    >
                       ¥{item.amount || '0'}
                     </button>
                   </div>
@@ -1107,20 +1129,26 @@ const CreateMemoryModal = ({
 
               {/* 添加项目 */}
               <button type="button" onClick={addLedgerItem}
-                className="w-full py-2.5 rounded-xl border border-dashed border-white/20 text-white/40 text-sm flex items-center justify-center gap-1.5 hover:border-[#FF9F43]/40 hover:text-[#FF9F43] transition-colors">
+                className="w-full py-2.5 rounded-xl border border-dashed text-sm flex items-center justify-center gap-1.5 transition-colors"
+                style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #6b7280)' }}
+              >
                 <FaPlus className="text-xs" /> 添加项目
               </button>
 
               {/* 合计 */}
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#FF9F43]/10 border border-[#FF9F43]/20">
-                <span className="text-white/60 text-sm">合计</span>
-                <span className="text-[#FF9F43] font-bold text-xl">¥ {totalAmount.toFixed(2)}</span>
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl border"
+                style={{ background: 'color-mix(in srgb, #FF9F43 10%, transparent)', borderColor: 'color-mix(in srgb, #FF9F43 25%, transparent)' }}
+              >
+                <span className="text-sm" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>合计</span>
+                <span className="font-bold text-xl" style={{ color: '#c45a00' }}>¥ {totalAmount.toFixed(2)}</span>
               </div>
 
               {/* 均分说明 */}
               {splitType === 'equal' && selectedFriends.length > 0 && totalAmount > 0 && (
-                <div className="px-4 py-3 rounded-xl bg-white/5">
-                  <p className="text-white/40 text-xs mb-2">人均分摊</p>
+                <div className="px-4 py-3 rounded-xl border"
+                  style={{ background: '#ffffff', borderColor: '#e5e7eb' }}
+                >
+                  <p className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>人均分摊</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {[currentUser?.id, ...selectedFriends].map((uid) => {
                       const name = uid === currentUser?.id
@@ -1128,8 +1156,8 @@ const CreateMemoryModal = ({
                         : (friends.find((f: any) => f.friend?.id === uid)?.friend?.username || '好友');
                       const per = totalAmount / (selectedFriends.length + 1);
                       return (
-                        <span key={uid} className="text-white/70 text-sm">
-                          {name} <span className="text-[#FF9F43] font-semibold">¥ {per.toFixed(2)}</span>
+                        <span key={uid} className="text-sm" style={{ color: 'var(--orbit-text)' }}>
+                          {name} <span className="font-semibold" style={{ color: '#c45a00' }}>¥ {per.toFixed(2)}</span>
                         </span>
                       );
                     })}
@@ -1709,7 +1737,7 @@ export default function MemoryStreamPage() {
   };
   
   return (
-    <div className="relative min-h-screen bg-[#121212] pt-[180px]">
+    <div className="memory-stream-page relative min-h-screen pt-[180px]" style={{ backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}>
       <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1718,12 +1746,15 @@ export default function MemoryStreamPage() {
       </div>
       
       {/* 顶部标题 + 搜索筛选 */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-[#121212]/96 backdrop-blur-md border-b border-white/5">
+      <div
+        className="fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, transparent)', borderColor: 'var(--orbit-border)' }}
+      >
         <div className="px-4 pt-4 pb-2 flex items-center gap-3">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-white leading-tight">回忆流</h1>
+            <h1 className="text-xl font-bold leading-tight" style={{ color: 'var(--orbit-text)' }}>回忆流</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-white/40 text-xs">
+              <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
               {(searchQuery || filterFriendIds.length > 0) && filteredMemories.length !== memories.length
                 ? `找到 ${filteredMemories.length} / ${memories.length} 条`
                 : `共 ${memories.length} 条记忆`}
@@ -1743,7 +1774,8 @@ export default function MemoryStreamPage() {
                 setShowStoryEntry(true);
                 track('memory_story_open');
               }}
-              className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 text-white/80 font-semibold text-sm shrink-0 flex items-center gap-2 hover:border-white/30"
+              className="px-3.5 py-2 rounded-full border font-semibold text-sm shrink-0 flex items-center gap-2"
+              style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
             >
               <FaBookOpen className="text-xs" />
               回忆相册
@@ -1754,7 +1786,7 @@ export default function MemoryStreamPage() {
                 setIsCreateOpen(true);
                 track('memory_create_open');
               }}
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold text-sm shrink-0"
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold text-sm shrink-0"
             >记录此刻</motion.button>
           </div>
         </div>
@@ -1762,16 +1794,18 @@ export default function MemoryStreamPage() {
         {/* 搜索框 + 分组切换 */}
         <div className="px-4 pb-2 flex gap-2">
           <div className="relative flex-1">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm pointer-events-none" />
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }} />
             <input
               type="text"
               placeholder="搜索内容、地点..."
               value={searchQuery}
               onChange={(e) => setMemoryStreamSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-white/20"
+              className="w-full pl-9 pr-8 py-2 rounded-xl text-sm outline-none focus:ring-2 placeholder:opacity-60"
+              style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', caretColor: 'var(--orbit-text)' }}
             />
             {searchQuery && (
-              <button onClick={() => setMemoryStreamSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+              <button onClick={() => setMemoryStreamSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
                 <FaTimes className="text-xs" />
               </button>
             )}
@@ -1779,9 +1813,11 @@ export default function MemoryStreamPage() {
           {/* 分组方式切换 */}
           <button
             onClick={() => setMemoryStreamGroupBy(groupBy === 'date' ? 'city' : 'date')}
-            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
-              groupBy === 'city' ? 'bg-[#00FFB3]/20 text-[#00FFB3] border-[#00FFB3]/40' : 'bg-white/5 text-white/50 border-white/10 hover:border-white/25'
-            }`}
+            className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-all"
+            style={groupBy === 'city'
+              ? { backgroundColor: 'color-mix(in srgb, #00FFB3 20%, transparent)', color: '#00B89F', borderColor: 'color-mix(in srgb, #00FFB3 40%, transparent)' }
+              : { backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }
+            }
           >
             {groupBy === 'city' ? '🏙 按城市' : '📅 按日期'}
           </button>
@@ -1792,9 +1828,10 @@ export default function MemoryStreamPage() {
           <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
             <button
               onClick={() => setMemoryStreamFilterFriendIds([])}
-              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
-                filterFriendIds.length === 0 ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
-              }`}
+              className="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all border"
+              style={filterFriendIds.length === 0
+                ? { backgroundColor: '#00FFB3', color: '#0f172a', borderColor: '#00FFB3' }
+                : { backgroundColor: 'transparent', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
             >全部</button>
             {friends.map((f: any) => {
               const isSelected = filterFriendIds.includes(f.friend.id);
@@ -1806,9 +1843,10 @@ export default function MemoryStreamPage() {
                       ? filterFriendIds.filter(id => id !== f.friend.id)
                       : [...filterFriendIds, f.friend.id]
                   )}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
-                    isSelected ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-transparent text-white/50 border-white/15 hover:border-white/30'
-                  }`}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border"
+                  style={isSelected
+                    ? { backgroundColor: '#00FFB3', color: '#0f172a', borderColor: '#00FFB3' }
+                    : { backgroundColor: 'transparent', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
                 >
                   <img src={f.friend.avatar_url} className="w-3.5 h-3.5 rounded-full object-cover" />
                   {f.friend.username}
@@ -1826,11 +1864,12 @@ export default function MemoryStreamPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FaSpinner className="text-[#00FFB3] text-3xl animate-spin mb-4" />
-            <p className="text-white/40 mb-6">加载回忆中...</p>
+            <p className="mb-6" style={{ color: 'var(--orbit-text)' }}>加载回忆中...</p>
             {/* PWA 防卡死神器：刷新按钮 */}
             <button 
               onClick={() => window.location.reload()} 
-              className="px-4 py-2 rounded-full border border-white/20 text-white/50 text-xs hover:text-white hover:bg-white/10 transition-colors"
+              className="px-4 py-2 rounded-full border text-xs transition-colors"
+              style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #9ca3af)' }}
             >
               如果卡住，点此重新加载
             </button>
@@ -1844,8 +1883,8 @@ export default function MemoryStreamPage() {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00FFB3]/10 to-[#00D9FF]/10 flex items-center justify-center mb-4">
               <FaCamera className="text-[#00FFB3] text-2xl" />
             </div>
-            <p className="text-white/60 text-lg mb-2">还没有回忆</p>
-            <p className="text-white/40 text-sm">点击「记录此刻」开始你的第一个记忆</p>
+            <p className="text-lg mb-2" style={{ color: 'var(--orbit-text)' }}>还没有回忆</p>
+            <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>点击「记录此刻」开始你的第一个记忆</p>
           </motion.div>
         ) : groupBy === 'city' ? (
           cityGroupedMemories.map((cityGroup, cgIdx) => (
@@ -1856,8 +1895,8 @@ export default function MemoryStreamPage() {
                   <span className="text-base">🏙</span>
                 </div>
                 <div>
-                  <div className="text-white font-semibold">{cityGroup.city}</div>
-                  <div className="text-white/40 text-sm">{cityGroup.memories.length} 条记忆</div>
+                  <div className="font-semibold" style={{ color: 'var(--orbit-text)' }}>{cityGroup.city}</div>
+                  <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{cityGroup.memories.length} 条记忆</div>
                 </div>
               </div>
               <div className="space-y-4">
@@ -1867,13 +1906,20 @@ export default function MemoryStreamPage() {
                   const author = getMemoryAuthor(memory.user_id);
                   const { text: mText, weather: mWeather, mood: mMood } = decodeMemoryContent(memory.content || '');
                   return (
-                    <motion.div key={memory.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: cgIdx * 0.06 + index * 0.04 }} className="rounded-3xl bg-white/[0.06] border border-white/5 overflow-hidden">
+                    <motion.div
+                      key={memory.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: cgIdx * 0.06 + index * 0.04 }}
+                      className="rounded-3xl border overflow-hidden"
+                      style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                    >
                       <div className="flex items-center justify-between px-4 pt-4 pb-2">
                         <div className="flex items-center gap-3">
-                          <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover ring-2 ring-white/10" />
+                          <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover ring-2" style={{ boxShadow: '0 0 0 2px color-mix(in srgb, var(--orbit-border) 60%, transparent)' }} />
                           <div>
-                            <p className="text-white font-semibold text-sm">{author.name}</p>
-                            <p className="text-white/40 text-xs mt-0.5">
+                            <p className="font-semibold text-sm" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
                               {new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
                               {memory.location && <span className="ml-1">· 📍 {memory.location.name}</span>}
                               {(mWeather || mMood) && <span className="ml-1">{mWeather}{mMood}</span>}
@@ -1887,11 +1933,11 @@ export default function MemoryStreamPage() {
                               disabled={deletingMemoryId === memory.id}
                               className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
                             ><FaTrash className="text-xs" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="p-2 rounded-full text-white/30 hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors"><FaEdit className="text-xs" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="p-2 rounded-full text-white/50 hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}><FaEdit className="text-xs" /></button>
                           </div>
                         )}
                       </div>
-                      {mText && <p className="px-4 pb-3 text-white/85 text-sm leading-relaxed">{mText}</p>}
+                      {mText && <p className="px-4 pb-3 text-sm leading-relaxed" style={{ color: 'var(--orbit-text)' }}>{mText}</p>}
                       {photos.length === 1 && (
                         <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
                           {/* ✨ 改为 object-cover 填满，并把最大高度稍微调高一点，避免竖图被裁得太多，同时去掉 bg-black/30 */}
@@ -1915,7 +1961,7 @@ export default function MemoryStreamPage() {
                       )}
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
                         <div className="px-4 pb-3 space-y-2">
-                          {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/40 text-xs">🎥 {memory.videos.length}个视频</span>}
+                          {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-border) 25%, transparent)', color: 'var(--orbit-text-muted, #9ca3af)' }}>🎥 {memory.videos.length}个视频</span>}
                           {memory.audios?.length > 0 && (
                             <div className="flex flex-col gap-1.5">
                               {memory.audios.map((url: string, idx: number) => (
@@ -1938,17 +1984,17 @@ export default function MemoryStreamPage() {
                           {memory.has_ledger && <span className="px-2 py-0.5 rounded-full bg-[#FF9F43]/10 text-[#FF9F43] text-xs flex items-center gap-1"><FaDollarSign className="text-xs" /> 记账</span>}
                         </div>
                       )}
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-                        <div className="flex items-center gap-5">
-                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1.5 text-sm transition-all ${reaction.liked ? 'text-red-400' : 'text-white/40 hover:text-red-300'}`}><FaHeart />{reaction.likes > 0 && <span className="text-xs">{reaction.likes}</span>}</button>
+                      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                        <div className="flex items-center gap-5" style={{ color: 'var(--orbit-text)' }}>
+                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1.5 text-sm transition-all ${reaction.liked ? 'text-red-400' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-red-300'}`}><FaHeart />{reaction.likes > 0 && <span className="text-xs">{reaction.likes}</span>}</button>
                           <button onClick={() => {
                             const willOpen = !reaction.roastOpen;
                             toggleRoastOpen(memory.id);
                             if (willOpen) markCommentsAsRead(memory.id);
-                          }} className={`relative flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'}`}><FaComment />{settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#FF6B6B]" />}<span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
-                          <button onClick={() => handleShareMemory(memory)} className="flex items-center gap-1.5 text-sm text-white/40 hover:text-[#5fd6ff]"><FaShareAlt /><span className="text-xs">分享微信</span></button>
+                          }} className={`relative flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00B37A]' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00B37A]'}`}><FaComment />{settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#FF6B6B]" />}<span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
+                          <button onClick={() => handleShareMemory(memory)} className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}><FaShareAlt /><span className="text-xs">分享微信</span></button>
                         </div>
-                        <button onClick={() => setSelectedMemory(memory)} className="text-white/20 text-xs hover:text-white/50">查看全部 →</button>
+                        <button onClick={() => setSelectedMemory(memory)} className="text-xs transition-colors" style={{ color: 'var(--orbit-text)' }}>查看全部 →</button>
                       </div>
                     </motion.div>
                   );
@@ -1971,8 +2017,8 @@ export default function MemoryStreamPage() {
                   <FaCalendarAlt className="text-[#00FFB3]" />
                 </div>
                 <div>
-                  <div className="text-white font-semibold">{group.displayDate}</div>
-                  <div className="text-white/40 text-sm">{group.memories.length} 条记忆</div>
+                  <div className="font-semibold" style={{ color: 'var(--orbit-text)' }}>{group.displayDate}</div>
+                  <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{group.memories.length} 条记忆</div>
                 </div>
               </div>
               
@@ -1990,15 +2036,16 @@ export default function MemoryStreamPage() {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: groupIndex * 0.08 + index * 0.04 }}
-                      className="rounded-3xl bg-white/[0.06] border border-white/5 overflow-hidden"
+                      className="rounded-3xl border overflow-hidden"
+                      style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
                     >
                       {/* ── 头部：头像 + 昵称 + 地点 + 操作 ── */}
                       <div className="flex items-center justify-between px-4 pt-4 pb-2">
                         <div className="flex items-center gap-3">
-                          <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover ring-2 ring-white/10" />
+                          <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover ring-2 ring-black/5" />
                           <div>
-                            <p className="text-white font-semibold text-sm leading-tight">{author.name}</p>
-                            <p className="text-white/40 text-xs mt-0.5">
+                            <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
                               {formatTime(memory.memory_date || memory.created_at)}
                               {memory.location && <span className="ml-1">· 📍 {memory.location.name}</span>}
                               {(mWeather || mMood) && <span className="ml-2">{mWeather}{mMood}</span>}
@@ -2014,7 +2061,8 @@ export default function MemoryStreamPage() {
                             ><FaTrash className="text-xs" /></button>
                             <button
                               onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }}
-                              className="p-2 rounded-full text-white/30 hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors"
+                              className="p-2 rounded-full hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors"
+                              style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
                             ><FaEdit className="text-xs" /></button>
                           </div>
                         )}
@@ -2022,7 +2070,7 @@ export default function MemoryStreamPage() {
 
                       {/* ── 正文 ── */}
                       {mText && (
-                        <p className="px-4 pb-3 text-white/85 text-sm leading-relaxed">{mText}</p>
+                        <p className="px-4 pb-3 text-sm leading-relaxed" style={{ color: 'var(--orbit-text)' }}>{mText}</p>
                       )}
 
                       {/* ── 图片区（1张全宽，2-4张2列，5+张3列） ── */}
@@ -2051,7 +2099,14 @@ export default function MemoryStreamPage() {
                       {/* ── 视频/语音 ── */}
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
                         <div className="px-4 pb-3 space-y-2">
-                          {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/40 text-xs">🎥 {memory.videos.length}个视频</span>}
+                          {memory.videos?.length > 0 && (
+                            <span
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+                              style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 80%, transparent)', color: 'var(--orbit-text-muted, #9ca3af)' }}
+                            >
+                              🎥 {memory.videos.length}个视频
+                            </span>
+                          )}
                           {memory.audios?.length > 0 && (
                             <div className="flex flex-col gap-1.5">
                               {memory.audios.map((url: string, idx: number) => (
@@ -2083,12 +2138,12 @@ export default function MemoryStreamPage() {
                       )}
 
                       {/* ── 互动栏 ── */}
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
+                      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
                         <div className="flex items-center gap-5">
                           <button
                             onClick={() => toggleLike(memory.id)}
                             className={`flex items-center gap-1.5 text-sm transition-all active:scale-125 ${
-                              reaction.liked ? 'text-red-400' : 'text-white/40 hover:text-red-300'
+                              reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-red-400'
                             }`}
                           >
                             <FaHeart />
@@ -2101,7 +2156,7 @@ export default function MemoryStreamPage() {
                               if (willOpen) markCommentsAsRead(memory.id);
                             }}
                             className={`flex items-center gap-1.5 text-sm transition-colors ${
-                              reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'
+                              reaction.roastOpen ? 'text-[#00B37A]' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00B37A]'
                             }`}
                           >
                             <FaComment />
@@ -2112,7 +2167,7 @@ export default function MemoryStreamPage() {
                           </button>
                           <button
                             onClick={() => handleShareMemory(memory)}
-                            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-[#5fd6ff] transition-colors"
+                            className="flex items-center gap-1.5 text-sm text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#1f8dd6] transition-colors"
                           >
                             <FaShareAlt />
                             <span className="text-xs">分享微信</span>
@@ -2120,7 +2175,8 @@ export default function MemoryStreamPage() {
                         </div>
                         <button
                           onClick={() => setSelectedMemory(memory)}
-                          className="text-white/20 text-xs hover:text-white/50 transition-colors"
+                          className="text-xs transition-colors"
+                          style={{ color: 'var(--orbit-text)' }}
                         >查看全部 →</button>
                       </div>
 
@@ -2131,7 +2187,8 @@ export default function MemoryStreamPage() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="overflow-hidden bg-white/[0.02] border-t border-white/5"
+                            className="overflow-hidden border-t"
+                            style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 60%, transparent)', borderColor: 'var(--orbit-border)' }}
                           >
                             <div className="p-4 space-y-3">
                               {reaction.roasts.map((r: MemoryCommentItem) => {
@@ -2140,31 +2197,36 @@ export default function MemoryStreamPage() {
                                 return (
                                 <div key={r.id} className="flex items-start gap-2">
                                   <img src={commentAuthor.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
-                                  <div className="flex-1 bg-white/5 rounded-2xl px-3 py-2">
+                                  <div className="flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--orbit-card)' }}>
                                     <div className="flex items-start justify-between gap-3 mb-0.5">
                                       <p className="text-[#00FFB3] text-xs font-medium">{commentAuthor.name}</p>
                                       {canDeleteComment && (
                                         <button
                                           type="button"
                                           onClick={() => void deleteRoast(memory.id, r.id)}
-                                          className="text-[11px] text-white/30 hover:text-red-300 transition-colors shrink-0"
+                                          className="text-[11px] hover:text-red-500 transition-colors shrink-0"
+                                          style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
                                         >撤回</button>
                                       )}
                                     </div>
-                                    <p className="text-white/70 text-sm">{r.content}</p>
+                                    <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{r.content}</p>
                                   </div>
                                 </div>
                               )})}
                               <div className="flex items-center gap-2">
                                 <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                                <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-2xl px-3 py-2 border border-white/10">
+                                <div
+                                  className="flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 border"
+                                  style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                                >
                                   <input
                                     type="text"
                                     placeholder="留下你的吐槽..."
                                     value={roastInput[memory.id] || ''}
                                     onChange={(e) => setRoastInput(prev => ({ ...prev, [memory.id]: e.target.value }))}
                                     onKeyDown={(e) => { if (e.key === 'Enter') void addRoast(memory.id); }}
-                                    className="flex-1 bg-transparent text-white text-sm outline-none placeholder-white/30"
+                                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"
+                                    style={{ color: 'var(--orbit-text)' }}
                                   />
                                   <button
                                     onClick={() => void addRoast(memory.id)}

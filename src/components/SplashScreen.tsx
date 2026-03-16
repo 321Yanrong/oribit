@@ -13,13 +13,16 @@ export const SplashScreen: React.FC = () => {
       style={{
         backgroundImage: `radial-gradient(circle at 50% 30%, rgba(0, 255, 179, 0.15) 0%, transparent 50%),
           radial-gradient(circle at 50% 70%, rgba(0, 217, 255, 0.1) 0%, transparent 50%)`,
+        color: '#ffffff',
+        mixBlendMode: 'normal',
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="flex flex-col items-center"
+        className="flex flex-col items-center text-white"
+        style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.45)' }}
       >
         <div className="w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(0,255,179,0.25)] mb-6 bg-[#0b0d14]">
           <img
@@ -30,8 +33,18 @@ export const SplashScreen: React.FC = () => {
             draggable={false}
           />
         </div>
-        <h1 className="text-white text-3xl font-bold tracking-wider mb-2">Orbit</h1>
-        <p className="text-white/40 text-sm tracking-[0.3em] uppercase">记录共同轨迹</p>
+        <h1
+          className="text-3xl font-bold tracking-wider mb-2"
+          style={{ color: '#ffffff', textShadow: '0 2px 14px rgba(0,0,0,0.5)' }}
+        >
+          Orbit
+        </h1>
+        <p
+          className="text-sm tracking-[0.3em] uppercase"
+          style={{ color: '#f5f7ff', textShadow: '0 1px 12px rgba(0,0,0,0.55)' }}
+        >
+          记录共同轨迹
+        </p>
       </motion.div>
     </motion.div>
   );

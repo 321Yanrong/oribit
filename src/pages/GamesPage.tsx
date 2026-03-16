@@ -1495,31 +1495,38 @@ export default function GamesPage() {
         {activeGame && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-end justify-center"
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-end justify-center"
             onClick={() => setActiveGame(null)}
           >
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 280 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 pb-8 max-h-[88vh] overflow-y-auto hide-scrollbar"
+              className="w-full max-w-lg rounded-t-3xl pb-8 max-h-[88vh] overflow-y-auto hide-scrollbar shadow-2xl"
+              style={{ background: 'var(--orbit-surface)', borderTop: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
             >
               {/* 游戏标题栏 */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5">
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b"
+                style={{ borderColor: 'var(--orbit-border)' }}
+              >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{activeGame.icon}</span>
                   <div>
-                    <h2 className="text-white font-bold">{activeGame.title}</h2>
-                    <p className="text-white/30 text-xs">{activeGame.desc}</p>
+                    <h2 className="font-bold" style={{ color: 'var(--orbit-text)' }}>{activeGame.title}</h2>
+                    <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>{activeGame.desc}</p>
                   </div>
                 </div>
-                <button onClick={() => setActiveGame(null)} className="p-2 rounded-full bg-white/10 text-white/60">
+                <button onClick={() => setActiveGame(null)} className="p-2 rounded-full shadow-sm"
+                  style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.05))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text-muted, #6b7280)' }}
+                >
                   <FaTimes />
                 </button>
               </div>
 
               {/* 游戏内容 */}
-              <activeGame.component onClose={() => setActiveGame(null)} />
+              <div className="px-3 sm:px-5 pb-4" style={{ color: 'var(--orbit-text)' }}>
+                <activeGame.component onClose={() => setActiveGame(null)} />
+              </div>
             </motion.div>
           </motion.div>
         )}

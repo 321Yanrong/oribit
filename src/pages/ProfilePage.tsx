@@ -20,19 +20,32 @@ const stripOrbitMetaText = (content: string) => {
   return cleaned;
 };
 
-// 邮箱修改弹窗
+// 邮箱修改弹窗（亮色适配）
 const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [email, setEmail] = useState('');
   if (!isOpen) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" onClick={e => e.stopPropagation()}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">更换邮箱</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+          <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">更换邮箱</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.9))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
         </div>
-        <p className="text-white/40 text-sm mb-4">我们将向新邮箱发送一封确认邮件，点击邮件中的链接后即可生效。</p>
-        <input type="email" placeholder="输入新邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none mb-6" />
+        <p className="text-sm mb-4" style={{ color: 'var(--orbit-text-muted)' }}>我们将向新邮箱发送一封确认邮件，点击邮件中的链接后即可生效。</p>
+        <input type="email" placeholder="输入新邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
         <button onClick={() => onSubmit(email)} disabled={!email || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送确认邮件'}
         </button>
@@ -41,21 +54,34 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   );
 };
 
-// 密码修改弹窗
+// 密码修改弹窗（亮色适配）
 const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [pwd1, setPwd1] = useState('');
   const [pwd2, setPwd2] = useState('');
   if (!isOpen) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" onClick={e => e.stopPropagation()}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">修改密码</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+          <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">修改密码</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.9))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
         </div>
         <div className="space-y-3 mb-6">
-          <input type="password" placeholder="输入新密码（至少 6 位）" value={pwd1} onChange={e => setPwd1(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none" />
-          <input type="password" placeholder="再次确认新密码" value={pwd2} onChange={e => setPwd2(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none" />
+          <input type="password" placeholder="输入新密码（至少 6 位）" value={pwd1} onChange={e => setPwd1(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
+          <input type="password" placeholder="再次确认新密码" value={pwd2} onChange={e => setPwd2(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
         </div>
         <button onClick={() => onSubmit(pwd1, pwd2)} disabled={!pwd1 || !pwd2 || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30">
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '确认修改'}
@@ -65,19 +91,32 @@ const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   );
 };
 
-// 找回密码弹窗
+// 找回密码弹窗（亮色适配）
 const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [email, setEmail] = useState('');
   if (!isOpen) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" onClick={e => e.stopPropagation()}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">找回密码</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+          <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">找回密码</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.9))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
         </div>
-        <p className="text-white/40 text-sm mb-4">请输入你注册时的邮箱，我们将为你发送一封包含重置密码链接的邮件。</p>
-        <input type="email" placeholder="输入注册邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none mb-6" />
+        <p className="text-sm mb-4" style={{ color: 'var(--orbit-text-muted)' }}>请输入你注册时的邮箱，我们将为你发送一封包含重置密码链接的邮件。</p>
+        <input type="email" placeholder="输入注册邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
         <button onClick={() => onSubmit(email)} disabled={!email || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送重置邮件'}
         </button>
@@ -90,15 +129,31 @@ const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
 const DocumentModal = ({ isOpen, onClose, title, content }: any) => {
   if (!isOpen) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md bg-[#1a1a1a] rounded-3xl border border-white/10 flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-md rounded-3xl flex flex-col max-h-[85vh] shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* 标题栏 (固定在顶部) */}
-        <div className="flex justify-between items-center p-6 border-b border-white/5 shrink-0">
-          <h2 className="text-xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+        <div className="flex justify-between items-center p-6 border-b shrink-0" style={{ borderColor: 'var(--orbit-border)' }}>
+          <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">{title}</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.9))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
         </div>
         {/* 内容区 (可滚动) */}
-        <div className="p-6 overflow-y-auto text-white/70 text-sm leading-relaxed whitespace-pre-wrap">
+        <div
+          className="p-6 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap"
+          style={{ color: 'var(--orbit-text)', background: 'color-mix(in srgb, var(--orbit-card) 40%, transparent)' }}
+        >
           {content}
         </div>
       </motion.div>
@@ -196,27 +251,28 @@ const AddFriendModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10"
+        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl font-bold text-white">添加好友</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
-            <FaTimes className="text-white/60" />
+          <h2 className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>添加好友</h2>
+          <button onClick={onClose} className="p-2 rounded-full" style={{ background: 'color-mix(in srgb, var(--orbit-surface) 94%, rgba(0,0,0,0.05))', border: `1px solid var(--orbit-border)` }}>
+            <FaTimes className="text-gray-500" />
           </button>
         </div>
 
         {/* 标签切换 */}
-        <div className="flex p-1 bg-white/5 rounded-xl mb-5">
+        <div className="flex p-1 rounded-xl mb-5 border" style={{ background: 'color-mix(in srgb, var(--orbit-card) 70%, white)', borderColor: 'var(--orbit-border)' }}>
           <button
             onClick={() => setTab('virtual')}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-              tab === 'virtual' ? 'bg-white/10 text-white shadow' : 'text-white/40'
+              tab === 'virtual' ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
             }`}
           >
             🎭 临时好友
@@ -224,7 +280,7 @@ const AddFriendModal = ({
           <button
             onClick={() => setTab('real')}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-              tab === 'real' ? 'bg-[#00FFB3]/20 text-[#00FFB3] shadow' : 'text-white/40'
+              tab === 'real' ? 'bg-emerald-50 text-emerald-700 shadow' : 'text-gray-500'
             }`}
           >
             ✅ 已注册好友
@@ -233,7 +289,7 @@ const AddFriendModal = ({
 
         {tab === 'virtual' ? (
           <div className="mb-6 space-y-3">
-            <p className="text-white/50 text-sm">
+            <p className="text-sm text-gray-600">
               输入昵称创建临时好友（马甲），方便打卡记账。等他/她注册后可通过邀请码绑定为真实账号。
             </p>
             <input
@@ -241,19 +297,21 @@ const AddFriendModal = ({
               placeholder="好友昵称 *"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50"
+              className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-orbit-mint/40"
+              style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
             />
             <input
               type="text"
               placeholder="备注（选填，如：大学室友）"
               value={remark}
               onChange={(e) => setRemark(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50"
+              className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-orbit-mint/40"
+              style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
             />
           </div>
         ) : realStep === 'input' ? (
           <div className="mb-6">
-            <p className="text-white/50 text-sm mb-4">
+            <p className="text-sm text-gray-600 mb-4">
               让对方在「我的」页面查看并分享邀请码，输入后可预览对方信息再确认添加。
             </p>
             <input
@@ -261,42 +319,43 @@ const AddFriendModal = ({
               placeholder="对方的邀请码（如 ORBIT123456）"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50 font-mono tracking-widest text-center text-base"
+              className="w-full px-4 py-3 rounded-xl border outline-none font-mono tracking-widest text-center text-base focus:ring-2 focus:ring-orbit-mint/40"
+              style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
             />
           </div>
         ) : (
           // preview step
           <div className="mb-6">
             {/* 找到的用户预览 */}
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#00FFB3]/10 border border-[#00FFB3]/20 mb-4">
+            <div className="flex items-center gap-3 p-3 rounded-2xl mb-4" style={{ background: 'rgba(0, 255, 179, 0.1)', border: '1px solid rgba(0, 255, 179, 0.25)' }}>
               <img
                 src={previewProfile?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${previewProfile?.id}`}
                 alt={previewProfile?.username}
                 className="w-12 h-12 rounded-xl ring-2 ring-[#00FFB3]/30"
               />
               <div>
-                <p className="text-white font-bold">{previewProfile?.username}</p>
-                <p className="text-[#00FFB3] text-xs mt-0.5">找到了 ✓</p>
+                <p className="font-bold" style={{ color: 'var(--orbit-text)' }}>{previewProfile?.username}</p>
+                <p className="text-xs mt-0.5 text-emerald-600">找到了 ✓</p>
               </div>
             </div>
 
             {/* 选择：新建 or 绑定已有虚拟好友 */}
             {virtualFriends.length > 0 && (
               <div className="space-y-2">
-                <p className="text-white/50 text-xs mb-2">这是你已有的「{previewProfile?.username}」？选择绑定或新建：</p>
-                <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === 'new' ? 'border-[#00FFB3] bg-[#00FFB3]/5' : 'border-white/10 bg-white/3'}`}>
+                <p className="text-xs mb-2 text-gray-600">这是你已有的「{previewProfile?.username}」？选择绑定或新建：</p>
+                <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === 'new' ? 'border-emerald-400 bg-emerald-50' : 'border-[color:var(--orbit-border)] bg-[color:var(--orbit-card)]'}`} style={{ borderColor: bindTarget === 'new' ? undefined : 'var(--orbit-border)' }}>
                   <input type="radio" name="bindTarget" value="new" checked={bindTarget === 'new'} onChange={() => setBindTarget('new')} className="accent-[#00FFB3]" />
-                  <span className="text-white text-sm">➕ 直接添加为新好友</span>
+                  <span className="text-sm" style={{ color: 'var(--orbit-text)' }}>➕ 直接添加为新好友</span>
                 </label>
                 {virtualFriends.map((vf: any) => (
-                  <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-[#FF9F43]/5' : 'border-white/10 bg-white/3'}`}>
+                  <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-orange-50' : 'border-[color:var(--orbit-border)] bg-[color:var(--orbit-card)]'}`} style={{ borderColor: bindTarget === vf.id ? undefined : 'var(--orbit-border)' }}>
                     <input type="radio" name="bindTarget" value={vf.id} checked={bindTarget === vf.id} onChange={() => setBindTarget(vf.id)} className="accent-[#FF9F43]" />
                     <img src={vf.friend.avatar_url} alt={vf.friend.username} className="w-7 h-7 rounded-lg" />
                     <div className="min-w-0">
-                      <p className="text-white text-sm truncate">{vf.friend.username}</p>
-                      {vf.remark && <p className="text-white/40 text-xs truncate">{vf.remark}</p>}
+                      <p className="text-sm truncate" style={{ color: 'var(--orbit-text)' }}>{vf.friend.username}</p>
+                      {vf.remark && <p className="text-xs truncate text-gray-500">{vf.remark}</p>}
                     </div>
-                    <span className="ml-auto text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded shrink-0">绑定</span>
+                    <span className="ml-auto text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded shrink-0">绑定</span>
                   </label>
                 ))}
               </div>
@@ -308,7 +367,8 @@ const AddFriendModal = ({
           {tab === 'real' && realStep === 'preview' && (
             <button
               onClick={() => { setRealStep('input'); setPreviewProfile(null); }}
-              className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-semibold"
+              className="flex-1 py-3 rounded-xl font-semibold"
+              style={{ background: 'var(--orbit-card)', color: 'var(--orbit-text-muted, #6b7280)', border: `1px solid var(--orbit-border)` }}
             >
               返回
             </button>
@@ -360,49 +420,50 @@ const AcceptFriendModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10"
+        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl font-bold text-white">接受好友申请</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
-            <FaTimes className="text-white/60" />
+          <h2 className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>接受好友申请</h2>
+          <button onClick={onClose} className="p-2 rounded-full" style={{ background: 'color-mix(in srgb, var(--orbit-surface) 94%, rgba(0,0,0,0.05))', border: `1px solid var(--orbit-border)` }}>
+            <FaTimes className="text-gray-500" />
           </button>
         </div>
 
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#00FFB3]/10 border border-[#00FFB3]/20 mb-4">
+        <div className="flex items-center gap-3 p-3 rounded-2xl mb-4" style={{ background: 'rgba(0, 255, 179, 0.1)', border: '1px solid rgba(0, 255, 179, 0.25)' }}>
           <img
             src={requester?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${requester?.id}`}
             alt={requester?.username}
             className="w-12 h-12 rounded-xl ring-2 ring-[#00FFB3]/30"
           />
           <div>
-            <p className="text-white font-bold">{requester?.username || '未知用户'}</p>
-            <p className="text-[#00FFB3] text-xs mt-0.5">想添加你为好友</p>
+            <p className="font-bold" style={{ color: 'var(--orbit-text)' }}>{requester?.username || '未知用户'}</p>
+            <p className="text-xs mt-0.5 text-emerald-600">想添加你为好友</p>
           </div>
         </div>
 
         {virtualFriends.length > 0 && (
           <div className="space-y-2 mb-4">
-            <p className="text-white/50 text-xs mb-2">是否绑定到已有马甲好友？</p>
-            <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === 'new' ? 'border-[#00FFB3] bg-[#00FFB3]/5' : 'border-white/10 bg-white/3'}`}>
+            <p className="text-xs mb-2 text-gray-600">是否绑定到已有马甲好友？</p>
+            <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === 'new' ? 'border-emerald-400 bg-emerald-50' : 'border-[color:var(--orbit-border)] bg-[color:var(--orbit-card)]'}`} style={{ borderColor: bindTarget === 'new' ? undefined : 'var(--orbit-border)' }}>
               <input type="radio" name="bindTarget" value="new" checked={bindTarget === 'new'} onChange={() => setBindTarget('new')} className="accent-[#00FFB3]" />
-              <span className="text-white text-sm">✅ 直接接受（不绑定）</span>
+              <span className="text-sm" style={{ color: 'var(--orbit-text)' }}>✅ 直接接受（不绑定）</span>
             </label>
             {virtualFriends.map((vf: any) => (
-              <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-[#FF9F43]/5' : 'border-white/10 bg-white/3'}`}>
+              <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-orange-50' : 'border-[color:var(--orbit-border)] bg-[color:var(--orbit-card)]'}`} style={{ borderColor: bindTarget === vf.id ? undefined : 'var(--orbit-border)' }}>
                 <input type="radio" name="bindTarget" value={vf.id} checked={bindTarget === vf.id} onChange={() => setBindTarget(vf.id)} className="accent-[#FF9F43]" />
                 <img src={vf.friend.avatar_url} alt={vf.friend.username} className="w-7 h-7 rounded-lg" />
                 <div className="min-w-0">
-                  <p className="text-white text-sm truncate">{vf.friend.username}</p>
-                  {vf.remark && <p className="text-white/40 text-xs truncate">{vf.remark}</p>}
+                  <p className="text-sm truncate" style={{ color: 'var(--orbit-text)' }}>{vf.friend.username}</p>
+                  {vf.remark && <p className="text-xs truncate text-gray-500">{vf.remark}</p>}
                 </div>
-                <span className="ml-auto text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded shrink-0">绑定</span>
+                <span className="ml-auto text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded shrink-0">绑定</span>
               </label>
             ))}
           </div>
@@ -411,7 +472,8 @@ const AcceptFriendModal = ({
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-semibold"
+            className="flex-1 py-3 rounded-xl font-semibold"
+            style={{ background: 'var(--orbit-card)', color: 'var(--orbit-text-muted, #6b7280)', border: `1px solid var(--orbit-border)` }}
           >
             取消
           </button>
@@ -447,23 +509,24 @@ const BindFriendModal = ({
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4" 
+      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" 
       onClick={onClose}
     >
       <motion.div 
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10" 
+        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl" 
+        style={{ background: 'var(--orbit-surface)', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">绑定真实账号</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
-            <FaTimes className="text-white/60" />
+          <h2 className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>绑定真实账号</h2>
+          <button onClick={onClose} className="p-2 rounded-full" style={{ background: 'color-mix(in srgb, var(--orbit-surface) 94%, rgba(0,0,0,0.05))', border: `1px solid var(--orbit-border)` }}>
+            <FaTimes className="text-gray-500" />
           </button>
         </div>
         
-        <p className="text-white/40 text-sm mb-6">
-          【<span className="text-[#00FFB3]">{friend.real_username || friend.username}</span>】目前是临时好友。当他/她注册后，输入他/她的邀请码，即可将过去的回忆和账单无缝同步过去！
+        <p className="text-sm mb-6 text-gray-600">
+          【<span className="text-emerald-600">{friend.real_username || friend.username}</span>】目前是临时好友。当他/她注册后，输入他/她的邀请码，即可将过去的回忆和账单无缝同步过去！
         </p>
         
         <input
@@ -471,7 +534,8 @@ const BindFriendModal = ({
           placeholder="请输入对方的 6 位邀请码"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
-          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none focus:border-orbit-mint/50 mb-6 font-mono tracking-widest text-center text-lg"
+          className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-orbit-mint/40 mb-6 font-mono tracking-widest text-center text-lg"
+          style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
         />
         
         <button
@@ -523,28 +587,29 @@ const InviteCodeModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 border border-white/10"
+        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">我的邀请码</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
-            <FaTimes className="text-white/60" />
+          <h2 className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>我的邀请码</h2>
+          <button onClick={onClose} className="p-2 rounded-full" style={{ background: 'color-mix(in srgb, var(--orbit-surface) 94%, rgba(0,0,0,0.05))', border: `1px solid var(--orbit-border)` }}>
+            <FaTimes className="text-gray-500" />
           </button>
         </div>
         
         <div className="text-center mb-6">
-          <p className="text-white/60 text-sm mb-4">
+          <p className="text-sm mb-4 text-gray-600">
             分享给你的临时好友，让他们在列表里点击你，并输入此邀请码进行绑定。
           </p>
-          <div className="p-4 rounded-xl bg-gradient-to-r from-[#00FFB3]/10 to-[#00D9FF]/10 border border-[#00FFB3]/20">
-            <p className="text-white/40 text-xs mb-2">你的邀请码</p>
-            <p className="text-3xl font-bold text-white tracking-wider">{inviteCode}</p>
+          <div className="p-4 rounded-xl border" style={{ background: 'color-mix(in srgb, var(--orbit-card) 80%, white)', borderColor: 'var(--orbit-border)' }}>
+            <p className="text-xs mb-2 text-gray-500">你的邀请码</p>
+            <p className="text-3xl font-bold tracking-wider" style={{ color: 'var(--orbit-text)' }}>{inviteCode}</p>
           </div>
         </div>
         
@@ -594,39 +659,46 @@ const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: 
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: 'spring', damping: 20, stiffness: 250 }}
-        className="w-full max-w-lg bg-[#1a1a1a] rounded-3xl border border-white/10 shadow-2xl max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] overflow-y-auto"
+        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start p-5 pb-3">
           <div>
-            <p className="text-[#00FFB3] text-xs font-semibold tracking-wide mb-1">🎲 随机回忆</p>
-            <h2 className="text-white font-bold text-lg">
+            <p className="text-[#0f9f6e] text-xs font-semibold tracking-wide mb-1">🎲 随机回忆</p>
+            <h2 className="font-bold text-lg text-[color:var(--orbit-text)]">
               {date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
             </h2>
-            {memory.location && <p className="text-white/40 text-sm mt-0.5">📍 {memory.location.name}</p>}
+            {memory.location && <p className="text-sm mt-0.5 text-[color:var(--orbit-text-muted)]">📍 {memory.location.name}</p>}
           </div>
-          <button onClick={onClose} className="p-2 rounded-full bg-white/10 mt-1"><FaTimes className="text-white" /></button>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
         </div>
         <div className="px-5 pb-5">
           {photos.length > 0 && (
-            <div className="w-full mb-4 overflow-hidden rounded-2xl bg-black/40 border border-white/5">
+            <div className="w-full mb-4 overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 60%, transparent)' }}>
               <img src={photos[0]} className="w-full object-cover max-h-72" />
             </div>
           )}
           {(text || weather || mood || route) && (
             <div className="space-y-3 mb-4">
-              {text && <p className="text-white/85 leading-relaxed whitespace-pre-wrap">{text}</p>}
+              {text && <p className="leading-relaxed whitespace-pre-wrap text-[color:var(--orbit-text)]">{text}</p>}
               {(weather || mood || route) && (
                 <div className="flex flex-wrap gap-2 text-sm">
-                  {weather && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">天气：{weather}</span>}
-                  {mood && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">心情：{mood}</span>}
-                  {route && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">路线：{route}</span>}
+                  {weather && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>天气：{weather}</span>}
+                  {mood && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>心情：{mood}</span>}
+                  {route && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>路线：{route}</span>}
                 </div>
               )}
             </div>
@@ -636,7 +708,7 @@ const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: 
               {getVisibleTags().map((id: string) => {
                 const name = getTagName(id);
                 if (!name) return null;
-                return <span key={id} className="text-[#00FFB3] text-sm font-medium">@{name}</span>;
+                return <span key={id} className="text-[#0f9f6e] text-sm font-semibold">@{name}</span>;
               })}
             </div>
           )}
@@ -715,17 +787,42 @@ export const NewbieGuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose
   const isLast = step === steps.length - 1;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 10 }} className="w-full max-w-md bg-[#1a1a1a] rounded-3xl border border-white/10 p-6" onClick={(e) => e.stopPropagation()}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.94, y: 10 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, y: 10 }}
+        className="w-full max-w-md rounded-3xl border p-6 shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[#00FFB3] text-sm font-semibold">新手指引 {step + 1}/{steps.length}</p>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+          <p className="text-sm font-semibold" style={{ color: '#0f9f6e' }}>新手指引 {step + 1}/{steps.length}</p>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.04))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
         </div>
-        <h3 className="text-white text-xl font-bold mb-3">{current.title}</h3>
-        <p className="text-white/75 leading-relaxed min-h-[72px]">{current.text}</p>
+        <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--orbit-text)' }}>{current.title}</h3>
+        <p className="leading-relaxed min-h-[72px]" style={{ color: 'var(--orbit-text)' }}>{current.text}</p>
         <div className="flex gap-2 mt-6">
           {step > 0 && (
-            <button onClick={() => setStep((s) => s - 1)} className="px-4 py-2 rounded-xl bg-white/10 text-white/70">上一步</button>
+            <button
+              onClick={() => setStep((s) => s - 1)}
+              className="px-4 py-2 rounded-xl border text-sm font-medium"
+              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(0,0,0,0.02))', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+            >
+              上一步
+            </button>
           )}
           <button
             onClick={() => {
@@ -736,7 +833,7 @@ export const NewbieGuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose
               }
               setStep((s) => s + 1);
             }}
-            className="ml-auto px-5 py-2 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold"
+            className="ml-auto px-5 py-2 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold shadow-sm"
           >
             {isLast ? '开始探索吧！' : '下一步'}
           </button>
@@ -884,22 +981,41 @@ const AccountDiagnosticsModal = ({
   if (!isOpen) return null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/85 backdrop-blur-xl" onClick={onClose}>
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="min-h-screen bg-[#1a1a1a] rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
-          <h2 className="text-white font-bold">账号诊断</h2>
-          <button onClick={runDiagnostics} disabled={checking} className="text-[#00FFB3] text-sm disabled:opacity-50">{checking ? '检测中…' : '重新检测'}</button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/70 backdrop-blur-xl" onClick={onClose}>
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        className="min-h-screen max-h-screen overflow-y-auto rounded-t-3xl"
+        style={{ background: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="sticky top-0 z-10 p-4 border-b flex items-center justify-between backdrop-blur-md"
+          style={{ background: 'color-mix(in srgb, var(--orbit-surface) 96%, rgba(255,255,255,0.85))', borderColor: 'var(--orbit-border)', boxShadow: '0 6px 18px rgba(0,0,0,0.08)' }}
+        >
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(0,0,0,0.05))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text-muted)' }}
+          >
+            <FaTimes />
+          </button>
+          <h2 className="font-bold" style={{ color: 'var(--orbit-text)' }}>账号诊断</h2>
+          <button onClick={runDiagnostics} disabled={checking} className="text-sm font-semibold disabled:opacity-50" style={{ color: '#0f9f6e' }}>
+            {checking ? '检测中…' : '重新检测'}
+          </button>
         </div>
 
         <div className="p-4 pb-24 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-white/80 text-sm">{checking ? '正在做健康检查，请稍等～' : summary}</p>
+          <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}>
+            <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{checking ? '正在做健康检查，请稍等～' : summary}</p>
             <div className="mt-3">
               <button
                 onClick={handleCopyReport}
                 disabled={checking || !reportText || copying}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 text-white/75 text-xs disabled:opacity-50 hover:bg-white/15"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.04))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
               >
                 <FaCopy className="text-[11px]" />
                 {copying ? '复制中…' : copied ? '已复制诊断报告' : '一键导出诊断报告（复制文本）'}
@@ -909,19 +1025,19 @@ const AccountDiagnosticsModal = ({
 
           <div className="space-y-2">
             {items.map((item) => (
-              <div key={item.name} className="rounded-2xl bg-white/5 border border-white/10 p-4">
+              <div key={item.name} className="rounded-2xl border p-4" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 75%, transparent)' }}>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-white font-medium">{item.name}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${item.ok ? 'bg-[#00FFB3]/20 text-[#00FFB3]' : 'bg-red-500/20 text-red-300'}`}>
+                  <p className="font-medium" style={{ color: 'var(--orbit-text)' }}>{item.name}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${item.ok ? 'bg-[#00FFB3]/20 text-[#00FFB3]' : 'bg-red-100 text-red-600'}`}>
                     {item.ok ? '正常' : '异常'}
                   </span>
                 </div>
-                <p className="text-white/55 text-sm break-all">{item.detail}</p>
+                <p className="text-sm break-all" style={{ color: 'var(--orbit-text-muted)' }}>{item.detail}</p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-2xl border border-[#00FFB3]/20 bg-[#00FFB3]/5 p-4 text-sm text-white/80">
+          <div className="rounded-2xl border p-4 text-sm" style={{ borderColor: '#00FFB3', background: 'color-mix(in srgb, #00FFB3 10%, var(--orbit-surface) 92%)', color: 'var(--orbit-text)' }}>
             小贴士：当用户反馈“账号有问题”时，让 TA 打开这个页面并截图给你，通常能快速定位是登录、会话还是资料权限问题。
           </div>
         </div>
@@ -1634,10 +1750,19 @@ const handleAddFriend = async (name: string, remark: string) => {
           </div>
           
           <div className="grid grid-cols-3 gap-3">
-            {[ { icon: FaCamera, value: memories.length, label: '条记忆', color: 'orbit-mint' }, { icon: FaUsers, value: friends.length, label: '位好友', color: 'orbit-orange' }, { icon: FaHeart, value: ledgers.length, label: '笔账单', color: 'purple-400' } ].map((stat, index) => (
+            {[
+              { icon: FaCamera, value: memories.length, label: '条记忆', color: '#0f9f6e' },
+              { icon: FaUsers, value: friends.length, label: '位好友', color: '#f97316' },
+              { icon: FaHeart, value: ledgers.length, label: '笔账单', color: '#a855f7' }
+            ].map((stat) => (
               <motion.div key={stat.label} className="text-center p-4 rounded-2xl bg-white/5 border border-white/5">
-                <div className={`w-10 h-10 mx-auto mb-2 rounded-xl bg-${stat.color}/20 flex items-center justify-center`}><stat.icon className={`w-5 h-5 text-${stat.color}`} /></div>
-                <p className={`text-${stat.color} text-xl font-bold`}>{stat.value}</p>
+                <div
+                  className="w-10 h-10 mx-auto mb-2 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: `color-mix(in srgb, ${stat.color} 12%, transparent)` }}
+                >
+                  <stat.icon className="w-5 h-5" style={{ color: stat.color }} />
+                </div>
+                <p className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
                 <p className="text-white/40 text-xs mt-1">{stat.label}</p>
               </motion.div>
             ))}
@@ -1701,13 +1826,13 @@ const handleAddFriend = async (name: string, remark: string) => {
         </div>
         {friends.length >= 4 && (
           <div className="relative mb-2">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs pointer-events-none" />
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs pointer-events-none" />
             <input
               type="text"
               placeholder="搜索好友..."
               value={friendSearch}
               onChange={(e) => setFriendSearch(e.target.value)}
-              className="w-full pl-8 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-white/20"
+              className="input-glass w-full pl-8 pr-4 py-2 text-sm"
             />
           </div>
         )}
@@ -1725,10 +1850,11 @@ const handleAddFriend = async (name: string, remark: string) => {
           {shouldCollapseOnHome && (
             <button
               onClick={() => setShowAllFriends(true)}
-              className="w-full px-4 py-3 border-t border-white/5 bg-white/[0.02] hover:bg-white/5 text-white/75 flex items-center justify-between"
+              className="w-full px-4 py-3 border-t flex items-center justify-between text-white/75"
+              style={{ borderColor: 'var(--orbit-border)', backgroundColor: 'color-mix(in srgb, var(--orbit-bg) 2%, transparent)' }}
             >
               <span className="text-sm">已展示 5 位，点击查看全部 {friends.length} 位好友</span>
-              <FaChevronRight className="text-xs" />
+              <FaChevronRight className="text-xs text-orbit-mint" />
             </button>
           )}
           
@@ -1747,15 +1873,15 @@ const handleAddFriend = async (name: string, remark: string) => {
           {/* 今年记忆数 */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#00FFB3]/10 flex items-center justify-center">
-                <FaCamera className="text-[#00FFB3] text-sm" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, #0f9f6e 12%, transparent)' }}>
+                <FaCamera className="text-sm" style={{ color: '#0f9f6e' }} />
               </div>
               <div>
                 <p className="text-white/80 text-sm">{new Date().getFullYear()} 年的记忆</p>
                 <p className="text-white/40 text-xs">共 {memories.length} 条</p>
               </div>
             </div>
-            <span className="text-[#00FFB3] font-bold text-lg">
+            <span className="font-bold text-lg" style={{ color: '#0f9f6e' }}>
               {memories.filter(m => new Date(m.memory_date || m.created_at).getFullYear() === new Date().getFullYear()).length} 条
             </span>
           </div>
@@ -1816,8 +1942,8 @@ const handleAddFriend = async (name: string, remark: string) => {
           disabled={memories.length === 0}
           className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 border border-white/5 disabled:opacity-30"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF9F43] to-[#FF6B6B] flex items-center justify-center shrink-0">
-            <FaDice className="text-white text-xl" />
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl text-white shrink-0">
+            🎲
           </div>
           <div className="text-left">
             <p className="text-white font-semibold">🎲 随机回忆</p>
@@ -1835,8 +1961,8 @@ const handleAddFriend = async (name: string, remark: string) => {
           onClick={() => setShowSettings(true)}
           className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 border border-white/5"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7cf5ff] to-[#9b8cff] flex items-center justify-center shrink-0">
-            <span className="text-white text-xl">⚙️</span>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl text-white shrink-0">
+            ⚙️
           </div>
           <div className="text-left">
             <p className="text-white font-semibold">设置中心</p>
@@ -1884,8 +2010,15 @@ const handleAddFriend = async (name: string, remark: string) => {
         </button>
       </div>
 
-      <div className="fixed left-4 z-20 pointer-events-none" style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
-        <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.28)]">
+      <div className="relative z-10 px-4 pb-10">
+        <div
+          className="mx-auto inline-flex items-center gap-2 rounded-2xl px-3 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.12)]"
+          style={{
+            background: 'color-mix(in srgb, var(--orbit-card) 90%, rgba(255,255,255,0.9))',
+            border: `1px solid var(--orbit-border)`,
+            color: 'var(--orbit-text)',
+          }}
+        >
           <img src="/icons/orbit-logo.svg" alt="Orbit Logo" className="w-8 h-8 rounded-lg object-contain" />
           <img src="/icons/orbit-wordmark.svg" alt="Orbit Wordmark" className="h-5 w-auto object-contain opacity-95" />
         </div>
@@ -1905,14 +2038,15 @@ const handleAddFriend = async (name: string, remark: string) => {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="min-h-screen max-h-screen overflow-y-auto bg-[#1a1a1a] rounded-t-3xl"
+              className="min-h-screen max-h-screen overflow-y-auto rounded-t-3xl text-[var(--orbit-text)]"
+              style={{ background: 'var(--orbit-surface)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
-                <button onClick={() => setShowSettings(false)} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+              <div className="sticky top-0 z-10 p-4 border-b flex items-center justify-between backdrop-blur-md" style={{ background: 'color-mix(in srgb, var(--orbit-surface) 96%, rgba(255,255,255,0.9))', borderColor: 'var(--orbit-border)', boxShadow: '0 6px 18px rgba(0,0,0,0.08)' }}>
+                <button onClick={() => setShowSettings(false)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10"><FaTimes className="text-[color:var(--orbit-text-muted)]" /></button>
                 <div className="text-center">
-                  <h2 className="text-lg font-bold text-white">设置中心</h2>
-                  <p className="text-white/40 text-xs mt-0.5">账户与应用偏好</p>
+                  <h2 className="text-lg font-bold text-[color:var(--orbit-text)]">设置中心</h2>
+                  <p className="text-xs mt-0.5 text-[color:var(--orbit-text-muted)]">账户与应用偏好</p>
                 </div>
                 <div className="w-10" />
               </div>
@@ -1920,36 +2054,36 @@ const handleAddFriend = async (name: string, remark: string) => {
               <div className="p-4 space-y-4">
                 {/* 1. 账户与安全 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">账户与安全</div>
-                  <button onClick={() => setShowEmailModal(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
-                    <p className="text-white font-medium">📧 更换邮箱</p>
-                    <p className="text-white/45 text-sm mt-1">绑定新邮箱并验证</p>
+                  <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">账户与安全</div>
+                  <button onClick={() => setShowEmailModal(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">📧 更换邮箱</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">绑定新邮箱并验证</p>
                   </button>
-                  <button onClick={() => setShowPasswordModal(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
-                    <p className="text-white font-medium">🔑 更换密码</p>
-                    <p className="text-white/45 text-sm mt-1">建议定期更新密码</p>
+                  <button onClick={() => setShowPasswordModal(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🔑 更换密码</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">建议定期更新密码</p>
                   </button>
                 </div>
 
                 {/* 2. 通用设置 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">通用设置</div>
-                  <div className="p-4 border-t border-white/5">
-                    <p className="text-white font-medium mb-2">字体大小</p>
+                  <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">通用设置</div>
+                  <div className="p-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium mb-2 text-[color:var(--orbit-text)]">字体大小</p>
                     <div className="flex gap-2">
                       {(['small', 'normal', 'large'] as const).map((size) => (
                         <button
                           key={size}
                           onClick={() => updateSettings({ fontSize: size })}
-                          className={`px-3 py-1.5 rounded-full text-xs border ${settings.fontSize === size ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-white/5 text-white/60 border-white/15'}`}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${settings.fontSize === size ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-black/5 text-[color:var(--orbit-text-muted)] border-[color:var(--orbit-border)] dark:bg-white/5 dark:border-white/15'}`}
                         >
                           {size === 'small' ? '小' : size === 'large' ? '大' : '中'}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="p-4 border-t border-white/5">
-                    <p className="text-white font-medium mb-2">外观主题</p>
+                  <div className="p-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium mb-2 text-[color:var(--orbit-text)]">外观主题</p>
                     <div className="flex gap-2">
                       {(['system', 'light', 'dark'] as const).map((mode) => {
                         const currentMode = settings.themeMode || 'system';
@@ -1962,7 +2096,7 @@ const handleAddFriend = async (name: string, remark: string) => {
                             className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
                               isActive
                                 ? 'bg-[#00FFB3] text-black border-transparent font-semibold'
-                                : 'bg-white/5 text-white/60 border-white/15 hover:text-white hover:border-white/30'
+                                : 'bg-black/5 text-[color:var(--orbit-text-muted)] border-[color:var(--orbit-border)] hover:text-[color:var(--orbit-text)] hover:border-[color:var(--orbit-border)] dark:bg-white/5 dark:text-white/60 dark:border-white/15 dark:hover:text-white dark:hover:border-white/30'
                             }`}
                           >
                             {labels[mode]}
@@ -1971,21 +2105,21 @@ const handleAddFriend = async (name: string, remark: string) => {
                       })}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                  <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
                     <div>
-                      <p className="text-white font-medium">仅 Wi‑Fi 上传</p>
-                      <p className="text-white/45 text-sm">节省流量</p>
+                      <p className="font-medium text-[color:var(--orbit-text)]">仅 Wi‑Fi 上传</p>
+                      <p className="text-sm text-[color:var(--orbit-text-muted)]">节省流量</p>
                     </div>
-                    <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className={`w-12 h-6 rounded-full transition-colors ${settings.wifiOnlyUpload ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                    <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className={`w-12 h-6 rounded-full transition-colors ${settings.wifiOnlyUpload ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>
                       <motion.div animate={{ x: settings.wifiOnlyUpload ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                  <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
                     <div>
-                      <p className="text-white font-medium">仅 Wi‑Fi 刷新</p>
-                      <p className="text-white/45 text-sm">弱网时避免刷新</p>
+                      <p className="font-medium text-[color:var(--orbit-text)]">仅 Wi‑Fi 刷新</p>
+                      <p className="text-sm text-[color:var(--orbit-text-muted)]">弱网时避免刷新</p>
                     </div>
-                    <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className={`w-12 h-6 rounded-full transition-colors ${settings.wifiOnlyRefresh ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                    <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className={`w-12 h-6 rounded-full transition-colors ${settings.wifiOnlyRefresh ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>
                       <motion.div animate={{ x: settings.wifiOnlyRefresh ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
@@ -1993,22 +2127,22 @@ const handleAddFriend = async (name: string, remark: string) => {
 
                 {/* 3. 通知设置 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">通知设置</div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
-                    <p className="text-white font-medium">@ 通知</p>
-                    <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyAt ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                  <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">通知设置</div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">@ 通知</p>
+                    <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyAt ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>
                       <motion.div animate={{ x: settings.notifyAt ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
-                    <p className="text-white font-medium">评论通知</p>
-                    <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyComment ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                  <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">评论通知</p>
+                    <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyComment ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>
                       <motion.div animate={{ x: settings.notifyComment ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
-                    <p className="text-white font-medium">好友申请通知</p>
-                    <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyFriendRequest ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                  <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">好友申请通知</p>
+                    <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyFriendRequest ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>
                       <motion.div animate={{ x: settings.notifyFriendRequest ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
@@ -2016,13 +2150,13 @@ const handleAddFriend = async (name: string, remark: string) => {
 
                 {/* 4. 隐私设置 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">隐私设置</div>
-                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                  <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">隐私设置</div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
                     <div>
-                      <p className="text-white font-medium">允许他人分享你的回忆</p>
-                      <p className="text-white/45 text-sm">关闭后仅自己可分享</p>
+                      <p className="font-medium text-[color:var(--orbit-text)]">允许他人分享你的回忆</p>
+                      <p className="text-sm text-[color:var(--orbit-text-muted)]">关闭后仅自己可分享</p>
                     </div>
-                    <button onClick={() => updateSettings({ allowShare: !settings.allowShare })} className={`w-12 h-6 rounded-full transition-colors ${settings.allowShare ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                    <button onClick={() => updateSettings({ allowShare: !settings.allowShare })} className={`w-12 h-6 rounded-full transition-colors ${settings.allowShare ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>
                       <motion.div animate={{ x: settings.allowShare ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
@@ -2030,52 +2164,52 @@ const handleAddFriend = async (name: string, remark: string) => {
 
                 {/* 5. 帮助与客服 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">帮助与客服</div>
-                  <button onClick={() => setShowResetModal(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">🔐 找回密码</p>
-                    <p className="text-white/45 text-sm mt-1">重置你的账号密码</p>
+                  <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">帮助与客服</div>
+                  <button onClick={() => setShowResetModal(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🔐 找回密码</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">重置你的账号密码</p>
                   </button>
-                  <a href="mailto:3482407231@qq.com?subject=意见反馈" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">💬 意见反馈</p>
-                    <p className="text-white/45 text-sm mt-1">告诉我们你的想法</p>
+                  <a href="mailto:3482407231@qq.com?subject=意见反馈" className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">💬 意见反馈</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">告诉我们你的想法</p>
                   </a>
-                  <a href="mailto:3482407231@qq.com?subject=联系客服" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">📞 联系客服</p>
-                    <p className="text-white/45 text-sm mt-1">工作日 10:00-18:00</p>
+                  <a href="mailto:3482407231@qq.com?subject=联系客服" className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">📞 联系客服</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">工作日 10:00-18:00</p>
                   </a>
-                  <button onClick={() => alert('猜你想问：功能即将上线')} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
-                    <p className="text-white font-medium">❓ 猜你想问</p>
-                    <p className="text-white/45 text-sm mt-1">常见问题与使用技巧</p>
+                  <button onClick={() => alert('猜你想问：功能即将上线')} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">❓ 猜你想问</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">常见问题与使用技巧</p>
                   </button>
                 </div>
 
                 {/* 6. 关于 Orbit */}
                 <div className="glass-card rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">关于 Orbit</div>
-                  <button onClick={() => alert('谢谢你的鼓励！')} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">🌟 鼓励一下</p>
-                    <p className="text-white/45 text-sm mt-1">你的支持是我们最大的动力</p>
+                  <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">关于 Orbit</div>
+                  <button onClick={() => alert('谢谢你的鼓励！')} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🌟 鼓励一下</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">你的支持是我们最大的动力</p>
                   </button>
-                  <button onClick={() => openDocument('社区公约', COMMUNITY_TEXT)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">📜 社区公约</p>
-                    <p className="text-white/45 text-sm mt-1">文明友善的社区氛围</p>
+                  <button onClick={() => openDocument('社区公约', COMMUNITY_TEXT)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">📜 社区公约</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">文明友善的社区氛围</p>
                   </button>
-                  <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">📄 服务条款</p>
-                    <p className="text-white/45 text-sm mt-1">使用条款与服务说明</p>
+                  <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">📄 服务条款</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">使用条款与服务说明</p>
                   </button>
-                  <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">🔏 隐私政策（简明版）</p>
-                    <p className="text-white/45 text-sm mt-1">简要说明数据收集与使用</p>
+                  <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🔏 隐私政策（简明版）</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">简要说明数据收集与使用</p>
                   </button>
-                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
-                    <p className="text-white font-medium">🧪 网络诊断</p>
-                    <p className="text-white/45 text-sm mt-1">检查网络与账号状态</p>
+                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🧪 网络诊断</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">检查网络与账号状态</p>
                   </button>
-                  <div className="px-4 py-3 border-t border-white/5">
-                    <p className="text-white/60 text-xs">当前版本</p>
-                    <p className="text-white/85 text-sm mt-1">v{appVersion}</p>
-                    <p className="text-white/35 text-[11px] mt-1">构建时间：{appBuildLabel}</p>
+                  <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="text-xs text-[color:var(--orbit-text-muted)]">当前版本</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text)]">v{appVersion}</p>
+                    <p className="text-[11px] mt-1 text-[color:var(--orbit-text-muted)]">构建时间：{appBuildLabel}</p>
                   </div>
                 </div>
               </div>
@@ -2098,11 +2232,11 @@ const handleAddFriend = async (name: string, remark: string) => {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="min-h-screen max-h-screen overflow-y-auto bg-[#1a1a1a] rounded-t-3xl"
+              className="min-h-screen max-h-screen overflow-y-auto bg-orbit-black rounded-t-3xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
-                <button onClick={() => setShowAllFriends(false)} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+              <div className="sticky top-0 bg-orbit-black p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--orbit-border)' }}>
+                <button onClick={() => setShowAllFriends(false)} className="p-2 rounded-full hover:bg-black/5"><FaTimes className="text-white/60" /></button>
                 <div className="text-center">
                   <h2 className="text-lg font-bold text-white">全部好友</h2>
                   <p className="text-white/40 text-xs mt-0.5">共 {friends.length} 位</p>
@@ -2113,13 +2247,13 @@ const handleAddFriend = async (name: string, remark: string) => {
               {friends.length >= 4 && (
                 <div className="p-4 pb-2">
                   <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs pointer-events-none" />
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs pointer-events-none" />
                     <input
                       type="text"
                       placeholder="搜索好友..."
                       value={friendSearch}
                       onChange={(e) => setFriendSearch(e.target.value)}
-                      className="w-full pl-8 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-white/20"
+                      className="input-glass w-full pl-8 pr-4 py-2 text-sm"
                     />
                   </div>
                 </div>
