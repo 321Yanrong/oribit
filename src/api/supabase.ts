@@ -1144,10 +1144,15 @@ export const acceptFriendRequest = async (
 // 拒绝 / 忽略好友申请
 export const rejectFriendRequest = async (friendshipId: string): Promise<void> => {
   ensureOnlineForWrite('拒绝好友申请')
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const currentUserId = authData?.user?.id;
+  if (!currentUserId) throw new Error('当前未登录，无法拒绝好友申请');
   const { error } = await supabase
     .from('friendships')
     .delete()
-    .eq('id', friendshipId);
+    .eq('id', friendshipId)
+    .eq('friend_id', currentUserId);
   if (error) throw error;
 };
 
