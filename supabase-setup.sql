@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS memories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   content TEXT,
-  memory_date DATE,
+  memory_date TIMESTAMPTZ,
   location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
   photos TEXT[] DEFAULT '{}',
   videos TEXT[] DEFAULT '{}',

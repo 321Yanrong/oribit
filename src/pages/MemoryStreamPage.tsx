@@ -200,7 +200,7 @@ const toLocalIsoWithOffset = (value: string) => {
   const abs = Math.abs(offsetMin);
   const hh = pad(Math.floor(abs / 60));
   const mm = pad(abs % 60);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${hh}:${mm}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00${sign}${hh}:${mm}`;
 };
 
 // 地点搜索组件
@@ -1378,35 +1378,8 @@ export default function MemoryStreamPage() {
     
     loadData();
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const currentMemories = useMemoryStore.getState().memories;
-        
-        // 💥 核心修复：如果发现切回来时数据被 iOS 清空了（变成了 0 条）
-        if (!currentMemories || currentMemories.length === 0) {
-          console.log('数据丢失，等待网络恢复后重新拉取...');
-          setIsLoading(true); // 必须先让它转圈圈，不要显示“还没有回忆”
-          
-          // 延迟 1.5 秒，给 iOS 一点时间重新连上 WiFi 或 5G
-          setTimeout(() => {
-            Promise.all([
-              fetchMemories(),
-              useUserStore.getState().fetchFriends()
-            ]).catch(console.error)
-              .finally(() => setIsLoading(false)); // 拉取完再关掉 Loading
-          }, 1500);
-        } else {
-          // 如果数据还在，只是静默更新，不打断用户
-          fetchMemories().catch(console.error);
-          setIsLoading(false); // 兜底，防止卡在 Loading
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       isMounted = false;
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchMemories]);
 

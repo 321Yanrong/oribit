@@ -53,6 +53,7 @@ function App() {
   const [showNewbieGuide, setShowNewbieGuide] = useState(false);
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
+  const resumeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -165,9 +166,14 @@ function App() {
     };
 
     const handleResume = () => {
-      if (document.visibilityState === 'visible') {
-        void rehydrateIfEmpty();
+      if (resumeTimerRef.current) {
+        window.clearTimeout(resumeTimerRef.current);
       }
+      resumeTimerRef.current = window.setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          void rehydrateIfEmpty();
+        }
+      }, 800);
     };
 
     document.addEventListener('visibilitychange', handleResume);
@@ -176,6 +182,9 @@ function App() {
     return () => {
       document.removeEventListener('visibilitychange', handleResume);
       window.removeEventListener('pageshow', handleResume);
+      if (resumeTimerRef.current) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
     };
   }, []);
 
