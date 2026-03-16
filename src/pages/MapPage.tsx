@@ -73,11 +73,20 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const [memoriesFetched, setMemoriesFetched] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [mapGroupBy, setMapGroupBy] = useState<'location' | 'city'>('location');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]); // ✨ 新增：用来存储高德的 Marker 实例，方便后续清理
   const containerRef = useRef<HTMLDivElement>(null);
   const readyFiredRef = useRef(false);
+  const toastTimerRef = useRef<number | null>(null);
+  const fitViewTimeoutRef = useRef<number | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToastMessage(null), 2000);
+  };
 
   // ✨ 核心修复 1：进页面立刻拉取最新回忆数据
   useEffect(() => {
@@ -315,11 +324,33 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
       markersRef.current.push(marker);
     });
 
-    // 如果有数据，让地图自动缩放并居中包含所有光点
-    if (markersRef.current.length > 0) {
-      map.setFitView(markersRef.current, false, [50, 50, 50, 50]);
-    }
-  }, [mapLoaded, filteredPins, setSelectedPin, mapGroupBy]);
+    if (fitViewTimeoutRef.current) window.clearTimeout(fitViewTimeoutRef.current);
+    fitViewTimeoutRef.current = window.setTimeout(() => {
+      const targetMap = mapRef.current;
+      if (!targetMap) return;
+      const PADDING = [50, 50, 50, 50];
+      const MAX_ZOOM = 14;
+      if (markersRef.current.length === 0) {
+        showToast('该好友暂无回忆足迹');
+        const currentZoom = typeof targetMap.getZoom === 'function' ? targetMap.getZoom() : null;
+        if (typeof currentZoom === 'number' && Number.isFinite(currentZoom)) {
+          targetMap.setZoom(Math.max(currentZoom - 1, 4));
+        } else {
+          targetMap.setZoom(4);
+        }
+        return;
+      }
+      targetMap.setFitView(markersRef.current, false, PADDING, MAX_ZOOM);
+    }, 300);
+
+    return () => {
+      if (fitViewTimeoutRef.current) window.clearTimeout(fitViewTimeoutRef.current);
+    };
+  }, [mapLoaded, filteredPins, setSelectedPin, mapGroupBy, currentUser]);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+  }, []);
 
   const handlePinClick = (pin: any) => {
     setSelectedPin(pin);
@@ -328,6 +359,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
 
   return (
     <div className="relative h-screen w-full bg-orbit-black overflow-hidden">
+      {toastMessage && (
+        <div className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-[95]">
+          <div className="px-4 py-2 rounded-full bg-black/80 text-white text-sm border border-white/10 shadow-lg">
+            {toastMessage}
+          </div>
+        </div>
+      )}
       {/* 高德地图容器 */}
       <div 
         ref={containerRef} 
