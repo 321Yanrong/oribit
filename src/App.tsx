@@ -41,6 +41,70 @@ const resetClientData = () => {
   useUserStore.setState({ friends: [], pendingRequests: [] });
 };
 
+const usePWAKeeper = (onResume: () => void) => {
+  const lastHiddenAtRef = useRef<number>(Date.now());
+  const hasReloadedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const PWA_RELOAD_THRESHOLD_MS = 3 * 60 * 1000;
+    const SESSION_TIMEOUT_MS = 5000;
+
+    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('pwa-keeper-timeout')), ms)),
+      ]);
+    };
+
+    const maybeHardReload = () => {
+      const hiddenFor = Date.now() - lastHiddenAtRef.current;
+      if (!hasReloadedRef.current && hiddenFor > PWA_RELOAD_THRESHOLD_MS) {
+        hasReloadedRef.current = true;
+        window.location.reload();
+        return true;
+      }
+      return false;
+    };
+
+    const handleWake = async (reason: string) => {
+      if (maybeHardReload()) return;
+      try {
+        await withTimeout(supabase.removeAllChannels(), 4000);
+      } catch (err) {
+        console.warn('[PWA keeper] removeAllChannels failed:', reason, err);
+      }
+      try {
+        await withTimeout(supabase.auth.getSession(), SESSION_TIMEOUT_MS);
+      } catch (err) {
+        console.warn('[PWA keeper] getSession failed:', reason, err);
+      }
+      onResume();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenAtRef.current = Date.now();
+        return;
+      }
+      void handleWake('visibility');
+    };
+
+    const handleOnline = () => {
+      void handleWake('online');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [onResume]);
+};
+
 function App() {
   const { currentPage } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
@@ -58,6 +122,7 @@ function App() {
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const triggerResume = useAppStore((state) => state.triggerResume);
+  usePWAKeeper(triggerResume);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

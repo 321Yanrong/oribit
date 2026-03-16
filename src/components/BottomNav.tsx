@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaMap, FaImages, FaWallet, FaUser, FaGamepad } from 'react-icons/fa';
 import { useNavStore, useUserStore } from '../store';
@@ -53,6 +54,28 @@ export default function BottomNav() {
   const { currentPage, setCurrentPage } = useNavStore();
   const pendingCount = useUserStore((s) => s.pendingRequests.length);
   const unreadCommentCount = useUIStore((s) => s.memoryCommentUnreadCount);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPress = () => {
+    clearLongPress();
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      // 隐藏入口：长按底栏触发强制重启确认
+      const confirmed = window.confirm('强制重启 Orbit 以清理状态？');
+      if (confirmed) {
+        window.location.reload();
+      }
+    }, 900);
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
@@ -70,7 +93,16 @@ export default function BottomNav() {
               return (
                 <motion.button
                   key={item.id}
-                  onClick={() => setCurrentPage(item.id)}
+                  onPointerDown={startLongPress}
+                  onPointerUp={clearLongPress}
+                  onPointerLeave={clearLongPress}
+                  onClick={() => {
+                    if (longPressTriggeredRef.current) {
+                      longPressTriggeredRef.current = false;
+                      return;
+                    }
+                    setCurrentPage(item.id);
+                  }}
                   whileHover={{ scale: 1.1, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   className="relative flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all"

@@ -1533,15 +1533,25 @@ export default function MemoryStreamPage() {
   const refreshMemoryStream = useCallback(async (showLoading: boolean) => {
     if (!shouldAllowRefresh()) return;
     if (showLoading) setIsLoading(true);
+
+    // 🚨 唤醒缓冲：等待 800ms，让网络模块恢复
+    await new Promise(resolve => setTimeout(resolve, 800));
+
     try {
       const fetchPromise = Promise.all([
         fetchMemories(),
         useUserStore.getState().fetchFriends(),
       ]);
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+      
+      // 🚨 超时放宽到 15s，适配唤醒后的慢连接
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 15000)
+      );
+      
       await Promise.race([fetchPromise, timeoutPromise]);
     } catch (error) {
       console.error('拉取数据超时或被系统打断:', error);
+      // 可选提示：alert('网络似乎开小差了，请下拉重新刷新试试');
     } finally {
       if (showLoading) setIsLoading(false);
     }
