@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbit 回忆流 App 介绍</title>
+  <style>
+    body { font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif; background: #0b0f1c; color: #fff; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 16px; }
+    h1 { font-size: 2.5rem; color: #00FFB3; margin-bottom: 0.5em; }
+    h2 { color: #7cf5ff; margin-top: 2em; }
+    p, li { line-height: 1.8; font-size: 1.1rem; }
+    .screenshots { display: flex; flex-wrap: wrap; gap: 24px; margin: 32px 0; }
+    .screenshots img { border-radius: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); width: 260px; background: #222; }
+    .feature-list { background: rgba(255,255,255,0.04); border-radius: 16px; padding: 18px 24px; margin: 24px 0; }
+    .tip { color: #FF9F43; font-size: 1rem; margin: 1em 0; }
+    .footer { color: #aaa; margin-top: 3em; font-size: 0.95em; text-align: center; }
+    a { color: #00FFB3; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Orbit 回忆流 App</h1>
+    <p>Orbit 是一款专为记录、分享和回顾美好回忆而设计的创新应用。支持照片、音乐、好友互动、账本平摊、微信分享、PWA 桌面安装等多种功能，带来沉浸式的回忆体验。</p>
+
+    <div class="screenshots">
+      <img src="./screenshots/01-hero.png" alt="首页展示" />
+      <img src="./screenshots/02-features.png" alt="功能总览" />
+      <img src="./screenshots/03-how-it-works.png" alt="使用流程" />
+      <img src="./screenshots/04-friend-system.png" alt="好友系统" />
+      <img src="./screenshots/05-footer.png" alt="底部信息" />
+    </div>
+
+    <h2>核心功能</h2>
+    <ul class="feature-list">
+      <li>📸 <b>回忆相册</b>：支持多照片上传、批量管理、照片流式浏览</li>
+      <li>🎵 <b>音乐播放</b>：内置多首背景音乐，支持切换与自动播放</li>
+      <li>👫 <b>好友互动</b>：邀请、评论、点赞、共同回忆</li>
+      <li>📖 <b>账本平摊</b>：自动记录活动花费，结算更轻松</li>
+      <li>🖼️ <b>海报生成</b>：一键生成精美回忆海报，支持长按保存</li>
+      <li>🌈 <b>PWA 桌面安装</b>：支持添加到桌面，体验类原生 App</li>
+      <li>🔗 <b>微信分享</b>：一键生成分享内容，配合海报/缩略图，微信好友轻松转发</li>
+      <li>🪄 <b>极致体验</b>：切回 App 自动刷新、页面容错、动画流畅、移动端适配</li>
+    </ul>
+
+    <h2>微信分享与海报保存</h2>
+    <p>每段回忆都可一键生成专属海报，支持长按保存到相册，再通过微信等社交平台分享。分享参数已修正，内容更准确。</p>
+    <div class="screenshots">
+      <img src="./screenshots/xhs-album-book.png" alt="相册书模式" />
+      <img src="./screenshots/xhs-detail.png" alt="回忆详情" />
+      <img src="./screenshots/xhs-feed.png" alt="回忆流" />
+      <img src="./screenshots/xhs-profile.png" alt="个人主页" />
+      <img src="./screenshots/xhs-cover.png" alt="封面" />
+    </div>
+
+    <h2>更多亮点</h2>
+    <ul class="feature-list">
+      <li>🌍 <b>地图定位</b>：记录每段回忆的发生地点</li>
+      <li>🔒 <b>隐私保护</b>：支持回忆加密、隐私设置</li>
+      <li>🖼️ <b>多种主题</b>：支持多种配色与主题切换</li>
+      <li>⚡ <b>极速响应</b>：前端 Vite + React，体验流畅</li>
+    </ul>
+
+    <div class="screenshots">
+      <img src="./screenshots/xhs-journey.png" alt="旅程地图" />
+      <img src="./screenshots/xhs-memory-privacy.png" alt="隐私设置" />
+      <img src="./screenshots/xhs-mindshare.png" alt="心情分享" />
+      <img src="./screenshots/thumbnail-1200x630.png" alt="社交分享缩略图" />
+      <img src="./screenshots/thumbnail-long.png" alt="长图海报" />
+    </div>
+
+    <div class="tip">✨ <b>温馨提示：</b>所有截图均已同步至 public/screenshots 目录，欢迎体验最新功能！</div>
+
+    <div class="footer">
+      &copy; 2026 Orbit 回忆流 | 由 <a href="https://github.com/321Yanrong/oribit" target="_blank">开源项目</a> 强力驱动
+    </div>
+  </div>
+</body>
+</html>

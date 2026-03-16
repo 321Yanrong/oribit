@@ -12,6 +12,7 @@ import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
 import ProfilePage, { NewbieGuideModal } from './pages/ProfilePage';
 import GamesPage from './pages/GamesPage';
+import { shouldAllowRefresh } from './utils/settings';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -127,10 +128,12 @@ function App() {
     bootstrappedUserRef.current = currentUser.id;
 
     hydrateUserCache(currentUser.id);
-    useMemoryStore.getState().fetchMemories();
-    useUserStore.getState().fetchFriends();
-    useUserStore.getState().fetchPendingRequests();
-    useLedgerStore.getState().fetchLedgers();
+    if (shouldAllowRefresh()) {
+      useMemoryStore.getState().fetchMemories();
+      useUserStore.getState().fetchFriends();
+      useUserStore.getState().fetchPendingRequests();
+      useLedgerStore.getState().fetchLedgers();
+    }
   }, [currentUser?.id, isDemoMode]);
 
   // 页面从后台 / bfcache 回到前台时，若状态被系统回收则自动重拉
@@ -143,6 +146,8 @@ function App() {
 
       // 尝试从缓存回填
       hydrateUserCache(currentUser.id);
+
+      if (!shouldAllowRefresh()) return;
 
       // 前台恢复时先刷新会话，避免“断线”后全部清空
       const now = Date.now();

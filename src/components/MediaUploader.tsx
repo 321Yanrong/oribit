@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaVideo, FaTimes, FaSpinner, FaMicrophone, FaStop, FaTrash, FaBolt } from 'react-icons/fa';
 import { track } from '../utils/analytics';
+import { shouldAllowUpload } from '../utils/settings';
 
 const LIVE_MAX_SIZE_MB = 30;
 const UPLOAD_TIMEOUT_MS = 45000;
@@ -13,6 +14,12 @@ const withTimeout = async <T,>(promise: Promise<T>, ms = UPLOAD_TIMEOUT_MS): Pro
     setTimeout(() => reject(new Error('上传超时，请检查网络后重试')), ms);
   });
   return Promise.race([promise, timeout]);
+};
+
+const ensureWifiUpload = () => {
+  if (shouldAllowUpload()) return true;
+  alert('已开启仅 Wi‑Fi 上传，请连接 Wi‑Fi 后重试。');
+  return false;
 };
 
 export interface VoiceRecorderProps {
@@ -118,6 +125,9 @@ export function VoiceRecorder({
       const blob = new Blob(chunksRef.current, { type: mimeType });
       setUploading(true);
       try {
+        if (!ensureWifiUpload()) {
+          return;
+        }
         // 30-second upload timeout guard
         const uploadWithTimeout = async () => {
           const { uploadAudio } = await import('../api/supabase');
@@ -226,6 +236,7 @@ function LivePhotoUploader({
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || uploading) return;
+    if (!ensureWifiUpload()) return;
     const all = Array.from(files);
     const videoFiles = all.filter(f => f.type.startsWith('video/') || f.name.match(/\.(mov|mp4|webm)$/i));
     const imageFiles = all.filter(f => f.type.startsWith('image/') || f.name.match(/\.(heic|heif|jpg|jpeg|png)$/i));
@@ -393,6 +404,7 @@ export default function MediaUploader({
 
   const handleAttachLiveToPhoto = async (files: FileList | null, sourcePhotoUrl: string | null) => {
     if (!files || linkingLive) return;
+    if (!ensureWifiUpload()) return;
     const validFiles = Array.from(files).filter(file => file.type.startsWith('video/') || file.name.match(/\.(mov|mp4|webm)$/i));
     if (!validFiles.length) {
       alert('请选择 Live 视频文件（.mov / .mp4 / .webm）');
@@ -449,6 +461,7 @@ export default function MediaUploader({
 
   const handleFileSelect = async (files: File[] | null, type: 'photo' | 'video') => {
     if (!files || uploading) return;
+    if (!ensureWifiUpload()) return;
     const fileArr = files;
     setUploadError(null);
     setRetryPayload(null);

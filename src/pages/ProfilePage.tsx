@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
+import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT } from '../utils/settings';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -16,6 +17,7 @@ const stripOrbitMetaText = (content: string) => {
 
   return cleaned;
 };
+
 
 // 1. 添加好友弹窗（支持：临时好友 + 已注册真实好友）
 const AddFriendModal = ({
@@ -858,7 +860,61 @@ export default function ProfilePage() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [editingRemarkId, setEditingRemarkId] = useState<string | null>(null);
   const [remarkInput, setRemarkInput] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState(readSettings());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    writeSettings(settings);
+    if (typeof window !== 'undefined') {
+      const fontSize = settings.fontSize === 'small' ? '14px' : settings.fontSize === 'large' ? '18px' : '16px';
+      document.documentElement.style.fontSize = fontSize;
+      document.documentElement.dataset.theme = settings.darkMode ? 'dark' : 'light';
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    const onSettings = (event: Event) => {
+      const detail = (event as CustomEvent<typeof DEFAULT_SETTINGS>).detail;
+      if (detail) setSettings(detail);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener(SETTINGS_EVENT, onSettings as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(SETTINGS_EVENT, onSettings as EventListener);
+      }
+    };
+  }, []);
+
+  const updateSettings = (patch: Partial<typeof DEFAULT_SETTINGS>) => {
+    setSettings((prev) => ({ ...prev, ...patch }));
+  };
+
+  const handleChangeEmail = async () => {
+    const nextEmail = window.prompt('请输入新的邮箱');
+    if (!nextEmail?.trim()) return;
+    try {
+      const { error } = await supabase.auth.updateUser({ email: nextEmail.trim() });
+      if (error) throw error;
+      alert('已发送确认邮件，请前往新邮箱完成验证。');
+    } catch (e: any) {
+      alert(e?.message || '更换邮箱失败');
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const nextPassword = window.prompt('请输入新密码（至少 6 位）');
+    if (!nextPassword?.trim()) return;
+    try {
+      const { error } = await supabase.auth.updateUser({ password: nextPassword.trim() });
+      if (error) throw error;
+      alert('密码已更新，请重新登录确认。');
+    } catch (e: any) {
+      alert(e?.message || '更换密码失败');
+    }
+  };
 
   const handleSaveRemark = async (friendshipId: string) => {
     try {
@@ -1324,7 +1380,7 @@ const handleAddFriend = async (name: string, remark: string) => {
       </div>
       
       {/* 好友申请通知 */}
-      {pendingRequests.length > 0 && (
+      {settings.notifyFriendRequest && pendingRequests.length > 0 && (
         <div className="relative z-10 px-4 mt-6">
           <h2 className="text-white/60 text-sm font-medium mb-2 px-1 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
@@ -1505,6 +1561,25 @@ const handleAddFriend = async (name: string, remark: string) => {
         </motion.button>
       </div>
 
+      {/* 设置入口 */}
+      <div className="relative z-10 px-4 mt-4">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowSettings(true)}
+          className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 border border-white/5"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7cf5ff] to-[#9b8cff] flex items-center justify-center shrink-0">
+            <span className="text-white text-xl">⚙️</span>
+          </div>
+          <div className="text-left">
+            <p className="text-white font-semibold">设置中心</p>
+            <p className="text-white/40 text-sm">账户、安全、通知、隐私与关于</p>
+          </div>
+          <FaChevronRight className="text-white/20 ml-auto" />
+        </motion.button>
+      </div>
+
       {/* 帮助与排障 */}
       <div className="relative z-10 px-4 mt-4">
         <div className="glass-card rounded-2xl overflow-hidden">
@@ -1578,6 +1653,180 @@ const handleAddFriend = async (name: string, remark: string) => {
           <img src="/icons/orbit-wordmark.svg" alt="Orbit Wordmark" className="h-5 w-auto object-contain opacity-95" />
         </div>
       </div>
+
+      {/* 设置中心弹窗 */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl"
+            onClick={() => setShowSettings(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="min-h-screen max-h-screen overflow-y-auto bg-[#1a1a1a] rounded-t-3xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
+                <button onClick={() => setShowSettings(false)} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
+                <div className="text-center">
+                  <h2 className="text-lg font-bold text-white">设置中心</h2>
+                  <p className="text-white/40 text-xs mt-0.5">账户与应用偏好</p>
+                </div>
+                <div className="w-10" />
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* 1. 账户与安全 */}
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">账户与安全</div>
+                  <button onClick={handleChangeEmail} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                    <p className="text-white font-medium">📧 更换邮箱</p>
+                    <p className="text-white/45 text-sm mt-1">绑定新邮箱并验证</p>
+                  </button>
+                  <button onClick={handleChangePassword} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                    <p className="text-white font-medium">🔑 更换密码</p>
+                    <p className="text-white/45 text-sm mt-1">建议定期更新密码</p>
+                  </button>
+                </div>
+
+                {/* 2. 通用设置 */}
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">通用设置</div>
+                  <div className="p-4 border-t border-white/5">
+                    <p className="text-white font-medium mb-2">字体大小</p>
+                    <div className="flex gap-2">
+                      {(['small', 'normal', 'large'] as const).map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => updateSettings({ fontSize: size })}
+                          className={`px-3 py-1.5 rounded-full text-xs border ${settings.fontSize === size ? 'bg-[#00FFB3] text-black border-transparent' : 'bg-white/5 text-white/60 border-white/15'}`}
+                        >
+                          {size === 'small' ? '小' : size === 'large' ? '大' : '中'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <div>
+                      <p className="text-white font-medium">深色模式</p>
+                      <p className="text-white/45 text-sm">夜间更舒适</p>
+                    </div>
+                    <button onClick={() => updateSettings({ darkMode: !settings.darkMode })} className={`w-12 h-6 rounded-full transition-colors ${settings.darkMode ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.darkMode ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <div>
+                      <p className="text-white font-medium">仅 Wi‑Fi 上传</p>
+                      <p className="text-white/45 text-sm">节省流量</p>
+                    </div>
+                    <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className={`w-12 h-6 rounded-full transition-colors ${settings.wifiOnlyUpload ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.wifiOnlyUpload ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <div>
+                      <p className="text-white font-medium">仅 Wi‑Fi 刷新</p>
+                      <p className="text-white/45 text-sm">弱网时避免刷新</p>
+                    </div>
+                    <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className={`w-12 h-6 rounded-full transition-colors ${settings.wifiOnlyRefresh ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.wifiOnlyRefresh ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. 通知设置 */}
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">通知设置</div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <p className="text-white font-medium">@ 通知</p>
+                    <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyAt ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.notifyAt ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <p className="text-white font-medium">评论通知</p>
+                    <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyComment ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.notifyComment ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <p className="text-white font-medium">好友申请通知</p>
+                    <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyFriendRequest ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.notifyFriendRequest ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. 隐私设置 */}
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">隐私设置</div>
+                  <div className="flex items-center justify-between px-4 py-4 border-t border-white/5">
+                    <div>
+                      <p className="text-white font-medium">允许他人分享你的回忆</p>
+                      <p className="text-white/45 text-sm">关闭后仅自己可分享</p>
+                    </div>
+                    <button onClick={() => updateSettings({ allowShare: !settings.allowShare })} className={`w-12 h-6 rounded-full transition-colors ${settings.allowShare ? 'bg-[#00FFB3]' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: settings.allowShare ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5. 帮助与客服 */}
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">帮助与客服</div>
+                  <a href="/reset-password/" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                    <p className="text-white font-medium">🔐 找回密码</p>
+                    <p className="text-white/45 text-sm mt-1">重置你的账号密码</p>
+                  </a>
+                  <a href="mailto:support@orbit.yanrong.fun?subject=意见反馈" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                    <p className="text-white font-medium">💬 意见反馈</p>
+                    <p className="text-white/45 text-sm mt-1">告诉我们你的想法</p>
+                  </a>
+                  <a href="mailto:support@orbit.yanrong.fun?subject=联系客服" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                    <p className="text-white font-medium">📞 联系客服</p>
+                    <p className="text-white/45 text-sm mt-1">工作日 10:00-18:00</p>
+                  </a>
+                  <button onClick={() => alert('猜你想问：功能即将上线')} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                    <p className="text-white font-medium">❓ 猜你想问</p>
+                    <p className="text-white/45 text-sm mt-1">常见问题与使用技巧</p>
+                  </button>
+                </div>
+
+                {/* 6. 关于 Orbit */}
+                <div className="glass-card rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 text-white/60 text-xs">关于 Orbit</div>
+                  <button onClick={() => alert('谢谢你的鼓励！')} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                    <p className="text-white font-medium">🌟 鼓励一下</p>
+                    <p className="text-white/45 text-sm mt-1">你的支持是我们最大的动力</p>
+                  </button>
+                  <a href="/terms/" target="_blank" rel="noreferrer" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                    <p className="text-white font-medium">📜 社区公约</p>
+                    <p className="text-white/45 text-sm mt-1">文明友善的社区氛围</p>
+                  </a>
+                  <a href="/terms/" target="_blank" rel="noreferrer" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                    <p className="text-white font-medium">📄 服务条款</p>
+                    <p className="text-white/45 text-sm mt-1">使用条款与服务说明</p>
+                  </a>
+                  <a href="/privacy/" target="_blank" rel="noreferrer" className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5 block">
+                    <p className="text-white font-medium">🔏 隐私政策（简明版）</p>
+                    <p className="text-white/45 text-sm mt-1">简要说明数据收集与使用</p>
+                  </a>
+                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full p-4 text-left hover:bg-white/5 border-t border-white/5">
+                    <p className="text-white font-medium">🧪 网络诊断</p>
+                    <p className="text-white/45 text-sm mt-1">检查网络与账号状态</p>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* 弹窗挂载区 */}
       <AnimatePresence>

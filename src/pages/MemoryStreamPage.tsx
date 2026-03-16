@@ -8,6 +8,7 @@ import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import { track } from '../utils/analytics';
+import { readSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
@@ -1171,6 +1172,7 @@ export default function MemoryStreamPage() {
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
   const scrollRestoredRef = useRef(false);
   const albumSectionRef = useRef<HTMLDivElement>(null);
+  const [settings, setSettings] = useState(readSettings());
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1307,6 +1309,10 @@ export default function MemoryStreamPage() {
   };
 
   const handleShareMemory = async (memory: any) => {
+    if (!settings.allowShare) {
+      alert('已关闭“允许他人分享你的回忆”，请在隐私设置中开启。');
+      return;
+    }
     track('memory_share_attempt', { memoryId: memory?.id });
     const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
     const raw = (memoryText || '').replace(/\s+/g, ' ').trim();
@@ -1453,6 +1459,10 @@ export default function MemoryStreamPage() {
     let isMounted = true;
 
     const loadData = async () => {
+      if (!shouldAllowRefresh()) {
+        if (isMounted) setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         // 加一个 8 秒的超时竞态，防止 iOS 静默挂起 Promise
@@ -1491,6 +1501,21 @@ export default function MemoryStreamPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, [setScrollPosition]);
+
+  useEffect(() => {
+    const onSettings = (event: Event) => {
+      const detail = (event as CustomEvent<typeof settings>).detail;
+      if (detail) setSettings(detail);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener(SETTINGS_EVENT, onSettings as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(SETTINGS_EVENT, onSettings as EventListener);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isLoading || scrollRestoredRef.current) return;
@@ -1543,7 +1568,7 @@ export default function MemoryStreamPage() {
                 ? `找到 ${filteredMemories.length} / ${memories.length} 条`
                 : `共 ${memories.length} 条记忆`}
               </p>
-              {memoryCommentUnreadCount > 0 && (
+              {settings.notifyComment && memoryCommentUnreadCount > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/15 px-2 py-0.5 text-[10px] font-semibold text-[#FF8A8A] border border-[#FF6B6B]/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B]" />
                   {memoryCommentUnreadCount} 条新评论
@@ -1757,7 +1782,7 @@ export default function MemoryStreamPage() {
                             const willOpen = !reaction.roastOpen;
                             toggleRoastOpen(memory.id);
                             if (willOpen) markCommentsAsRead(memory.id);
-                          }} className={`relative flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'}`}><FaComment />{hasUnreadComments(memory) && <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#FF6B6B]" />}<span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
+                          }} className={`relative flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00FFB3]' : 'text-white/40 hover:text-[#00FFB3]'}`}><FaComment />{settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#FF6B6B]" />}<span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
                           <button onClick={() => handleShareMemory(memory)} className="flex items-center gap-1.5 text-sm text-white/40 hover:text-[#5fd6ff]"><FaShareAlt /><span className="text-xs">分享微信</span></button>
                         </div>
                         <button onClick={() => setSelectedMemory(memory)} className="text-white/20 text-xs hover:text-white/50">查看全部 →</button>
@@ -1917,7 +1942,7 @@ export default function MemoryStreamPage() {
                             }`}
                           >
                             <FaComment />
-                            {hasUnreadComments(memory) && <span className="w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                            {settings.notifyComment && hasUnreadComments(memory) && <span className="w-2 h-2 rounded-full bg-[#FF6B6B]" />}
                             <span className="text-xs">
                               {reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}
                             </span>
