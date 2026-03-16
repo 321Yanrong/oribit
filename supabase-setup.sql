@@ -30,8 +30,7 @@ DROP POLICY IF EXISTS "Photo upload policy" ON storage.objects;
 DROP POLICY IF EXISTS "Photo update policy" ON storage.objects;
 DROP POLICY IF EXISTS "Video upload policy" ON storage.objects;
 
--- Enable Row Level Security
-ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
+-- NOTE: auth.users is managed by Supabase; do not modify RLS here.
 
 -- =============================================
 -- 1. PROFILES TABLE (extends auth.users)
@@ -300,16 +299,6 @@ CREATE POLICY "Users can view memory comments" ON memory_comments
           WHERE f.user_id = auth.uid()
             AND f.friend_id = m.user_id
             AND f.status = 'accepted'
-        )
-        AND (
-          memory_comments.author_id = auth.uid()
-          OR memory_comments.author_id = m.user_id
-          OR EXISTS (
-            SELECT 1 FROM friendships f2
-            WHERE f2.user_id = auth.uid()
-              AND f2.friend_id = memory_comments.author_id
-              AND f2.status = 'accepted'
-          )
         )
     )
   );

@@ -56,7 +56,7 @@ CREATE POLICY "Users can view own or tagged memories" ON memories
     )
   );
 
--- 3) memory_comments：评论只对“记忆发布者 + 自己 + 好友”可见
+-- 3) memory_comments：评论对“记忆发布者 + 被 @ 好友”可见（被 @ 好友可看到全部评论）
 DROP POLICY IF EXISTS "Users can view memory comments" ON memory_comments;
 CREATE POLICY "Users can view memory comments" ON memory_comments
   FOR SELECT USING (
@@ -81,16 +81,6 @@ CREATE POLICY "Users can view memory comments" ON memory_comments
           WHERE f.user_id = auth.uid()
             AND f.friend_id = m.user_id
             AND f.status = 'accepted'
-        )
-        AND (
-          memory_comments.author_id = auth.uid()
-          OR memory_comments.author_id = m.user_id
-          OR EXISTS (
-            SELECT 1 FROM friendships f2
-            WHERE f2.user_id = auth.uid()
-              AND f2.friend_id = memory_comments.author_id
-              AND f2.status = 'accepted'
-          )
         )
     )
   );
