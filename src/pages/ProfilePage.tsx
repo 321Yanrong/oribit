@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
@@ -963,6 +963,12 @@ export default function ProfilePage() {
   // 文档弹窗状态
   const [docModal, setDocModal] = useState({ isOpen: false, title: '', content: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastAutoRefreshRef = useRef(0);
+  const appVersion = import.meta.env.VITE_APP_VERSION || '0.0.0';
+  const appBuildTime = import.meta.env.VITE_APP_BUILD_TIME || '';
+  const appBuildLabel = appBuildTime
+    ? new Date(appBuildTime).toLocaleString('zh-CN', { hour12: false })
+    : '未知';
 
   useEffect(() => {
     writeSettings(settings);
@@ -1072,6 +1078,37 @@ export default function ProfilePage() {
       setRefreshingHome(false);
     }
   };
+
+  const refreshProfileData = useCallback(async () => {
+    if (!shouldAllowRefresh()) return;
+    await Promise.all([
+      useMemoryStore.getState().fetchMemories(),
+      useUserStore.getState().fetchFriends(),
+      useUserStore.getState().fetchPendingRequests(),
+      useLedgerStore.getState().fetchLedgers(),
+    ]);
+  }, []);
+
+  useEffect(() => {
+    const tryAutoRefresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!navigator.onLine) return;
+      const now = Date.now();
+      if (now - lastAutoRefreshRef.current < 30000) return;
+      lastAutoRefreshRef.current = now;
+      void refreshProfileData();
+    };
+
+    const interval = window.setInterval(tryAutoRefresh, 60000);
+    window.addEventListener('online', tryAutoRefresh);
+    document.addEventListener('visibilitychange', tryAutoRefresh);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('online', tryAutoRefresh);
+      document.removeEventListener('visibilitychange', tryAutoRefresh);
+    };
+  }, [refreshProfileData]);
 
   const handleSubmitEmail = async (nextEmail: string) => {
     setActionLoading(true);
@@ -2033,6 +2070,11 @@ const handleAddFriend = async (name: string, remark: string) => {
                     <p className="text-white font-medium">🧪 网络诊断</p>
                     <p className="text-white/45 text-sm mt-1">检查网络与账号状态</p>
                   </button>
+                  <div className="px-4 py-3 border-t border-white/5">
+                    <p className="text-white/60 text-xs">当前版本</p>
+                    <p className="text-white/85 text-sm mt-1">v{appVersion}</p>
+                    <p className="text-white/35 text-[11px] mt-1">构建时间：{appBuildLabel}</p>
+                  </div>
                 </div>
               </div>
             </motion.div>

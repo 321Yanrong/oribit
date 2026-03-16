@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
@@ -1174,6 +1174,7 @@ export default function MemoryStreamPage() {
   const scrollRestoredRef = useRef(false);
   const albumSectionRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState(readSettings());
+  const lastAutoRefreshRef = useRef(0);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1507,38 +1508,60 @@ export default function MemoryStreamPage() {
     setMemoryCommentUnreadCount(unreadCount);
   }, [memories, commentsByMemory, memoryCommentReadMarkers, currentUser?.id, setMemoryCommentUnreadCount]);
   
+  const refreshMemoryStream = useCallback(async (showLoading: boolean) => {
+    if (!shouldAllowRefresh()) return;
+    if (showLoading) setIsLoading(true);
+    try {
+      const fetchPromise = Promise.all([
+        fetchMemories(),
+        useUserStore.getState().fetchFriends(),
+      ]);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+      await Promise.race([fetchPromise, timeoutPromise]);
+    } catch (error) {
+      console.error('拉取数据超时或被系统打断:', error);
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
+  }, [fetchMemories]);
+
   // 获取记忆数据
   useEffect(() => {
     let isMounted = true;
-
     const loadData = async () => {
       if (!shouldAllowRefresh()) {
         if (isMounted) setIsLoading(false);
         return;
       }
-      setIsLoading(true);
-      try {
-        // 加一个 8 秒的超时竞态，防止 iOS 静默挂起 Promise
-        const fetchPromise = Promise.all([
-          fetchMemories(),
-          useUserStore.getState().fetchFriends(),
-        ]);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
-
-        await Promise.race([fetchPromise, timeoutPromise]);
-      } catch (error) {
-        console.error('拉取数据超时或被系统打断:', error);
-      } finally {
-        if (isMounted) setIsLoading(false); // 无论如何，一定要关掉 Loading！
-      }
+      await refreshMemoryStream(true);
     };
-    
     loadData();
-
     return () => {
       isMounted = false;
     };
-  }, [fetchMemories]);
+  }, [refreshMemoryStream]);
+
+  // 前台/联网时自动轻量刷新，避免卡在旧界面
+  useEffect(() => {
+    const tryAutoRefresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!navigator.onLine) return;
+      const now = Date.now();
+      if (now - lastAutoRefreshRef.current < 30000) return;
+      lastAutoRefreshRef.current = now;
+      void refreshMemoryStream(false);
+    };
+
+    const interval = window.setInterval(tryAutoRefresh, 60000);
+    window.addEventListener('online', tryAutoRefresh);
+    document.addEventListener('visibilitychange', tryAutoRefresh);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('online', tryAutoRefresh);
+      document.removeEventListener('visibilitychange', tryAutoRefresh);
+    };
+  }, [refreshMemoryStream]);
 
   useEffect(() => {
     let ticking = false;
