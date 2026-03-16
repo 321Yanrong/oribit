@@ -1096,7 +1096,8 @@ export const acceptFriendRequest = async (
   const { error: updateError } = await supabase
     .from('friendships')
     .update({ status: 'accepted' })
-    .eq('id', friendshipId);
+    .eq('id', friendshipId)
+    .eq('user_id', currentUserId);
   if (updateError && !isPermissionError(updateError)) throw updateError;
 
   // 2) 双向都做幂等修复，确保“同意一次”后双方都能立即看到彼此
