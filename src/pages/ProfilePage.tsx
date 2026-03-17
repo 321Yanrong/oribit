@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
+import OneSignal from 'react-onesignal';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
@@ -1763,6 +1764,13 @@ const handleAddFriend = async (name: string, remark: string) => {
               </motion.div>
             ))}
           </div>
+
+          <button
+            onClick={() => OneSignal.Slidedown.promptPush()}
+            className="mt-4 w-full bg-[#00FFB3] text-black px-6 py-3 rounded-2xl font-semibold shadow-[0_12px_32px_rgba(0,0,0,0.2)] active:scale-95 transition-transform"
+          >
+            开启消息通知测试
+          </button>
         </motion.div>
       </div>
       

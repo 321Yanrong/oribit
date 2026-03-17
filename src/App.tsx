@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
 import { useAppStore } from './store/app';
+import { usePushSetup } from './hooks/useOneSignal';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav from './components/BottomNav';
@@ -177,6 +178,7 @@ function App() {
   const triggerResume = useAppStore((state) => state.triggerResume);
   usePWAKeeper(triggerResume);
   useAegisMonitor();
+  usePushSetup();
 
   // 注册 Service Worker 并监听更新
   useEffect(() => {
