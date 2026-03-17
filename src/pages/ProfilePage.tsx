@@ -760,93 +760,6 @@ const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memor
   );
 };
 
-export const NewbieGuideModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const [step, setStep] = useState(0);
-  const steps = [
-    {
-      title: '欢迎来到 Orbit ✨',
-      text: '我是你的小向导汪～我们会把见面和旅行变成超可爱的回忆卡片！',
-    },
-    {
-      title: '🗺️ 地图页',
-      text: '点地图看足迹，按好友筛选，一秒找到“我们一起去过哪”。',
-    },
-    {
-      title: '🖼️ 记忆流',
-      text: '发照片 + 文字 + 地点 + @好友，每条日常都可以闪闪发光～',
-    },
-    {
-      title: '💳 账单页',
-      text: '聚餐分账超轻松，谁该付多少一眼看懂，不再尴尬对账。',
-    },
-    {
-      title: '👥 我的页',
-      text: '添加好友、改备注、看共同记忆都在这。需要帮助也可以点“账号诊断”。',
-    },
-  ];
-
-  if (!isOpen) return null;
-
-  const current = steps[step];
-  const isLast = step === steps.length - 1;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.94, y: 10 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.94, y: 10 }}
-        className="w-full max-w-md rounded-3xl border p-6 shadow-2xl"
-        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-semibold" style={{ color: '#0f9f6e' }}>新手指引 {step + 1}/{steps.length}</p>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full shadow-sm"
-            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.04))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
-          >
-            <FaTimes />
-          </button>
-        </div>
-        <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--orbit-text)' }}>{current.title}</h3>
-        <p className="leading-relaxed min-h-[72px]" style={{ color: 'var(--orbit-text)' }}>{current.text}</p>
-        <div className="flex gap-2 mt-6">
-          {step > 0 && (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              className="px-4 py-2 rounded-xl border text-sm font-medium"
-              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(0,0,0,0.02))', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-            >
-              上一步
-            </button>
-          )}
-          <button
-            onClick={() => {
-              if (isLast) {
-                setStep(0);
-                onClose();
-                return;
-              }
-              setStep((s) => s + 1);
-            }}
-            className="ml-auto px-5 py-2 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold shadow-sm"
-          >
-            {isLast ? '开始探索吧！' : '下一步'}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
 const AccountDiagnosticsModal = ({
   isOpen,
   onClose,
@@ -2058,13 +1971,6 @@ const handleAddFriend = async (name: string, remark: string) => {
       {/* 帮助与排障 */}
       <div className="relative z-10 px-4 mt-4">
         <div className="glass-card rounded-2xl overflow-hidden">
-          <button
-            onClick={() => window.dispatchEvent(new Event('orbit:start-onboarding'))}
-            className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5"
-          >
-            <p className="text-white font-medium">🌟 新手指引</p>
-            <p className="text-white/45 text-sm mt-1">用可爱模式 1 分钟了解所有功能</p>
-          </button>
           <button
             onClick={() => setShowAccountDiagnostics(true)}
             className="w-full p-4 text-left hover:bg-white/5"
