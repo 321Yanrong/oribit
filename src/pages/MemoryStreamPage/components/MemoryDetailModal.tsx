@@ -25,6 +25,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [commentAudios, setCommentAudios] = useState<string[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; isSelf: boolean; userId?: string } | null>(null);
   const avatarFileRef = useRef<HTMLInputElement>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
   const setCurrentUser = useUserStore((s) => s.setCurrentUser);
   const userStoreUser = useUserStore((s) => s.currentUser);
   const photos = memory.photos || [];
@@ -98,6 +99,46 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
       setCommentAudios([]);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const applyAvatar = async (url: string) => {
+    if (!avatarPreview?.userId || !currentUser?.id || avatarPreview.userId !== currentUser.id) return;
+    setAvatarSaving(true);
+    try {
+      const finalUrl = await updateProfileAvatarUrl(currentUser.id, url);
+      const merged = { ...(userStoreUser || currentUser), avatar_url: finalUrl };
+      setCurrentUser(merged);
+      setAvatarPreview((prev) => (prev ? { ...prev, url: finalUrl } : prev));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '未知错误';
+      alert(`头像更新失败：${msg}`);
+    } finally {
+      setAvatarSaving(false);
+    }
+  };
+
+  const handleRandomAvatar = async (gender: 'boy' | 'girl') => {
+    const seed = `${gender}-${Date.now()}`;
+    const url = `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}`;
+    await applyAvatar(url);
+  };
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !avatarPreview?.userId || !currentUser?.id || avatarPreview.userId !== currentUser.id) return;
+    setAvatarSaving(true);
+    try {
+      const url = await uploadAvatar(currentUser.id, file);
+      const merged = { ...(userStoreUser || currentUser), avatar_url: url };
+      setCurrentUser(merged);
+      setAvatarPreview((prev) => (prev ? { ...prev, url } : prev));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '未知错误';
+      alert(`头像上传失败：${msg}`);
+    } finally {
+      setAvatarSaving(false);
+      if (avatarFileRef.current) avatarFileRef.current.value = '';
     }
   };
 
@@ -438,7 +479,11 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 const decoded = decodeCommentContent(item.content);
                 return (
                   <div key={item.id} className="flex items-start gap-2">
-                    <img src={author.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                    <img
+                      src={author.avatar}
+                      className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 cursor-pointer"
+                      onClick={() => openAvatarPreview(author.avatar, author.name, item.author_id)}
+                    />
                     <div className="flex-1 rounded-2xl px-3 py-2 border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
                       <div className="flex items-start justify-between gap-3 mb-0.5">
                         <p className="text-xs font-medium" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
@@ -507,6 +552,69 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           )}
         </div>
       </div>
+
+      <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
+      <AnimatePresence>
+        {avatarPreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[130] bg-black/70 backdrop-blur-md flex items-center justify-center px-6"
+            onClick={() => setAvatarPreview(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+              className="w-full max-w-sm rounded-2xl border p-4 text-center space-y-4"
+              style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img src={avatarPreview.url} className="w-48 h-48 rounded-2xl object-cover mx-auto" />
+              <div className="space-y-1">
+                <p className="text-lg font-semibold" style={{ color: 'var(--orbit-text)' }}>{avatarPreview.name}</p>
+                <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>点击空白处关闭</p>
+              </div>
+              {avatarPreview.isSelf && (
+                <div className="space-y-2">
+                  <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>换头像（可选随机或上传）</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleRandomAvatar('boy')}
+                      disabled={avatarSaving}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', opacity: avatarSaving ? 0.6 : 1 }}
+                    >随机男生</button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRandomAvatar('girl')}
+                      disabled={avatarSaving}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', opacity: avatarSaving ? 0.6 : 1 }}
+                    >随机女生</button>
+                    <button
+                      type="button"
+                      onClick={() => avatarFileRef.current?.click()}
+                      disabled={avatarSaving}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', opacity: avatarSaving ? 0.6 : 1 }}
+                    >上传图片</button>
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setAvatarPreview(null)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+              >关闭</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
