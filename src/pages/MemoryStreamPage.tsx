@@ -533,7 +533,15 @@ const FriendSelector = ({
   return (
     <div className="space-y-2">
       <div className="text-sm mb-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>选择一起的人</div>
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+      <div
+        className="flex gap-2 overflow-x-auto pb-1"
+        style={{
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorX: 'contain',
+          touchAction: 'pan-x',
+        }}
+      >
         {friends.map((friendship: any) => {
           const friend = friendship.friend;
           const isVirtual = friend.id?.startsWith('temp-');
