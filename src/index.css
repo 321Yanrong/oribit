@@ -1,3 +1,16 @@
+/* 让回忆弹窗在浅色模式下更白更通透 */
+:root[data-theme='light'] .memory-modal-backdrop {
+  background-color: color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.7)) !important;
+}
+
+:root[data-theme='light'] .memory-overlay {
+  background-color: color-mix(in srgb, var(--orbit-surface) 94%, rgba(0,0,0,0.35)) !important;
+}
+
+/* 让原生 date 输入在浅色模式下也用浅色控件 */
+:root[data-theme='light'] input[type='date'] {
+  color-scheme: light;
+}
 /* 导入字体 */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 

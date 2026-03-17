@@ -23,6 +23,7 @@ const stripOrbitMetaText = (content: string) => {
 // 邮箱修改弹窗（亮色适配）
 const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [email, setEmail] = useState('');
+  const [currentPwd, setCurrentPwd] = useState('');
   if (!isOpen) return null;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -46,7 +47,8 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--orbit-text-muted)' }}>我们将向新邮箱发送一封确认邮件，点击邮件中的链接后即可生效。</p>
         <input type="email" placeholder="输入新邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-        <button onClick={() => onSubmit(email)} disabled={!email || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
+        <input type="password" placeholder="输入当前密码以验证" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
+        <button onClick={() => onSubmit(email, currentPwd)} disabled={!email || !currentPwd || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送确认邮件'}
         </button>
       </motion.div>
@@ -56,6 +58,7 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
 
 // 密码修改弹窗（亮色适配）
 const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  const [currentPwd, setCurrentPwd] = useState('');
   const [pwd1, setPwd1] = useState('');
   const [pwd2, setPwd2] = useState('');
   if (!isOpen) return null;
@@ -80,10 +83,11 @@ const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
           </button>
         </div>
         <div className="space-y-3 mb-6">
+          <input type="password" placeholder="输入当前密码" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
           <input type="password" placeholder="输入新密码（至少 6 位）" value={pwd1} onChange={e => setPwd1(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
           <input type="password" placeholder="再次确认新密码" value={pwd2} onChange={e => setPwd2(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
         </div>
-        <button onClick={() => onSubmit(pwd1, pwd2)} disabled={!pwd1 || !pwd2 || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30">
+        <button onClick={() => onSubmit(currentPwd, pwd1, pwd2)} disabled={!currentPwd || !pwd1 || !pwd2 || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30">
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '确认修改'}
         </button>
       </motion.div>
@@ -1227,9 +1231,16 @@ export default function ProfilePage() {
     };
   }, [refreshProfileData]);
 
-  const handleSubmitEmail = async (nextEmail: string) => {
+  const handleSubmitEmail = async (nextEmail: string, currentPwd: string) => {
+    if (!currentUser?.email) {
+      alert('请重新登录后再尝试修改邮箱');
+      return;
+    }
+    if (!nextEmail.trim()) return;
     setActionLoading(true);
     try {
+      const { error: reauthError } = await supabase.auth.signInWithPassword({ email: currentUser.email, password: currentPwd });
+      if (reauthError) throw new Error(reauthError.message || '当前密码不正确');
       const { error } = await supabase.auth.updateUser({ email: nextEmail.trim() });
       if (error) throw error;
       alert('已发送确认邮件，请前往新邮箱完成验证。');
@@ -1241,7 +1252,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSubmitPassword = async (p1: string, p2: string) => {
+  const handleSubmitPassword = async (currentPwd: string, p1: string, p2: string) => {
     if (p1 !== p2) {
       alert('两次输入的密码不一致！');
       return;
@@ -1250,8 +1261,18 @@ export default function ProfilePage() {
       alert('密码至少需要 6 位！');
       return;
     }
+    if (!currentUser?.email) {
+      alert('请重新登录后再尝试修改密码');
+      return;
+    }
+    if (currentPwd === p1) {
+      alert('新密码需要与当前密码不同');
+      return;
+    }
     setActionLoading(true);
     try {
+      const { error: reauthError } = await supabase.auth.signInWithPassword({ email: currentUser.email, password: currentPwd });
+      if (reauthError) throw new Error(reauthError.message || '当前密码不正确');
       const { error } = await supabase.auth.updateUser({ password: p1 });
       if (error) throw error;
       alert('密码已更新！下次请使用新密码登录。');
@@ -1528,7 +1549,20 @@ const handleAddFriend = async (name: string, remark: string) => {
       setDeletingAccount(false);
     }
   };
-  const handleAvatarClick = () => { if (!uploadingAvatar) setShowAvatarPreview(true); };
+  // 头像点击：若未在上传中，切换预览开关（再点一次可关闭）
+  const handleAvatarClick = () => {
+    if (uploadingAvatar) return;
+    setShowAvatarPreview((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!showAvatarPreview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAvatarPreview(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAvatarPreview]);
   const handleUploadAvatarFromPicker = useCallback(() => {
     if (uploadingAvatar) return;
     setShowAvatarPicker(false);
@@ -1599,10 +1633,11 @@ const handleAddFriend = async (name: string, remark: string) => {
     const friend = friendship.friend;
     const isTemp = friend.id.startsWith('temp-');
     const hasRemark = !!friendship.remark;
+    const rowKey = friendship.id || friend.id || `friend-${index}`;
 
     return (
       <motion.div
-        key={friendship.id}
+        key={rowKey}
         className={`w-full flex items-center gap-3 p-4 ${index !== total - 1 ? 'border-b border-white/5' : ''} hover:bg-white/5`}
       >
         {/* 左侧可点击区域 */}
@@ -1659,7 +1694,7 @@ const handleAddFriend = async (name: string, remark: string) => {
 
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
-      <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} />
+      {/* <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} /> */}
       <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.2) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(0, 255, 179, 0.15) 0%, transparent 40%)` }} />
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       
@@ -1710,7 +1745,8 @@ const handleAddFriend = async (name: string, remark: string) => {
                       <img
                         src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'}
                         alt={currentUser?.username}
-                        className="w-full rounded-3xl border border-white/10 shadow-2xl object-contain bg-black/40"
+                        className="w-full rounded-3xl border border-white/10 shadow-2xl object-contain bg-black/40 cursor-pointer"
+                        onClick={() => setShowAvatarPreview(false)}
                       />
                       <button
                         onClick={() => setShowAvatarPreview(false)}
@@ -1727,15 +1763,17 @@ const handleAddFriend = async (name: string, remark: string) => {
                 {showAvatarPicker && (
                   <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                    className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(0,0,0,0.55))' }}
                     onClick={() => setShowAvatarPicker(false)}
                   >
                     <motion.div
                       initial={{ scale: 0.85, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, y: 16 }}
-                      className="bg-[#2a2a2a] border border-white/15 rounded-3xl p-5 shadow-2xl flex flex-col items-center gap-4"
+                      className="rounded-3xl p-5 shadow-2xl flex flex-col items-center gap-4"
+                      style={{ backgroundColor: 'var(--orbit-card)', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
                       onClick={e => e.stopPropagation()}
                     >
-                      <p className="text-white/60 text-sm">选择头像风格</p>
+                      <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>选择头像风格</p>
                       <div className="flex gap-4">
                         <button onClick={() => handleRandomAvatar('male')} className="flex flex-col items-center gap-2 px-8 py-4 rounded-2xl bg-blue-500/10 border border-blue-400/30 hover:bg-blue-500/20 active:scale-95 transition-all">
                           <span className="text-4xl">♂</span>
@@ -1748,12 +1786,13 @@ const handleAddFriend = async (name: string, remark: string) => {
                       </div>
                       <button
                         onClick={handleUploadAvatarFromPicker}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 border border-white/15 hover:bg-white/15 active:scale-95 transition-all text-white"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl active:scale-95 transition-all"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 85%, transparent)', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
                       >
                         <FaCamera className="text-lg" />
                         <span className="text-sm font-semibold">上传头像</span>
                       </button>
-                      <button onClick={() => setShowAvatarPicker(false)} className="text-white/30 text-xs mt-1">取消</button>
+                      <button onClick={() => setShowAvatarPicker(false)} className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>取消</button>
                     </motion.div>
                   </motion.div>
                 )}

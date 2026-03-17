@@ -1946,7 +1946,7 @@ export default function MemoryStreamPage() {
   
   return (
     <div className="memory-stream-page relative min-h-screen pt-[180px]" style={{ backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}>
-      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
+      {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00FFB3]/5 rounded-full blur-3xl" />
@@ -2514,7 +2514,8 @@ export default function MemoryStreamPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[180] bg-black/70 backdrop-blur-md flex items-center justify-center px-4"
+              className="fixed inset-0 z-[180] backdrop-blur-md flex items-center justify-center px-4 memory-overlay"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.65))' }}
               onClick={() => setShowStoryEntry(false)}
             >
               <motion.div
@@ -2587,7 +2588,8 @@ export default function MemoryStreamPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[190] flex items-center justify-center px-6"
+              // className="fixed inset-0 z-[190] backdrop-blur-md flex items-center justify-center px-6 memory-overlay"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.65))' }}
               onClick={() => setShowAlbumFilterDialog(false)}
             >
               <motion.div
@@ -2601,45 +2603,9 @@ export default function MemoryStreamPage() {
               >
 
 
-                <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                  <button
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border"
-                    style={albumFilterFriendIds.length === 0
-                      ? { backgroundColor: '#00FFB3', color: '#0f172a', borderColor: '#00FFB3' }
-                      : { backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
-                    onClick={() => setAlbumFilterFriendIds([])}
-                  >
-                    全部好友
-                  </button>
-                  {friends.map((f: any) => {
-                    const active = albumFilterFriendIds.includes(f.friend.id);
-                    return (
-                      <button
-                        key={f.friend.id}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border"
-                        style={active
-                          ? { backgroundColor: '#00B37A', color: '#fff', borderColor: '#00B37A' }
-                          : { backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
-                        onClick={() => {
-                          setAlbumFilterFriendIds((prev) =>
-                            active ? prev.filter((id) => id !== f.friend.id) : [...prev, f.friend.id]
-                          );
-                        }}
-                      >
-                        <img src={f.friend.avatar_url} className="w-5 h-5 rounded-full object-cover" />
-                        {f.friend.username}
-                      </button>
-                    );
-                  })}
-                </div>
+              
 
-                <div className="mt-4 flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowAlbumFilterDialog(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
-                    style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                  >完成</button>
-                </div>
+            
               </motion.div>
             </motion.div>
           )}

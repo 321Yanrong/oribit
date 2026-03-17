@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSyncAlt, FaGamepad, FaTrash } from 'react-icons/fa';
-import { useUserStore } from '../store';
-import PullToRefresh from '../components/PullToRefresh';
-import { shouldAllowRefresh } from '../utils/settings';
 
 // ============================================================
 // 游戏音效（轻量 Web Audio）
@@ -756,9 +753,9 @@ const TetrisGame = ({ onClose }: { onClose: () => void }) => {
 // 4. 今天谁买单（转盘）
 // ============================================================
 const COLORS = ['#00FFB3', '#FF9F43', '#FF6B6B', '#00D9FF', '#a29bfe', '#fd79a8', '#55efc4', '#fdcb6e'];
+const SPINNER_STORAGE_KEY = 'orbit_spinner_names';
 
 const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
-  const { friends } = useUserStore();
   const [spinning, setSpinning] = useState(false);
   const [angle, setAngle] = useState(0);
   const [result, setResult] = useState<string | null>(null);
@@ -767,11 +764,33 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
   const [newName, setNewName] = useState('');
   const { play } = useGameSfx();
 
-  const baseNames = useMemo(
-    () => Array.from(new Set(friends.map((f: any) => (f.friend?.username || '好友').trim()).filter(Boolean))),
-    [friends]
-  );
-  const names = [...baseNames, ...extraNames].filter(Boolean);
+  // 从本地存储恢复上次输入的名字
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(SPINNER_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const clean = parsed.filter((n) => typeof n === 'string' && n.trim()).map((n) => n.trim());
+        setExtraNames(Array.from(new Set(clean)));
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  // 持久化用户自定义名字
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(SPINNER_STORAGE_KEY, JSON.stringify(extraNames));
+    } catch {
+      // ignore
+    }
+  }, [extraNames]);
+
+  const names = extraNames.filter(Boolean);
   const n = names.length;
 
   const addName = () => {
@@ -785,6 +804,11 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
 
   const removeExtraName = (name: string) => {
     setExtraNames(prev => prev.filter((n) => n !== name));
+    play('tap');
+  };
+
+  const clearNames = () => {
+    setExtraNames([]);
     play('tap');
   };
 
@@ -818,7 +842,7 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
   if (n === 0) {
     return (
       <div className="p-6 text-center text-white/40">
-        <p className="mb-4">先去好友页添加好友，或者在下方输入名字</p>
+        <p className="mb-4">请输入至少两个名字来转盘</p>
         <div className="flex gap-2">
           <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addName()} placeholder="输入名字" className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/30 outline-none" />
           <button onClick={addName} className="px-4 py-2 rounded-xl bg-[#00FFB3] text-black font-bold">添加</button>
@@ -842,6 +866,7 @@ const SpinnerGame = ({ onClose }: { onClose: () => void }) => {
           className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white text-sm placeholder-white/30 outline-none border border-white/10"
         />
         <button onClick={addName} className="px-3 py-2 rounded-xl bg-white/10 text-white/70 text-sm">+ 加</button>
+        <button onClick={clearNames} className="px-3 py-2 rounded-xl bg-white/5 text-white/50 text-sm border border-white/10">清空</button>
       </div>
 
       {/* 额外名单 */}
@@ -1407,29 +1432,14 @@ export default function GamesPage() {
   const [activeGame, setActiveGame] = useState<typeof games[0] | null>(null);
   const [sfxMuted, setSfxMuted] = useState(() => readSfxSettings().muted);
   const [sfxVolume, setSfxVolume] = useState(() => readSfxSettings().volume);
-  const [isRefreshingPull, setIsRefreshingPull] = useState(false);
 
   useEffect(() => {
     writeSfxSettings({ muted: sfxMuted, volume: sfxVolume });
   }, [sfxMuted, sfxVolume]);
 
-  const handlePullRefresh = async () => {
-    if (isRefreshingPull) return;
-    if (!shouldAllowRefresh()) {
-      alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
-      return;
-    }
-    setIsRefreshingPull(true);
-    try {
-      await useUserStore.getState().fetchFriends();
-    } finally {
-      setIsRefreshingPull(false);
-    }
-  };
-
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
-      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
+      {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       <div className="absolute inset-0 opacity-20 pointer-events-none"
         style={{ background: `radial-gradient(circle at 30% 20%, rgba(162,155,254,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(0,255,179,0.2) 0%, transparent 40%)` }}
       />

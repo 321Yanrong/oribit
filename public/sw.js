@@ -15,3 +15,10 @@ self.addEventListener('activate', (event) => {
       .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
   );
 });
+
+// 允许客户端请求立即激活等待中的新版 SW
+self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'SKIP_WAITING' && self.skipWaiting) {
+    self.skipWaiting();
+  }
+});

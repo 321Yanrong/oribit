@@ -33,6 +33,53 @@ onSelectFriend?: (ids: string[]) => void;
 const storyMemories = memories.filter((m) => m.photos && m.photos.length > 0);
 if (storyMemories.length === 0) return null;
 
+  // 监听主题变化，保证入口卡片随浅/深模式变换
+  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+    typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
+      ? 'light'
+      : 'dark'
+  );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handler = () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+      setTheme((prev) => (prev === next ? prev : next));
+    };
+    const observer = new MutationObserver(handler);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    handler();
+    return () => observer.disconnect();
+  }, []);
+
+  const entryStyle = useMemo(() => {
+    const baseBg = theme === 'light'
+      ? 'color-mix(in srgb, var(--orbit-surface) 94%, rgba(255,255,255,0.88))'
+      : 'color-mix(in srgb, var(--orbit-bg) 82%, #0f172a 18%)';
+    const baseOverlay = theme === 'light'
+      ? 'linear-gradient(145deg, rgba(255,255,255,0.86), rgba(245,247,251,0.92))'
+      : 'linear-gradient(145deg, rgba(18,22,32,0.82), rgba(18,22,32,0.72))';
+    const shadow = theme === 'light'
+      ? '0 18px 42px rgba(15,23,42,0.18)'
+      : '0 28px 64px rgba(6,12,20,0.5)';
+
+    return {
+      borderColor: 'color-mix(in srgb, var(--orbit-border) 60%, transparent)',
+      backgroundColor: baseBg,
+      backgroundImage: `radial-gradient(at 18% 12%, color-mix(in srgb, var(--orbit-glow, #00ffb3) 26%, transparent) 0, transparent 42%),
+       radial-gradient(at 82% 18%, rgba(255,177,214,0.22) 0, transparent 40%),
+       radial-gradient(at 46% 78%, rgba(94,214,190,0.22) 0, transparent 46%),
+       radial-gradient(at 72% 72%, rgba(255,196,120,0.18) 0, transparent 48%),
+       ${baseOverlay},
+       url(${memoryFlowBackground})`,
+      backgroundBlendMode: 'screen, screen, screen, screen, soft-light, overlay',
+      backgroundSize: '170% 170%, 170% 170%, 170% 170%, 190% 190%, cover, cover',
+      backgroundPosition: 'center',
+      boxShadow: shadow,
+      color: 'var(--orbit-text)',
+    } as const;
+  }, [theme]);
+
 const latestMemory = storyMemories[0];
 const photosCount = storyMemories.reduce((sum, m) => sum + (m.photos?.length || 0), 0);
 const memoriesCount = storyMemories.length;
@@ -45,21 +92,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
         whileTap={{ scale: 0.98 }}
         onClick={() => onClick(storyMemories)}
         className="relative overflow-hidden rounded-2xl p-4 cursor-pointer group border min-h-[150px]"
-        style={{
-          borderColor: 'color-mix(in srgb, #dce7f5 26%, transparent)',
-          backgroundColor: 'color-mix(in srgb, var(--orbit-bg) 82%, #f5f7fb 18%)',
-          backgroundImage: `radial-gradient(at 18% 12%, rgba(120,176,255,0.28) 0, transparent 42%),
-           radial-gradient(at 82% 18%, rgba(255,177,214,0.24) 0, transparent 40%),
-           radial-gradient(at 46% 78%, rgba(94,214,190,0.24) 0, transparent 46%),
-           radial-gradient(at 72% 72%, rgba(255,196,120,0.20) 0, transparent 48%),
-           linear-gradient(145deg, rgba(18,22,32,0.82), rgba(18,22,32,0.72)),
-           url(${memoryFlowBackground})`,
-          backgroundBlendMode: 'screen, screen, screen, screen, soft-light, overlay',
-          backgroundSize: '170% 170%, 170% 170%, 170% 170%, 190% 190%, cover, cover',
-          backgroundPosition: 'center',
-          boxShadow: '0 28px 64px rgba(6,12,20,0.5)',
-          color: 'var(--orbit-text)',
-        }}
+        style={entryStyle}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/12 via-transparent to-white/14 mix-blend-screen" />
         <div className="absolute inset-0 blur-3xl opacity-70" style={{
@@ -68,16 +101,16 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 
 <div className="relative flex items-center justify-between">
 <div>
-<p className="text-[11px] text-white/50 tracking-[0.2em] uppercase">memory story</p>
-<h3 className="text-white text-lg font-semibold mt-1">共 {memoriesCount} 段回忆 · {photosCount} 张照片</h3>
+<p className="text-[11px] tracking-[0.2em] uppercase" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>memory story</p>
+<h3 className="text-lg font-semibold mt-1" style={{ color: 'var(--orbit-text)' }}>共 {memoriesCount} 段回忆 · {photosCount} 张照片</h3>
 {(weather || mood) && (
-<p className="text-white/70 text-xs mt-1">
+<p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
 {weather && <span className="mr-2">{weather}</span>}
 {mood && <span>{mood}</span>}
 </p>
 )}
 {latestMemory.location?.name && (
-<p className="text-white/60 text-xs mt-1 flex items-center gap-1">
+<p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
 <FaMapMarkerAlt className="text-[10px]" />
 {latestMemory.location.name}
 </p>

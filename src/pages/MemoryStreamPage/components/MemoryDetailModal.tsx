@@ -226,7 +226,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 backdrop-blur-xl overflow-y-auto"
+      className="fixed inset-0 z-50 backdrop-blur-xl overflow-y-auto memory-modal-backdrop"
       style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.55))', color: 'var(--orbit-text)' }}
       onClick={onClose}
     >
@@ -631,10 +631,14 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
               style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <img src={avatarPreview.url} className="w-48 h-48 rounded-2xl object-cover mx-auto" />
+              <img
+                src={avatarPreview.url}
+                className="w-48 h-48 rounded-2xl object-cover mx-auto cursor-pointer"
+                onClick={() => setAvatarPreview(null)}
+              />
               <div className="space-y-1">
                 <p className="text-lg font-semibold" style={{ color: 'var(--orbit-text)' }}>{avatarPreview.name}</p>
-                <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>点击空白处关闭</p>
+                <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>点击图片或空白处关闭</p>
               </div>
               <button
                 type="button"

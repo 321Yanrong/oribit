@@ -149,11 +149,56 @@ function App() {
   const [guideStepIndex, setGuideStepIndex] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [sessionInvalid, setSessionInvalid] = useState(false);
+  const [swUpdateReady, setSwUpdateReady] = useState(false);
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const triggerResume = useAppStore((state) => state.triggerResume);
   usePWAKeeper(triggerResume);
+
+  // 注册 Service Worker 并监听更新
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const registerSW = async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        swRegistrationRef.current = reg;
+
+        // 已有 waiting 的 worker（页面加载时）
+        if (reg.waiting) {
+          setSwUpdateReady(true);
+        }
+
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+              setSwUpdateReady(true);
+            }
+          });
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
+      } catch (err) {
+        console.warn('SW register failed', err);
+      }
+    };
+
+    registerSW();
+  }, []);
+
+  const activateSwUpdate = useCallback(() => {
+    const waiting = swRegistrationRef.current?.waiting;
+    if (waiting) {
+      waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+  }, []);
 
   const fetchCoreData = useCallback(() => {
     useMemoryStore.getState().fetchMemories();
@@ -909,6 +954,25 @@ useEffect(() => {
             
             {!isSettingsOpen && <BottomNav />}
             <PWABanners />
+            {swUpdateReady && (
+              <div className="fixed bottom-24 left-4 right-4 z-[9999] rounded-2xl border shadow-lg px-4 py-3 flex items-center justify-between gap-3"
+                style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+              >
+                <div className="text-sm font-semibold">发现新版本，点击刷新立即使用</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSwUpdateReady(false)}
+                    className="text-xs px-3 py-1 rounded-full border"
+                    style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #9ca3af)' }}
+                  >稍后</button>
+                  <button
+                    onClick={activateSwUpdate}
+                    className="text-xs px-3 py-1 rounded-full font-semibold"
+                    style={{ background: 'linear-gradient(90deg, #00FFB3, #00D9FF)', color: '#0f172a' }}
+                  >刷新</button>
+                </div>
+              </div>
+            )}
             {sessionInvalid && (
               <div className="fixed bottom-16 left-4 right-4 z-[9999] bg-red-600 text-white rounded-2xl shadow-lg p-3 flex items-center justify-between gap-3">
                 <div className="text-sm font-medium">登录状态已失效，请重新连接</div>
