@@ -131,14 +131,14 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 
 {friends.length > 0 && onSelectFriend && (
 <div
-  className="relative mt-4 flex gap-2 overflow-x-auto"
+  className="relative mt-4 flex gap-2 overflow-x-auto flex-nowrap"
   style={{
     scrollbarWidth: 'none',
     WebkitOverflowScrolling: 'touch',
     overscrollBehaviorX: 'contain',
     touchAction: 'pan-x',
+    msOverflowStyle: 'none',
   }}
-  onTouchMove={(e) => e.stopPropagation()}
 >
 {friends.map((f) => {
   const active = selectedFriendIds.includes(f.id);
@@ -150,7 +150,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
         if (active) onSelectFriend(selectedFriendIds.filter((id) => id !== f.id));
         else onSelectFriend([...selectedFriendIds, f.id]);
       }}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm whitespace-nowrap"
       style={{
         backgroundColor: active ? '#0f9f6e' : 'color-mix(in srgb, var(--orbit-card) 82%, rgba(255,255,255,0.75))',
         color: active ? '#fff' : 'var(--orbit-text)',
