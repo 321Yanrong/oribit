@@ -27,6 +27,12 @@ CREATE POLICY "Users can view memory comments" ON public.memory_comments
             FROM public.memory_tags mt
             WHERE mt.memory_id = m.id
               AND mt.user_id = auth.uid()
+              AND EXISTS (
+                SELECT 1 FROM public.friendships f
+                WHERE f.user_id = auth.uid()
+                  AND f.friend_id = m.user_id
+                  AND f.status = 'accepted'
+              )
           )
         )
     )
@@ -47,6 +53,12 @@ CREATE POLICY "Visible users can create memory comments" ON public.memory_commen
             FROM public.memory_tags mt
             WHERE mt.memory_id = m.id
               AND mt.user_id = auth.uid()
+              AND EXISTS (
+                SELECT 1 FROM public.friendships f
+                WHERE f.user_id = auth.uid()
+                  AND f.friend_id = m.user_id
+                  AND f.status = 'accepted'
+              )
           )
         )
     )

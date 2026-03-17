@@ -1,296 +1,153 @@
-# Orbit 轨迹
+# 🌌 Orbit 轨迹（内部专用）
 
-> 记录与好友的每一个足迹 ✨
+> ⚠️ **保密声明：本项目为私有资产，严禁擅自分发、二次拷贝或开源。**
+> 如需向第三方进行代码评审或产品演示，请务必先脱敏核心数据，并征得项目负责人明确同意。
 
-Orbit 是一款面向普通用户的「**地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏**」应用。
-你可以把每次见面、旅行、聚餐变成可回看的故事，还能顺手完成分账和结算。
-
----
-
-## 产品介绍
-
-Orbit 的核心理念是：
-
-- **先记录情绪与场景，再处理工具事务**
-- 把“定位、算账”这种工具动作，嵌入“照片、回忆、好友互动”里
-- 让协作过程自然发生，减少社交压力
-
-适用场景：
-
-- 朋友出游打卡
-- 多人聚餐分账
-- 情侣/闺蜜日常回忆归档
-- 密友圈共享生活片段
+Orbit 是一款围绕 **“地图记忆 + 密友协作 + 轻量记账 + 破冰游戏”** 构建的移动端 PWA 应用。我们的核心愿景是：为熟人之间创造一个低摩擦、低打扰、高安全感的私密记录与共享空间。
 
 ---
 
-## 功能总览
+## ✨ 核心产品模块
 
-### 1) 🗺️ 友情地图（Map）
+*(💡 提示：请将对应的项目截图放置在 `screenshot_app/` 目录下以正确渲染图片)*
 
-- 地图展示你与好友的共同足迹
-- 支持按好友筛选回忆点
-- 点击点位查看该地点的回忆列表与详情
-- 共享记忆会展示参与者头像
+### 1. 📖 记忆流 (Memory Stream)
+![记忆流展示](./screenshot_app/记忆.jpg)
+- **全媒介记录**：支持照片、视频、最高 30 秒语音备忘、长文本、精确定位、天气与心情。
+- **无缝协作**：@ 密友后双方流内同步展示；支持针对单条记忆的私密吐槽（评论）。
+- **离线与降级**：支持无网环境下的离线排队与“仅 Wi-Fi 上传”策略，确保弱网不卡死。
 
-### 2) 🖼️ 记忆流（Memory Stream）
+### 2. 🗺️ 友情地图 (Friendship Map)
+![友情地图展示](./screenshot_app/地图.jpg)
+- **多维聚合**：基于高德地图 (AMap) 深度定制，支持按“城市聚类”或“精确地点”双重视角查看。
+- **动态筛选**：顶部一键勾选好友，地图光点与底部回忆列表实时执行 `AND` 逻辑过滤。
 
-- 卡片式浏览回忆内容
-- 支持照片、文字、地点、@好友
-- 支持多好友筛选（AND 逻辑）
-- 支持编辑、删除、标记账单
+### 3. 💰 财务足迹 (Ledger)
+![账单展示](./screenshot_app/账单.jpg)
+- **场景化记账**：发布记忆时可“顺便记账”，无缝衔接消费场景。
+- **极度私密**：即使记忆中 @ 了好友且包含平摊账单，账单金额与明细也**仅自己可见**。
 
-### 3) 💳 账单中心（Ledger）
+### 4. 🎮 破冰游戏 (Mini Games)
+![游戏集合展示](./screenshot_app/游戏.jpg)
+- **线下聚会利器**：内置摇骰子、今天谁买单（转盘）、真心话大冒险、解压气泡纸等 6 款轻互动。
+- **Web Audio 引擎**：纯代码实时合成 8-bit 电子音效，脱离笨重的媒体文件依赖。
 
-- 账单与记忆卡片绑定
-- 自动均摊与应收应付计算
-- 结算状态可追踪（待结清 / 已结清）
-
-### 4) 👥 好友系统
-
-- 支持添加虚拟好友（对方未注册也可记录）
-- 支持邀请码添加真实好友（申请 / 接受 / 拒绝）
-- 支持虚拟好友绑定为真实账号，并自动同步历史标签
-
-### 5) 🎮 小游戏（Games）
-
-- 摇骰子
-- 真心话大冒险
-- 解压气泡纸
-- 今天谁买单（转盘）
-- 翻翻记忆（连连看）
+### 5. 🏠 个人主页与社交关系
+![主页展示](./screenshot_app/主页.jpg)
+- **灵活的关系链**：支持邀请码建立真实羁绊；也支持先创建“虚拟好友”占位，待对方注册后自动绑定并继承所有历史记忆标签。
 
 ---
 
-## 截图预览
-
-> 说明：以下为当前项目内可直接引用的视觉资源与展示位；你可以后续替换为真机截图。
-
-### App 标识
-
-![Orbit Logo](public/icons/orbit-logo.svg)
-![Orbit Wordmark](public/icons/orbit-wordmark.svg)
-
-### 页面展示位（可替换为真实截图）
-
-![地图展示位](https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1600&auto=format&fit=crop)
-![记忆流展示位](https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1600&auto=format&fit=crop)
-![账单展示位](https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1600&auto=format&fit=crop)
-![游戏展示位](https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1600&auto=format&fit=crop)
-
-### 网站高保真原型（可导入 Figma）
-
-- 文件：`landing/orbit-website-prototypes.html`
-- 内容：5 张 1440×1024 画板（Hero / 功能 / 流程 / 好友系统 / Footer）
-
----
-
-## 技术栈
+## 🛠️ 技术架构
 
 - **前端框架**：React 18 + TypeScript + Vite
-- **样式系统**：Tailwind CSS
-- **动画**：Framer Motion
+- **UI & 动效**：Tailwind CSS + Framer Motion
 - **状态管理**：Zustand
-- **后端服务**：Supabase（Auth / PostgreSQL / Storage）
-- **地图能力**：高德地图（AMap）
+- **后端与存储**：Supabase (Auth / PostgreSQL / Storage)
+- **地图服务**：AMap (高德地图 Web API)
+- **PWA 支持**：vite-plugin-pwa (Service Worker + 离线缓存)
+- **原生打包**：Capacitor (一键生成 iOS / Android 壳)
 
 ---
 
-## 运行与开发
+## 🚀 本地开发指南
 
-### 环境要求
-
-- Node.js 18+
-- npm 9+
-
-### 本地启动
+环境要求：Node.js 18+，npm 9+
 
 ```bash
+# 1. 依赖安装
 npm install
+
+# 2. 启动本地开发服务器
 npm run dev
-```
 
-### 打包构建
-
-```bash
+# 3. 生产环境预览 (测试构建产物)
 npm run build
-```
-
-### 预览构建产物
-
-```bash
 npm run preview
+
+# 📱 原生壳调试 (Capacitor)
+npm run cap:sync     # 同步最新的 web 产物到原生目录
+npm run ios:open     # 打开 Xcode
+npm run android:open # 打开 Android Studio
 ```
-
-### Capacitor（iOS / Android 壳工程）
-
-已完成 Capacitor 接入并生成原生工程目录：
-
-- `ios/`
-- `android/`
-
-常用命令：
-
-```bash
-npm run cap:sync
-npm run ios:open
-npm run android:open
-```
-
-真机调试建议：
-
-1. 先执行 `npm run cap:sync` 同步最新前端产物。  
-2. iOS：执行 `npm run ios:open`，在 Xcode 里选择真机并运行。  
-3. Android：执行 `npm run android:open`，在 Android Studio 里选择真机并运行。
-
-### Service Worker 开发排障（刷新后页面异常）
-
-如果你在开发环境遇到“刷新后页面打不开、必须去 Application 清缓存”的情况，通常是旧的 Service Worker + Cache 接管了页面。
-
-推荐处理方式：
-
-1. 在浏览器 DevTools -> Application -> Service Workers，勾选 **Update on reload**（重新加载时更新）。
-2. 如果当前不需要离线能力，建议在代码中直接 **unregister** 或移除 Service Worker 相关逻辑。
-
-本项目当前已在开发模式做了防护：
-
-- 关闭了开发环境的 PWA Service Worker 注入；
-- 启动时自动注销历史 Service Worker 并清理缓存；
-- 兼容处理了历史 `public/sw.js` 的遗留缓存。
 
 ---
 
-## 数据库与 Supabase 配置
+## 🗄️ 数据库与数据安全
 
-项目依赖 Supabase 的 Auth、profiles、friendships、memories、memory_tags、ledgers 等表。
-
-### 必跑 SQL（迁移）
-
-1. `friend-requests-migration.sql`
-   - 更新 friendships 的 UPDATE / DELETE / INSERT 策略
-   - 用于好友申请接收/拒绝，以及虚拟好友绑定真实账号时的反向关系写入
-
-2. 账单字段补充（如未执行）
-
-```sql
-ALTER TABLE memories ADD COLUMN IF NOT EXISTS has_ledger BOOLEAN DEFAULT FALSE;
-```
-
-### Auth 建议配置
-
-在 Supabase Dashboard 开启邮箱验证：
-
-- `Authentication -> Providers -> Email -> Confirm email = ON`
-
-这样用户必须点邮件链接后才能登录。
+- 核心表：profiles, friendships, memories, memory_tags, memory_comments, ledgers。
+- RLS 原则：
+  - 记忆与评论：仅“作者”或“被标记且互为已接受好友”可见。
+  - 评论删除：仅评论作者或该记忆作者可删。
+  - Storage：photos/avatars/videos 桶仅认证用户可写。
+- ⚠️ 迁移脚本警告：`friend-requests-migration.sql`, `memory-comments-migration.sql` 等需在 Supabase SQL Editor 按需执行。切勿在生产运行包含 `DROP TABLE ... CASCADE` 的初始化脚本，除非明确要删档重置。
 
 ---
 
-## 项目结构（简版）
+## 📁 目录结构速览
 
 ```text
-.
-├── public/
+orbit/
 ├── src/
-│   ├── api/               # Supabase API 封装
-│   ├── components/        # 组件
-│   ├── pages/             # 页面（地图/记忆/账单/游戏/我的）
-│   ├── store/             # Zustand 状态管理
-│   ├── types/             # 类型定义
-│   ├── App.tsx
-│   └── main.tsx
-├── landing/
-│   └── orbit-website-prototypes.html
-├── friend-requests-migration.sql
+│   ├── api/            # Supabase API 封装
+│   ├── components/     # UI 组件
+│   ├── pages/          # 地图/记忆/账单/游戏/我的
+│   ├── store/          # Zustand 状态切片
+│   ├── styles/         # 全局样式与 Tailwind 主题
+│   └── utils/          # 工具类（网络监测、Web Vitals 埋点等）
+├── supabase/           # SQL 迁移脚本与 DB 配置
+├── public/             # 静态资源与 offline.html
+├── docs/               # 内部文档与设计资产
+├── screenshot_app/     # 产品截图（请放置 README 引用的图片）
 └── README.md
 ```
 
 ---
 
-## 已实现的重点能力（近期）
+## 🎯 PWA 演进与落地清单
 
-- 好友申请流：发送 / 接受 / 拒绝 + Profile 红点提醒
-- 虚拟好友绑定真实账号：自动同步历史 `memory_tags`
-- 绑定后自动补反向好友关系（确保双方可见）
-- 地图点位详情：列表层 + 单条详情层
-- 游戏模块：5 个小游戏可直接使用
+**目标：** 打造接近原生 App 体验（可安装、快启动、离线可用、系统级交互）。
+
+### ✅ P0：基础设施
+- [x] manifest 元数据
+- [x] PWA 图标资源 (192x192, 512x512)
+- [x] Service Worker 自动更新 (registerType: autoUpdate)
+- [x] 离线兜底页 (public/offline.html)
+- [x] 安装引导 UI (beforeinstallprompt)
+- [x] LCP/CLS/INP 自动化采集（`window.exportOrbitWebVitalsBaseline()`）
+
+### 🚧 P1：体验护城河（当前迭代）
+- [x] 核心接口 NetworkFirst + fallback
+- [x] 写操作弱网/离线拦截与提示
+- [x] 新版本就绪提示条（点击刷新）
+- [x] iOS / Android 安装引导
+- [ ] 离线模式信息架构（无缓存页的跳转阻断）
+
+### 🔮 P2：原生级增强（规划）
+- [ ] 系统级推送通知闭环（好友申请 / 账单提醒）
+- [ ] Background Sync（发布失败自动重试）
+- [ ] manifest 商店截图完善
+- [ ] Lighthouse PWA 分数 >= 90
+
+### 验收标准
+- 3 步内完成“添加到主屏幕”
+- 刷新 / 重启无登录态卡死或白屏
+- 断网进入 offline.html，不崩溃
+- 新版本 1 次刷新完成升级
+- Lighthouse PWA 要点全部通过
+
+---
+
+## 📅 近期已上线功能
+
+- 好友申请流：发送 / 接受 / 拒绝 + 红点提醒
+- 虚拟好友绑定真实账号：历史 `memory_tags` 无缝继承
+- 双向好友关系自动补全，确保互可见
+- 游戏模块 5 款主力玩法 + 8-bit 音效
 - Demo 模式与 UUID 防护
-
----
-
-## Roadmap（建议）
-
-- [ ] 接入真实移动端截图自动导出流程
-- [ ] 增加 Web 端响应式官网版本
-- [ ] 增加消息通知中心（好友申请、结算提醒）
-- [ ] 增加多语言支持（中/英）
-
----
-
-## PWA 完整度清单（含优先级实施）
-
-> 目标：把 Orbit 做成“接近 App”的体验（可安装、快启动、可离线、可推送、低原生成本）。
-
-### P0（本周建议完成）
-
-- [x] `manifest` 基础字段（`name` / `short_name` / `display` / `theme_color`）
-- [x] 关键图标资源（192/512）
-- [x] Service Worker 自动更新（`registerType: autoUpdate`）
-- [x] 旧缓存清理（`cleanupOutdatedCaches`）
-- [x] 离线兜底页（`public/offline.html`）
-- [x] 增加“可安装提示”UI（`beforeinstallprompt`）
-- [x] 首屏性能指标基线（LCP/CLS/INP）采集能力接入（可导出文本）
-
-### P1（下个迭代）
-
-- [x] 将核心业务 API（好友/记忆列表）设置为 `NetworkFirst + fallback` 策略
-- [x] 对上传与写操作（发记忆、改资料）给出“离线不可用”明确提示
-- [x] 统一更新提示条（新版本可用时提醒“点击刷新”）
-- [x] 增加 iOS 安装引导文案（Safari “添加到主屏幕”）
-- [x] 增加安卓设备安装引导文案（菜单“安装应用/添加到主屏幕”）
-- [ ] 设计离线模式信息架构（哪些页面可看、哪些操作禁用）
-
-### P2（后续增强）
-
-- [ ] 推送通知闭环（订阅、保存订阅、好友申请/账单提醒推送）
-- [ ] 后台同步（Background Sync）与失败重试队列
-- [ ] Web App 截图（manifest screenshots）用于商店/安装体验优化
-- [ ] PWA 质量巡检（Lighthouse PWA 目标 >= 90）
-
-### 实施顺序（推荐）
-
-1. 先做 **安装提示 + 更新提示 + 离线提示**（用户立刻感知）
-2. 再做 **业务 API 缓存策略分层**（稳定性与速度提升）
-3. 最后做 **推送通知与后台同步**（增强留存）
-
-### 验收标准（Definition of Done）
-
-- 首次安装路径清晰：用户 3 步内可完成“添加到主屏幕”
-- 刷新与重启不出现登录态卡死或白屏
-- 断网时进入离线页且不崩溃
-- 新版本发布后 1 次刷新可完成升级
-- Lighthouse：PWA 关键项全部通过
-
-### 首屏性能基线记录方法（LCP / CLS / INP）
-
-已接入自动采集：`src/utils/webVitals.ts`（在 `src/main.tsx` 启动）。
-
-#### 如何记录
-
-1. 启动项目并打开首页，等待 3~5 秒。  
-2. 打开浏览器控制台，执行：`await window.exportOrbitWebVitalsBaseline()`  
-3. 会自动复制一段基线文本（含 LCP/CLS/INP、时间、页面、环境）。
-
-你也可以执行：`window.getOrbitWebVitalsBaseline()` 查看 JSON 数据。
-
-#### 建议记录模板（示例）
-
-| 日期 | 环境 | LCP | CLS | INP | 备注 |
-|---|---|---:|---:|---:|---|
-| 2026-03-14 | MacBook + Chrome | 待记录 | 待记录 | 待记录 | 首次接入基线采集 |
 
 ---
 
 ## License
 
-本项目当前未声明开源协议；如需开源，建议补充 `MIT` 或 `Apache-2.0`。
+本项目当前未声明开源协议；如需开源，建议补充 MIT 或 Apache-2.0。 

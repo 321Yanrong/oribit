@@ -135,6 +135,26 @@ CREATE POLICY "Users can insert friendships" ON friendships
     OR auth.uid() = friend_id
   );
 
+-- 允许查看好友（或待处理好友申请）对应的 profile
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'profiles'
+      AND policyname = 'Users can view friends\' profiles'
+  ) THEN
+    CREATE POLICY "Users can view friends' profiles" ON profiles
+      FOR SELECT USING (
+        auth.uid() = id
+        OR EXISTS (
+          SELECT 1 FROM friendships f
+          WHERE (f.user_id = auth.uid() AND f.friend_id = profiles.id)
+             OR (f.friend_id = auth.uid() AND f.user_id = profiles.id)
+        )
+      );
+  END IF;
+END $$;
+
 -- =============================================
 -- 3. LOCATIONS TABLE
 -- =============================================

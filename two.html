@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbit - 动态功能展示海报</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { orbit: { black: '#121212', card: '#1C1C1E', mint: '#00FFB3', orange: '#FF9F43', purple: '#a29bfe' } },
+          animation: {
+            'float-slow': 'float 6s ease-in-out infinite',
+            'float-fast': 'float 4s ease-in-out infinite',
+            'fade-in-up': 'fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-15px)' },
+            },
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(40px) scale(0.95)' },
+              '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+            },
+            pulseGlow: {
+              '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+              '50%': { opacity: '.7', transform: 'scale(1.05)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0f0f11; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; margin: 0; }
+    /* 延迟加载动画，制造错落感 */
+    .delay-100 { animation-delay: 100ms; }
+    .delay-300 { animation-delay: 300ms; }
+    .delay-500 { animation-delay: 500ms; }
+    .delay-700 { animation-delay: 700ms; }
+  </style>
+</head>
+<body>
+
+  <div class="relative w-[400px] h-[700px] bg-orbit-black rounded-[40px] shadow-[0_20px_60px_rgba(0,255,179,0.15)] overflow-hidden border border-white/10 flex flex-col items-center pt-16">
+    
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      <div class="absolute -top-20 -left-20 w-64 h-64 bg-orbit-purple/20 rounded-full blur-[80px]"></div>
+      <div class="absolute top-40 -right-20 w-72 h-72 bg-orbit-mint/15 rounded-full blur-[80px]"></div>
+      <div class="absolute -bottom-20 left-10 w-80 h-80 bg-orbit-orange/15 rounded-full blur-[80px]"></div>
+    </div>
+
+    <div class="relative z-10 text-center px-6 opacity-0 animate-fade-in-up">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orbit-mint/10 border border-orbit-mint/30 text-orbit-mint text-xs font-semibold mb-4">
+        <i class="fas fa-planet-ringed"></i> Orbit 轨迹
+      </div>
+      <h1 class="text-3xl font-black text-white leading-tight tracking-wide mb-2">
+        把生活，<br>只讲给懂的人听
+      </h1>
+      <p class="text-white/50 text-sm">地图足迹 × 密友手帐 × 顺便记账</p>
+    </div>
+
+    <div class="relative w-full flex-1 mt-8 z-10">
+
+      <div class="absolute top-4 left-4 w-[65%] bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-3 shadow-2xl opacity-0 animate-fade-in-up delay-100 animate-float-slow -rotate-3">
+        <div class="flex items-center gap-2 mb-2">
+          <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=50&h=50&fit=crop" class="w-6 h-6 rounded-full">
+          <div>
+            <p class="text-white text-xs font-bold">阿杰</p>
+            <p class="text-white/40 text-[9px]">外滩 · 刚刚</p>
+          </div>
+        </div>
+        <img src="https://images.unsplash.com/photo-1548263594-a71ea65a8598?w=300&h=200&fit=crop" class="w-full h-20 object-cover rounded-xl mb-2">
+        <div class="flex gap-1">
+          <span class="px-2 py-0.5 bg-orbit-mint/20 text-orbit-mint rounded-full text-[10px] font-semibold">@我</span>
+          <span class="px-2 py-0.5 bg-white/10 text-white/60 rounded-full text-[10px]"><i class="fas fa-microphone"></i> 12"</span>
+        </div>
+      </div>
+
+      <div class="absolute top-24 right-4 w-[55%] bg-[#1C1C1E]/90 backdrop-blur-xl border border-orbit-mint/30 rounded-3xl p-3 shadow-[0_10px_30px_rgba(0,255,179,0.15)] opacity-0 animate-fade-in-up delay-300 animate-float-fast rotate-3 z-20">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-orbit-mint text-xs font-bold flex items-center gap-1"><i class="fas fa-map-location-dot"></i> 共同足迹</p>
+          <span class="text-white/40 text-[9px]">2 个地点</span>
+        </div>
+        <div class="h-16 rounded-xl bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=400&h=200&fit=crop&sat=-100')] bg-cover relative overflow-hidden border border-white/5">
+          <div class="absolute inset-0 bg-black/40"></div>
+          <div class="absolute top-1/2 left-1/3 w-8 h-8 rounded-full border border-orbit-mint bg-black/80 flex items-center justify-center animate-pulse-glow shadow-[0_0_15px_#00FFB3] transform -translate-x-1/2 -translate-y-1/2">
+             <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50&h=50&fit=crop" class="w-full h-full rounded-full object-cover">
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute top-48 left-6 w-[50%] bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-2xl opacity-0 animate-fade-in-up delay-500 animate-float-slow -rotate-2">
+        <div class="flex items-center gap-2 mb-1">
+          <div class="w-6 h-6 rounded-lg bg-orbit-orange/20 text-orbit-orange flex items-center justify-center text-[10px]"><i class="fas fa-wallet"></i></div>
+          <p class="text-white text-xs font-bold">庙街夜市</p>
+        </div>
+        <p class="text-orbit-orange font-black text-lg">¥122.67</p>
+        <p class="text-white/40 text-[9px] mt-1">与小林平摊</p>
+      </div>
+
+      <div class="absolute bottom-12 right-6 w-[45%] bg-gradient-to-br from-orbit-purple/20 to-[#fd79a8]/20 border border-orbit-purple/30 rounded-2xl p-3 shadow-2xl opacity-0 animate-fade-in-up delay-700 animate-float-fast rotate-6 z-10">
+        <div class="text-center">
+          <div class="text-3xl mb-1 animate-pulseGlow">🎲</div>
+          <p class="text-white text-xs font-bold">聚会小游戏</p>
+          <p class="text-white/50 text-[9px]">破冰不冷场</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#121212] to-transparent z-30 pointer-events-none"></div>
+
+    <div class="absolute bottom-6 w-full px-8 z-40 opacity-0 animate-fade-in-up" style="animation-delay: 900ms;">
+      <div class="w-full py-3.5 bg-gradient-to-r from-orbit-mint to-emerald-400 text-black rounded-2xl font-black text-sm text-center shadow-[0_10px_20px_rgba(0,255,179,0.3)] flex justify-center items-center gap-2">
+        探索我的小宇宙 <i class="fas fa-arrow-right"></i>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

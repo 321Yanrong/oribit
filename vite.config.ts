@@ -19,37 +19,29 @@ export default defineConfig({
       injectRegister: false,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      manifest: {
-        name: 'Orbit 轨迹',
-        short_name: 'Orbit',
-        description: '一款专为密友圈设计的情感地图手账 + 极简记账数字胶囊',
-        theme_color: '#00FFB3',
-        background_color: '#121212',
-        display: 'standalone',
-        icons: [
-          {
-            src: 'icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      },
+      // 在离线或导航失败时返回 offline.html 作为兜底
       workbox: {
         cacheId: PWA_CACHE_VERSION,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallback: null, // disable default index fallback so custom handler runs
         runtimeCaching: [
+          {
+            // 导航请求：在线优先，失败则离线页（即使已有缓存也会走离线页）
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkOnly',
+            options: {
+              cacheName: 'navigate-network-only',
+              plugins: [
+                {
+                  handlerDidError: async () => {
+                    const cached = await caches.match('/offline.html');
+                    return cached || Response.error();
+                  },
+                },
+              ],
+            },
+          },
           {
             urlPattern: ({ url, request }) =>
               request.method === 'GET' &&
@@ -106,6 +98,53 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
               }
             }
+          }
+        ]
+      },
+      manifest: {
+        name: 'Orbit 轨迹',
+        short_name: 'Orbit',
+        description: '一款专为密友圈设计的情感地图手账 + 极简记账数字胶囊',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        theme_color: '#00FFB3',
+        background_color: '#121212',
+        categories: ['social', 'lifestyle'],
+        icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-180.png', sizes: '180x180', type: 'image/png', purpose: 'any maskable' },
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }
+        ],
+        screenshots: [
+          {
+            src: 'screenshots/app/home-1.png',
+            sizes: '1170x2532',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: '主页与记忆流'
+          },
+          {
+            src: 'screenshots/app/map-1.png',
+            sizes: '1170x2532',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: '地图足迹'
+          }
+        ],
+        shortcuts: [
+          {
+            name: '快速记忆',
+            short_name: '记忆',
+            url: '/?from=shortcut-memory',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+          },
+          {
+            name: '打开地图',
+            short_name: '地图',
+            url: '/?from=shortcut-map',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
           }
         ]
       },

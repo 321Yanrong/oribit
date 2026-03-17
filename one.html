@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbit App UI Prototypes for Figma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            orbit: {
+              black: '#121212',
+              card: '#1C1C1E',
+              mint: '#00FFB3',
+              orange: '#FF9F43',
+              purple: '#a29bfe',
+              gray: '#8E8E93',
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 隐藏滚动条让导入 Figma 更干净 */
+    ::-webkit-scrollbar { display: none; }
+    body { background-color: #2c2c2e; padding: 40px; }
+  </style>
+</head>
+<body class="flex gap-12 overflow-x-auto items-center min-w-max h-screen">
+
+  <div class="w-[393px] h-[852px] bg-orbit-black rounded-[40px] shadow-2xl overflow-hidden relative border-[8px] border-black flex flex-col shrink-0">
+    <div class="bg-gradient-to-r from-orbit-purple/30 to-orbit-mint/30 py-2 px-4 flex items-center justify-between text-xs text-white">
+      <div class="flex items-center gap-2"><i class="fas fa-sparkles text-orbit-orange"></i> 欢迎参与 Orbit 早期内测</div>
+      <button class="text-white/60">知道了</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+      <div class="bg-orbit-card rounded-3xl p-4 border border-white/5 relative">
+        <button class="absolute top-4 left-4 text-white/40 text-xs px-2 py-1 rounded-full bg-white/5"><i class="fas fa-sync-alt"></i> 刷新</button>
+        <button class="absolute top-4 right-4 text-white/40 text-xs px-2 py-1 rounded-full bg-white/5">我的页面</button>
+        
+        <div class="flex items-center gap-4 mt-8">
+          <div class="w-16 h-16 rounded-2xl bg-white overflow-hidden relative">
+            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop" class="w-full h-full object-cover">
+            <div class="absolute bottom-[-5px] right-[-5px] w-6 h-6 bg-orbit-mint rounded-full flex items-center justify-center text-black text-[10px] border-2 border-orbit-card"><i class="fas fa-dice"></i></div>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-white text-xl font-bold flex items-center gap-2">演示用户 <i class="fas fa-edit text-white/30 text-sm"></i></h2>
+            <p class="text-white/50 text-sm">demo@orbit.app</p>
+          </div>
+          <button class="w-10 h-10 rounded-full bg-orbit-mint text-black flex items-center justify-center"><i class="fas fa-share-nodes"></i></button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mt-6">
+          <div class="bg-white/5 rounded-2xl p-3 text-center border border-white/5">
+            <i class="fas fa-camera text-orbit-mint mb-1"></i>
+            <p class="text-white font-bold text-lg">3</p>
+            <p class="text-white/40 text-xs">条记忆</p>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-3 text-center border border-white/5">
+            <i class="fas fa-users text-orbit-orange mb-1"></i>
+            <p class="text-white font-bold text-lg">2</p>
+            <p class="text-white/40 text-xs">位好友</p>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-3 text-center border border-white/5">
+            <i class="fas fa-heart text-orbit-purple mb-1"></i>
+            <p class="text-white font-bold text-lg">2</p>
+            <p class="text-white/40 text-xs">笔账单</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-white/40 text-xs mb-2 flex items-center gap-1"><i class="fas fa-user-group"></i> 我的密友 (2)</p>
+        <div class="bg-orbit-card rounded-3xl p-2 border border-white/5 space-y-1">
+          <div class="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5">
+            <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full">
+            <div class="flex-1">
+              <p class="text-white text-sm font-semibold">小林</p>
+              <p class="text-white/40 text-xs">查看共同记忆</p>
+            </div>
+            <i class="fas fa-trash text-white/20 text-xs mx-2"></i>
+            <i class="fas fa-chevron-right text-white/20 text-xs"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5">
+            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full">
+            <div class="flex-1">
+              <p class="text-white text-sm font-semibold">我的旅伴</p>
+              <p class="text-white/40 text-xs">阿杰</p>
+            </div>
+            <i class="fas fa-trash text-white/20 text-xs mx-2"></i>
+            <i class="fas fa-chevron-right text-white/20 text-xs"></i>
+          </div>
+          <button class="w-full py-3 text-orbit-mint text-sm font-semibold flex items-center justify-center gap-2"><i class="fas fa-user-plus"></i> 添加好友</button>
+        </div>
+      </div>
+      
+      <div class="bg-orbit-card rounded-3xl p-4 border border-white/5 flex items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl"><i class="fas fa-dice text-white/60"></i></div>
+        <div class="flex-1">
+          <p class="text-white text-sm font-semibold">随机回忆</p>
+          <p class="text-white/40 text-xs">打开一段随机的过去</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-xs"></i>
+      </div>
+    </div>
+
+    <div class="absolute bottom-0 w-full h-[88px] bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-start pt-3 px-2">
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-map text-xl"></i><span class="text-[10px]">地图</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-book text-xl"></i><span class="text-[10px]">记忆</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-wallet text-xl"></i><span class="text-[10px]">账单</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-gamepad text-xl"></i><span class="text-[10px]">游戏</span></div>
+      <div class="flex flex-col items-center gap-1 text-orbit-mint relative">
+        <div class="absolute -top-2 w-12 h-12 bg-orbit-mint/10 rounded-full flex items-center justify-center -z-10"></div>
+        <i class="fas fa-face-smile text-xl"></i><span class="text-[10px]">我的</span>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="w-[393px] h-[852px] bg-orbit-black rounded-[40px] shadow-2xl overflow-hidden relative border-[8px] border-black flex flex-col shrink-0">
+    <div class="pt-12 pb-2 px-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white tracking-wide">回忆流</h1>
+        <p class="text-white/40 text-xs mt-1">共 3 条记忆</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="bg-white/10 text-white/80 px-3 py-2 rounded-full text-xs flex items-center gap-1"><i class="fas fa-book-open"></i> 回忆相册</button>
+        <button class="bg-orbit-mint text-black font-semibold px-4 py-2 rounded-full text-xs">记录此刻</button>
+      </div>
+    </div>
+
+    <div class="px-4 py-2">
+      <div class="flex gap-2 mb-3">
+        <div class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex items-center gap-2 text-white/40">
+          <i class="fas fa-search"></i>
+          <span class="text-sm">搜索内容、地点...</span>
+        </div>
+        <button class="bg-white/5 border border-white/10 text-orbit-mint px-3 py-2 rounded-xl text-sm flex items-center gap-1"><i class="fas fa-building"></i> 按城市</button>
+      </div>
+      <div class="flex gap-2 overflow-x-auto">
+        <span class="px-4 py-1.5 bg-orbit-mint text-black rounded-full text-xs font-semibold shrink-0">全部</span>
+        <span class="px-3 py-1.5 bg-white/5 text-white/60 border border-white/10 rounded-full text-xs flex items-center gap-1 shrink-0"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=50&h=50&fit=crop" class="w-4 h-4 rounded-full"> 小林</span>
+        <span class="px-3 py-1.5 bg-white/5 text-white/60 border border-white/10 rounded-full text-xs flex items-center gap-1 shrink-0"><img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop" class="w-4 h-4 rounded-full"> 我的旅伴</span>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 pb-24 space-y-6">
+      <div>
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-xl bg-[url('https://images.unsplash.com/photo-1548263594-a71ea65a8598?w=100&h=100&fit=crop')] bg-cover border border-white/10"></div>
+          <div>
+            <p class="text-white text-sm font-semibold">上海市</p>
+            <p class="text-white/40 text-xs">2 条记忆</p>
+          </div>
+        </div>
+        
+        <div class="bg-orbit-card rounded-3xl p-4 border border-white/5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full">
+              <div>
+                <p class="text-white text-sm font-semibold">演示用户</p>
+                <p class="text-white/40 text-xs">3月10日 · <i class="fas fa-map-marker-alt text-orbit-orange/80"></i> 外滩</p>
+              </div>
+            </div>
+            <div class="text-white/20 text-xs flex gap-3">
+              <i class="fas fa-trash hover:text-red-400"></i>
+              <i class="fas fa-edit hover:text-white"></i>
+            </div>
+          </div>
+          
+          <p class="text-white/90 text-sm leading-relaxed mb-3">今天在外滩和朋友拍了好多照片！海风吹得头发乱飞，但笑容都是真实的 🌊</p>
+          
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <img src="https://images.unsplash.com/photo-1548263594-a71ea65a8598?w=300&h=200&fit=crop" class="w-full h-28 object-cover rounded-xl">
+            <img src="https://images.unsplash.com/photo-1505322022379-7c3353ee6291?w=300&h=200&fit=crop" class="w-full h-28 object-cover rounded-xl">
+            <img src="https://images.unsplash.com/photo-1538356111053-748a48e1acb8?w=300&h=200&fit=crop" class="w-full h-28 object-cover rounded-xl col-span-2">
+          </div>
+
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-orbit-mint text-xs font-medium">@小林</span>
+            <span class="text-orbit-mint text-xs font-medium">@我的旅伴</span>
+            <span class="px-2 py-0.5 bg-orbit-orange/20 text-orbit-orange rounded-full text-[10px] flex items-center gap-1"><i class="fas fa-yen-sign"></i> 记账</span>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-white/5 pt-3 text-white/40 text-xs">
+            <div class="flex items-center gap-4">
+              <span class="flex items-center gap-1 hover:text-orbit-mint"><i class="fas fa-heart"></i></span>
+              <span class="flex items-center gap-1 hover:text-orbit-mint text-orbit-mint"><i class="fas fa-comment"></i> 吐槽</span>
+              <span class="flex items-center gap-1 hover:text-white"><i class="fas fa-share-nodes"></i> 分享微信</span>
+            </div>
+            <span>查看全部 →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="absolute bottom-0 w-full h-[88px] bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-start pt-3 px-2">
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-map text-xl"></i><span class="text-[10px]">地图</span></div>
+      <div class="flex flex-col items-center gap-1 text-orbit-mint relative">
+        <div class="absolute -top-2 w-12 h-12 bg-orbit-mint/10 rounded-full flex items-center justify-center -z-10"></div>
+        <i class="fas fa-book text-xl"></i><span class="text-[10px]">记忆</span>
+      </div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-wallet text-xl"></i><span class="text-[10px]">账单</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-gamepad text-xl"></i><span class="text-[10px]">游戏</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-face-smile text-xl"></i><span class="text-[10px]">我的</span></div>
+    </div>
+  </div>
+
+
+  <div class="w-[393px] h-[852px] bg-orbit-black rounded-[40px] shadow-2xl overflow-hidden relative border-[8px] border-black flex flex-col shrink-0">
+    <div class="pt-12 pb-4 px-4 flex items-center justify-between border-b border-white/5">
+      <button class="text-white/60 text-sm">取消</button>
+      <h2 class="text-white font-bold">记录此刻</h2>
+      <button class="bg-orbit-mint/80 text-black px-4 py-1.5 rounded-full text-sm font-semibold">发布</button>
+    </div>
+
+    <div class="flex-1 p-4 space-y-6">
+      <div class="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
+        <textarea class="w-full h-32 bg-transparent text-white p-4 outline-none resize-none text-sm placeholder-white/30" placeholder="写点什么..."></textarea>
+        <div class="px-4 py-3 bg-white/5 flex items-center gap-3 border-t border-white/5">
+          <button class="bg-white/10 text-orbit-mint px-3 py-1.5 rounded-full text-xs flex items-center gap-1"><i class="fas fa-microphone"></i> 语音</button>
+          <span class="text-white/30 text-xs">文字 / 语音 均可</span>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-white/40 text-xs mb-2">选择一起的人</p>
+        <div class="flex gap-2">
+          <button class="bg-orbit-mint/10 border border-orbit-mint text-orbit-mint px-3 py-1.5 rounded-full text-xs flex items-center gap-2">
+            <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=50&h=50&fit=crop" class="w-5 h-5 rounded-full"> charlott <i class="fas fa-check"></i>
+          </button>
+          <button class="bg-white/5 border border-white/10 text-white/60 px-3 py-1.5 rounded-full text-xs flex items-center gap-2">
+            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop" class="w-5 h-5 rounded-full"> 阿杰
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+        <div class="flex justify-between text-xs text-white/50 mb-2">
+          <span>上传中...</span>
+          <span>0/1</span>
+        </div>
+        <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div class="h-full bg-orbit-mint w-[30%] rounded-full"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex bg-white/5 rounded-xl p-1 mb-3">
+          <button class="flex-1 bg-gradient-to-r from-orbit-mint to-emerald-400 text-black py-2 rounded-lg text-xs font-semibold flex justify-center items-center gap-1 shadow-sm"><i class="fas fa-image"></i> 照片</button>
+          <button class="flex-1 text-white/50 py-2 rounded-lg text-xs flex justify-center items-center gap-1"><i class="fas fa-video"></i> 视频</button>
+          <button class="flex-1 text-white/50 py-2 rounded-lg text-xs flex justify-center items-center gap-1"><i class="fas fa-bolt"></i> Live</button>
+        </div>
+        
+        <div class="h-32 rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center">
+           <i class="fas fa-spinner fa-spin text-orbit-mint text-2xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 border-t border-white/5 flex items-center justify-between bg-[#121212]">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-orbit-orange/20 flex items-center justify-center text-orbit-orange text-sm"><i class="fas fa-yen-sign"></i></div>
+        <span class="text-white text-sm">顺便记账</span>
+      </div>
+      <div class="w-12 h-7 bg-white/20 rounded-full relative">
+        <div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="w-[393px] h-[852px] bg-[#1a1c23] rounded-[40px] shadow-2xl overflow-hidden relative border-[8px] border-black flex flex-col shrink-0">
+    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&h=1600&fit=crop&sat=-100&bri=-30')] bg-cover bg-center">
+      <div class="absolute inset-0 bg-[#0A0D14]/80 backdrop-blur-[2px]"></div>
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgwVjB6bTM5IDM5VjFoLTM4djM4aDM4eiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjAyKSIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+')]"></div>
+    </div>
+
+    <div class="relative z-10 pt-12 px-4">
+      <div class="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-3 shadow-2xl">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-white font-bold flex items-center gap-2"><i class="fas fa-map-location-dot text-orbit-mint"></i> 友情地图</h2>
+          <div class="flex gap-2 text-xs">
+            <span class="text-orbit-orange"><i class="fas fa-map-marker-alt"></i> 按地点</span>
+            <span class="text-orbit-mint bg-orbit-mint/10 px-2 py-0.5 rounded-md"><i class="fas fa-camera"></i> 2个足迹</span>
+          </div>
+        </div>
+        
+        <div class="flex gap-3">
+          <div class="w-12 h-12 rounded-xl bg-white/10 text-white/60 flex items-center justify-center text-xs font-semibold">全部</div>
+          <div class="w-12 h-12 rounded-xl border-2 border-transparent relative opacity-50"><img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-full h-full rounded-lg object-cover"></div>
+          <div class="w-12 h-12 rounded-xl border-2 border-orbit-mint relative shadow-[0_0_15px_rgba(0,255,179,0.3)]">
+            <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop" class="w-full h-full rounded-lg object-cover">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="absolute top-[35%] right-[15%] z-10 flex flex-col items-center">
+      <div class="absolute -top-2 -right-2 w-5 h-5 bg-orbit-mint text-black rounded-full flex items-center justify-center text-[10px] font-bold z-20 shadow-lg border border-[#1a1c23]">1</div>
+      <div class="w-14 h-14 rounded-full border-2 border-orbit-mint p-1 bg-[#1a1c23] shadow-[0_0_20px_rgba(0,255,179,0.4)] relative">
+        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-full h-full rounded-full object-cover">
+        <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=50&h=50&fit=crop" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border border-[#1a1c23] object-cover">
+      </div>
+      <div class="w-2 h-2 bg-orbit-mint rounded-full mt-1 shadow-[0_0_10px_rgba(0,255,179,1)]"></div>
+    </div>
+
+    <div class="absolute bottom-[25%] left-[10%] z-10 flex flex-col items-center">
+      <div class="absolute -top-2 -right-2 w-5 h-5 bg-orbit-mint text-black rounded-full flex items-center justify-center text-[10px] font-bold z-20 shadow-lg border border-[#1a1c23]">1</div>
+      <div class="w-12 h-12 rounded-full border-2 border-orbit-mint p-0.5 bg-[#1a1c23] relative">
+        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-full h-full rounded-full object-cover">
+        <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=50&h=50&fit=crop" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border border-[#1a1c23] object-cover">
+      </div>
+      <div class="w-1.5 h-1.5 bg-orbit-mint rounded-full mt-1"></div>
+    </div>
+
+    <div class="absolute bottom-0 w-full h-[88px] bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-start pt-3 px-2 z-20">
+      <div class="flex flex-col items-center gap-1 text-orbit-mint relative">
+        <div class="absolute -top-2 w-12 h-12 bg-orbit-mint/10 rounded-full flex items-center justify-center -z-10"></div>
+        <i class="fas fa-map text-xl"></i><span class="text-[10px]">地图</span>
+      </div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-book text-xl"></i><span class="text-[10px]">记忆</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-wallet text-xl"></i><span class="text-[10px]">账单</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-gamepad text-xl"></i><span class="text-[10px]">游戏</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-face-smile text-xl"></i><span class="text-[10px]">我的</span></div>
+    </div>
+  </div>
+
+
+  <div class="w-[393px] h-[852px] bg-[#121212] rounded-[40px] shadow-2xl overflow-hidden relative border-[8px] border-black flex flex-col shrink-0">
+    <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-br from-orbit-purple/20 to-transparent pointer-events-none"></div>
+    <div class="absolute top-40 right-0 w-40 h-40 bg-orbit-mint/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="pt-12 px-5 pb-4 relative z-10">
+      <h1 class="text-2xl font-black text-white flex items-center gap-2"><i class="fas fa-gamepad text-orbit-purple"></i> 小游戏</h1>
+      <p class="text-white/40 text-sm mt-1 mb-4">朋友聚会的快乐，从这里开始</p>
+      
+      <div class="flex items-center justify-between">
+        <button class="bg-white/10 border border-white/10 text-white/70 px-4 py-1.5 rounded-full text-xs flex items-center gap-2"><i class="fas fa-volume-up"></i> 音效开</button>
+        <div class="flex items-center gap-3">
+          <span class="text-white/40 text-xs">音量</span>
+          <div class="w-24 h-1.5 bg-white/10 rounded-full relative">
+             <div class="absolute left-0 top-0 h-full w-[45%] bg-orbit-mint rounded-full"></div>
+             <div class="absolute left-[45%] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md"></div>
+          </div>
+          <span class="text-white/40 text-xs w-8 text-right">45%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-4 pb-24 space-y-3 relative z-10">
+      
+      <div class="bg-gradient-to-r from-orbit-mint/20 to-[#00D9FF]/10 border border-orbit-mint/20 rounded-2xl p-4 flex items-center gap-4">
+        <div class="w-12 h-12 bg-black/30 rounded-2xl flex items-center justify-center text-3xl shrink-0">🎲</div>
+        <div class="flex-1">
+          <h3 class="text-white font-bold">摇骰子</h3>
+          <p class="text-white/40 text-xs mt-0.5">决定谁付钱？谁点菜？摇出来再说</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-sm"></i>
+      </div>
+
+      <div class="bg-gradient-to-r from-orbit-purple/20 to-[#fd79a8]/10 border border-orbit-purple/20 rounded-2xl p-4 flex items-center gap-4">
+        <div class="w-12 h-12 bg-black/30 rounded-2xl flex items-center justify-center text-3xl shrink-0">🃏</div>
+        <div class="flex-1">
+          <h3 class="text-white font-bold">真心话大冒险</h3>
+          <p class="text-white/40 text-xs mt-0.5">说真话还是挑战？抽卡决定命运</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-sm"></i>
+      </div>
+
+      <div class="bg-gradient-to-r from-[#74b9ff]/20 to-orbit-purple/10 border border-[#74b9ff]/20 rounded-2xl p-4 flex items-center gap-4">
+        <div class="w-12 h-12 bg-black/30 rounded-2xl flex items-center justify-center text-3xl shrink-0">🫧</div>
+        <div class="flex-1">
+          <h3 class="text-white font-bold">解压气泡纸</h3>
+          <p class="text-white/40 text-xs mt-0.5">咔哒咔哒，把每颗气泡都戳破</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-sm"></i>
+      </div>
+
+      <div class="bg-gradient-to-r from-orbit-orange/20 to-[#FF6B6B]/10 border border-orbit-orange/20 rounded-2xl p-4 flex items-center gap-4">
+        <div class="w-12 h-12 bg-black/30 rounded-2xl flex items-center justify-center text-3xl shrink-0">🎡</div>
+        <div class="flex-1">
+          <h3 class="text-white font-bold">今天谁买单</h3>
+          <p class="text-white/40 text-xs mt-0.5">转盘自动读取好友列表，公平公正</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-sm"></i>
+      </div>
+      
+      <div class="bg-gradient-to-r from-[#fd79a8]/20 to-[#e17055]/10 border border-[#fd79a8]/20 rounded-2xl p-4 flex items-center gap-4">
+        <div class="w-12 h-12 bg-black/30 rounded-2xl flex items-center justify-center text-3xl shrink-0">🎴</div>
+        <div class="flex-1">
+          <h3 class="text-white font-bold">翻翻卡通</h3>
+          <p class="text-white/40 text-xs mt-0.5">支持海洋/甜品皮肤 + 4x4/6x6 难度</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-sm"></i>
+      </div>
+
+      <div class="bg-gradient-to-r from-[#00D9FF]/20 to-[#6C5CE7]/10 border border-[#00D9FF]/20 rounded-2xl p-4 flex items-center gap-4">
+        <div class="w-12 h-12 bg-black/30 rounded-2xl flex items-center justify-center text-3xl shrink-0">🧱</div>
+        <div class="flex-1">
+          <h3 class="text-white font-bold">俄罗斯方块</h3>
+          <p class="text-white/40 text-xs mt-0.5">左右移动、旋转与一键到底</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/20 text-sm"></i>
+      </div>
+
+    </div>
+
+    <div class="absolute bottom-0 w-full h-[88px] bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-start pt-3 px-2 z-20">
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-map text-xl"></i><span class="text-[10px]">地图</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-book text-xl"></i><span class="text-[10px]">记忆</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-wallet text-xl"></i><span class="text-[10px]">账单</span></div>
+      <div class="flex flex-col items-center gap-1 text-orbit-mint relative">
+        <div class="absolute -top-2 w-12 h-12 bg-orbit-mint/10 rounded-full flex items-center justify-center -z-10"></div>
+        <i class="fas fa-gamepad text-xl"></i><span class="text-[10px]">游戏</span>
+      </div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-face-smile text-xl"></i><span class="text-[10px]">我的</span></div>
+    </div>
+  </div>
+
+
+  <div class="w-[393px] h-[852px] bg-orbit-black rounded-[40px] shadow-2xl overflow-hidden relative border-[8px] border-black flex flex-col shrink-0">
+    <div class="pt-12 pb-4 px-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white flex items-center gap-2"><i class="fas fa-wallet text-orbit-mint"></i> 财务足迹</h1>
+        <p class="text-white/40 text-xs mt-1">共 2 段记忆旅程</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="bg-white/5 border border-white/10 text-white/60 px-3 py-1.5 rounded-full text-xs flex items-center gap-1"><i class="fas fa-map-marker-alt text-orbit-orange"></i> 按记忆</button>
+        <button class="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center"><i class="fas fa-plus"></i></button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+      
+      <div class="bg-orbit-card rounded-3xl p-4 border border-white/5">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex gap-3">
+            <div class="w-12 h-12 rounded-2xl border border-orbit-mint/30 bg-orbit-mint/10 flex flex-col items-center justify-center">
+              <span class="text-orbit-mint font-bold text-lg leading-none">10</span>
+              <span class="text-orbit-mint/60 text-[10px] mt-0.5">3月</span>
+            </div>
+            <div>
+              <h3 class="text-white font-semibold text-lg">外滩</h3>
+              <p class="text-white/40 text-xs mt-1">2026年3月10日 · 1 笔支出</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-white/40 text-xs">我花费</p>
+            <p class="text-orbit-mint font-bold text-xl mt-0.5">¥122.67</p>
+          </div>
+        </div>
+        
+        <div class="h-[1px] bg-white/5 w-full mb-3"></div>
+        
+        <div class="flex items-center justify-between text-sm">
+          <div class="flex items-center gap-2 text-white/60">
+            <div class="flex -space-x-2">
+              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=30&h=30&fit=crop" class="w-6 h-6 rounded-full border-2 border-orbit-card">
+              <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=30&h=30&fit=crop" class="w-6 h-6 rounded-full border-2 border-orbit-card">
+            </div>
+            <span class="text-xs">总¥368</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-orbit-orange font-semibold">摊 ¥122.67</span>
+            <i class="fas fa-edit text-white/20 hover:text-white/60"></i>
+            <i class="fas fa-trash text-white/20 hover:text-red-400"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-orbit-card rounded-3xl p-4 border border-white/5">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex gap-3">
+            <div class="w-12 h-12 rounded-2xl border border-orbit-mint/30 bg-orbit-mint/10 flex flex-col items-center justify-center">
+              <span class="text-orbit-mint font-bold text-lg leading-none">21</span>
+              <span class="text-orbit-mint/60 text-[10px] mt-0.5">2月</span>
+            </div>
+            <div>
+              <h3 class="text-white font-semibold text-lg">庙街夜市</h3>
+              <p class="text-white/40 text-xs mt-1">2026年2月21日 · 1 笔支出</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-white/40 text-xs">我花费</p>
+            <p class="text-orbit-mint font-bold text-xl mt-0.5">¥85.00</p>
+          </div>
+        </div>
+        
+        <div class="h-[1px] bg-white/5 w-full mb-3"></div>
+        
+        <div class="flex items-center justify-between text-sm">
+          <div class="flex items-center gap-2 text-white/60">
+            <div class="w-6 h-6 rounded-full bg-orbit-orange/20 text-orbit-orange flex items-center justify-center text-xs"><i class="fas fa-user"></i></div>
+            <span class="text-xs">个人记录</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-white/80 font-semibold">¥85.00</span>
+            <i class="fas fa-edit text-white/20 hover:text-white/60"></i>
+            <i class="fas fa-trash text-white/20 hover:text-red-400"></i>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="absolute bottom-0 w-full h-[88px] bg-[#121212]/90 backdrop-blur-xl border-t border-white/5 flex justify-around items-start pt-3 px-2 z-20">
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-map text-xl"></i><span class="text-[10px]">地图</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-book text-xl"></i><span class="text-[10px]">记忆</span></div>
+      <div class="flex flex-col items-center gap-1 text-orbit-mint relative">
+        <div class="absolute -top-2 w-12 h-12 bg-orbit-mint/10 rounded-full flex items-center justify-center -z-10"></div>
+        <i class="fas fa-wallet text-xl"></i><span class="text-[10px]">账单</span>
+      </div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-gamepad text-xl"></i><span class="text-[10px]">游戏</span></div>
+      <div class="flex flex-col items-center gap-1 text-white/40"><i class="fas fa-face-smile text-xl"></i><span class="text-[10px]">我的</span></div>
+    </div>
+  </div>
+
+</body>
+</html>
