@@ -92,6 +92,7 @@ export default function BottomNav() {
               
               return (
                 <motion.button
+                  data-tour-id={`nav-${item.id}`}
                   key={item.id}
                   onPointerDown={startLongPress}
                   onPointerUp={clearLongPress}

@@ -1061,7 +1061,6 @@ export default function ProfilePage() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [showAllFriends, setShowAllFriends] = useState(false);
-  const [showNewbieGuide, setShowNewbieGuide] = useState(false);
   const [showAccountDiagnostics, setShowAccountDiagnostics] = useState(false);
   const [randomMemory, setRandomMemory] = useState<any>(null);
   const [friendSearch, setFriendSearch] = useState('');
@@ -1976,7 +1975,7 @@ const handleAddFriend = async (name: string, remark: string) => {
       <div className="relative z-10 px-4 mt-4">
         <div className="glass-card rounded-2xl overflow-hidden">
           <button
-            onClick={() => setShowNewbieGuide(true)}
+            onClick={() => window.dispatchEvent(new Event('orbit:start-onboarding'))}
             className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5"
           >
             <p className="text-white font-medium">🌟 新手指引</p>
@@ -2298,7 +2297,6 @@ const handleAddFriend = async (name: string, remark: string) => {
             currentUser={currentUser}
           />
         )}
-        {showNewbieGuide && <NewbieGuideModal isOpen={showNewbieGuide} onClose={() => setShowNewbieGuide(false)} />}
         {showAccountDiagnostics && (
           <AccountDiagnosticsModal
             isOpen={showAccountDiagnostics}

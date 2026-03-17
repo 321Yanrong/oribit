@@ -946,6 +946,7 @@ const CreateMemoryModal = ({
           <button onClick={onClose} style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>取消</button>
           <span className="font-semibold" style={{ color: 'var(--orbit-text)' }}>{isEditMode ? '编辑回忆' : '记录此刻'}</span>
           <button
+            data-tour-id="memory-submit"
             onClick={handleSubmit}
             disabled={(!content.trim() && audios.length === 0 && photos.length === 0 && videos.length === 0) || isSubmitting}
             className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold disabled:opacity-30 shadow"
@@ -1032,6 +1033,7 @@ const CreateMemoryModal = ({
           {/* 内容输入：文字 + 语音 */}
           <div className="rounded-2xl overflow-hidden border shadow-sm" style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
             <textarea
+              data-tour-id="memory-editor"
               placeholder="写点什么..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -1786,6 +1788,7 @@ export default function MemoryStreamPage() {
                 setIsCreateOpen(true);
                 track('memory_create_open');
               }}
+              data-tour-id="memory-create"
               className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold text-sm shrink-0"
             >记录此刻</motion.button>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
 import { useAppStore } from './store/app';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
@@ -11,7 +12,7 @@ import SplashScreen from './components/SplashScreen';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
-import ProfilePage, { NewbieGuideModal } from './pages/ProfilePage';
+import ProfilePage from './pages/ProfilePage';
 import GamesPage from './pages/GamesPage';
 import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
 
@@ -138,12 +139,42 @@ function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showEarlyAccessBanner, setShowEarlyAccessBanner] = useState(false);
   const [showNewbieGuide, setShowNewbieGuide] = useState(false);
+  const [guideRun, setGuideRun] = useState(false);
+  const [guideStepIndex, setGuideStepIndex] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [sessionInvalid, setSessionInvalid] = useState(false);
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const triggerResume = useAppStore((state) => state.triggerResume);
   usePWAKeeper(triggerResume);
+
+  const onboardingSteps: Step[] = [
+    {
+      target: '[data-tour-id="nav-memory"]',
+      content: '从这里进入「记忆流」主页，看看朋友们的最新动态。',
+      disableBeacon: true,
+      placement: 'top',
+    },
+    {
+      target: '[data-tour-id="memory-create"]',
+      content: '点这里「记录此刻」，开始创建你的第一条回忆。',
+      placement: 'top',
+      spotlightClicks: true,
+    },
+    {
+      target: '[data-tour-id="memory-editor"]',
+      content: '在这里写下文字，或继续添加照片、语音、地点和好友标签。',
+      placement: 'top',
+      spotlightClicks: true,
+    },
+    {
+      target: '[data-tour-id="memory-submit"]',
+      content: '准备好后点击发布，回忆就会出现在时间线里啦。',
+      placement: 'bottom',
+      spotlightClicks: true,
+    },
+  ];
 
   // 初始化主题，避免首屏落在深色
   useEffect(() => {
@@ -166,6 +197,14 @@ function App() {
       setSplashMinimumElapsed(true);
     }, SPLASH_MIN_DURATION);
 
+    const startOnboarding = () => {
+      setShowNewbieGuide(true);
+      setGuideRun(true);
+      setGuideStepIndex(0);
+    };
+
+    window.addEventListener('orbit:start-onboarding', startOnboarding);
+
     const hostname = window.location.hostname.toLowerCase();
     const referrer = (document.referrer || '').toLowerCase();
     const fromWehihiHost = hostname === 'wehihi.com' || hostname.endsWith('.wehihi.com');
@@ -177,6 +216,7 @@ function App() {
 
     return () => {
       window.clearTimeout(splashTimer);
+      window.removeEventListener('orbit:start-onboarding', startOnboarding);
     };
   }, []);
 
@@ -226,6 +266,12 @@ function App() {
     }
   }, [currentUser?.id, isDemoMode, loading]);
 
+  useEffect(() => {
+    if (!showNewbieGuide) return;
+    setGuideRun(true);
+    setGuideStepIndex(0);
+  }, [showNewbieGuide]);
+
   // 🚑 兜底：加载完后如果没有用户也不是演示模式，强制弹出登录框
   useEffect(() => {
     if (loading) return;
@@ -234,6 +280,47 @@ function App() {
       setShowAuth(true);
     }
   }, [loading, currentUser, isDemoMode]);
+
+  const attemptReconnect = async () => {
+    setSessionInvalid(false);
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error || !data?.session?.user) throw error || new Error('no-session');
+      const user = data.session.user;
+      const profile = await getProfile(user.id, user.email || undefined);
+      if (profile) {
+        setCurrentUser({ ...profile, avatar_url: sanitiseAvatarUrl(profile.avatar_url, user.id) });
+        setShowAuth(false);
+      }
+      useMemoryStore.getState().fetchMemories();
+      useUserStore.getState().fetchFriends();
+      useUserStore.getState().fetchPendingRequests();
+      useLedgerStore.getState().fetchLedgers();
+      saveInviteCode(user.id, generateInviteCode(user.id));
+    } catch (e) {
+      console.warn('Reconnect failed, clearing session', e);
+      try { await supabase.auth.signOut({ scope: 'local' }); } catch {
+        // ignore
+      }
+      clearOrbitStorage();
+      resetClientData();
+      setCurrentUser(null);
+      setShowAuth(true);
+    }
+  };
+
+  const handleJoyrideCallback = ({ action, index, status, type }: CallBackProps) => {
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+      setGuideRun(false);
+      setShowNewbieGuide(false);
+      setGuideStepIndex(0);
+      return;
+    }
+    if (type === 'step:after') {
+      if (action === 'next') setGuideStepIndex(index + 1);
+      if (action === 'prev') setGuideStepIndex(Math.max(index - 1, 0));
+    }
+  };
 
   // 登录态兜底：应用重开时保证缓存回填 + 核心数据拉取
   useEffect(() => {
@@ -532,6 +619,7 @@ useEffect(() => {
 
     const onInvalidAuthEvent = (event: Event) => {
       const detail = (event as CustomEvent<{ reason?: string }>).detail;
+      setSessionInvalid(true);
       void handleInvalidSession(detail?.reason || 'interceptor-invalid-token');
     };
 
@@ -775,16 +863,33 @@ useEffect(() => {
             
             {!isSettingsOpen && <BottomNav />}
             <PWABanners />
+            {sessionInvalid && (
+              <div className="fixed bottom-16 left-4 right-4 z-[9999] bg-red-600 text-white rounded-2xl shadow-lg p-3 flex items-center justify-between gap-3">
+                <div className="text-sm font-medium">登录状态已失效，请重新连接</div>
+                <button
+                  onClick={attemptReconnect}
+                  className="bg-white text-red-600 font-semibold px-3 py-1 rounded-full text-sm shadow-sm"
+                >重新连接</button>
+              </div>
+            )}
+            <Joyride
+              steps={onboardingSteps}
+              run={guideRun}
+              stepIndex={guideStepIndex}
+              continuous
+              showSkipButton
+              showProgress
+              scrollToFirstStep
+              disableScrolling
+              spotlightClicks
+              callback={handleJoyrideCallback}
+              styles={{ options: { zIndex: 9999 } }}
+            />
             
             {/* 认证模态框 */}
             <AnimatePresence>
               {allowAuthModal && (!currentUser || showAuth) && (
                 <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {showNewbieGuide && (
-                <NewbieGuideModal isOpen={showNewbieGuide} onClose={() => setShowNewbieGuide(false)} />
               )}
             </AnimatePresence>
           </div>
