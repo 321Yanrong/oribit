@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { FaDollarSign, FaMapMarkerAlt, FaTimes, FaPlay, FaPause } from 'react-icons/fa';
 import { decodeMemoryContent } from '../utils';
-import memoryFlowBackground from '../../../../回忆流.jpg';
+import memoryFlowBackground from '../../../../screenshot_app/回忆流.jpg';
 
 const STORY_DURATION = 5000; // ms per story
 const MUSIC_TRACKS = [

@@ -20,6 +20,8 @@
     "@capacitor/ios": "^8.2.0",
     "@headlessui/react": "^1.7.18",
     "@supabase/supabase-js": "^2.98.0",
+    "aegis-web": "^0.0.5",
+    "aegis-web-sdk": "^1.41.11",
     "browser-image-compression": "^2.0.2",
     "cannon-es": "^0.20.0",
     "clsx": "^2.1.0",

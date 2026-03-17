@@ -1,4 +1,4 @@
-import memoryFlowBackground from '../../../../回忆流.jpg';
+import memoryFlowBackground from '../../../../screenshot_app/回忆流.jpg';
 
 export const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
 export const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';

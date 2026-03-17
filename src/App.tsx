@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Aegis from 'aegis-web-sdk';
 import { AnimatePresence, motion } from 'framer-motion';
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
@@ -40,6 +41,25 @@ const resetClientData = () => {
   useMemoryStore.setState({ memories: [] });
   useLedgerStore.setState({ ledgers: [] });
   useUserStore.setState({ friends: [], pendingRequests: [] });
+};
+
+// RUM/日志：在应用层初始化，后续用户登录后再补充 uin
+const aegis = new Aegis({
+  id: 'rum-ddsm9qcQpKd1q7',
+  uin: '',
+  reportApiSpeed: true,
+  reportAssetSpeed: true,
+  spa: true,
+});
+
+const useAegisMonitor = () => {
+  const { currentUser } = useUserStore();
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      aegis.setConfig({ uin: currentUser.id });
+    }
+  }, [currentUser?.id]);
 };
 
 const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
@@ -156,6 +176,7 @@ function App() {
   const resumeTimerRef = useRef<number | null>(null);
   const triggerResume = useAppStore((state) => state.triggerResume);
   usePWAKeeper(triggerResume);
+  useAegisMonitor();
 
   // 注册 Service Worker 并监听更新
   useEffect(() => {
