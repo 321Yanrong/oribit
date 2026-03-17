@@ -5,8 +5,8 @@ export type MemoryGroupBy = 'date' | 'city';
 
 export interface MemoryStreamDraft {
   content: string;
-  weather: string;
-  mood: string;
+  weather: string[];
+  mood: string[];
   route: string;
   locationName: string;
   selectedLocation: {

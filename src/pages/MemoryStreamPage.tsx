@@ -155,21 +155,33 @@ const MOOD_OPTIONS = [
 ];
 
 const META_PREFIX = '[orbit_meta:';
-
-const encodeMemoryContent = (text: string, meta: { weather: string; mood: string; route: string }) => {
-  if (!meta.weather && !meta.mood && !meta.route) return text;
-  return `${META_PREFIX}${JSON.stringify(meta)}]\n${text}`;
+const normalizeMetaList = (value: string | string[] | null | undefined) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
 };
 
-const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
-  if (!content?.startsWith(META_PREFIX)) return { text: content || '', weather: '', mood: '', route: '' };
+const encodeMemoryContent = (text: string, meta: { weather: string[]; mood: string[]; route: string }) => {
+  const weather = normalizeMetaList(meta.weather);
+  const mood = normalizeMetaList(meta.mood);
+  const route = meta.route || '';
+  if (!weather.length && !mood.length && !route) return text;
+  return `${META_PREFIX}${JSON.stringify({ weather, mood, route })}]\n${text}`;
+};
+
+const decodeMemoryContent = (content: string): { text: string; weather: string[]; mood: string[]; route: string } => {
+  if (!content?.startsWith(META_PREFIX)) return { text: content || '', weather: [], mood: [], route: '' };
   const end = content.indexOf(']\n');
-  if (end === -1) return { text: content, weather: '', mood: '', route: '' };
+  if (end === -1) return { text: content, weather: [], mood: [], route: '' };
   try {
     const meta = JSON.parse(content.slice(META_PREFIX.length, end));
-    return { text: content.slice(end + 2), weather: meta.weather || '', mood: meta.mood || '', route: meta.route || '' };
+    return {
+      text: content.slice(end + 2),
+      weather: normalizeMetaList(meta.weather),
+      mood: normalizeMetaList(meta.mood),
+      route: meta.route || ''
+    };
   } catch {
-    return { text: content, weather: '', mood: '', route: '' };
+    return { text: content, weather: [], mood: [], route: '' };
   }
 };
 
@@ -714,8 +726,12 @@ const CreateMemoryModal = ({
 
   // 1. 状态定义
   const [content, setContent] = useState(isEditMode ? (existingMeta.text || '') : (initialDraft?.content || ''));
-  const [weather, setWeather] = useState(isEditMode ? existingMeta.weather : (initialDraft?.weather || ''));
-  const [mood, setMood] = useState(isEditMode ? existingMeta.mood : (initialDraft?.mood || ''));
+  const [weather, setWeather] = useState<string[]>(
+    isEditMode ? normalizeMetaList(existingMeta.weather) : normalizeMetaList(initialDraft?.weather)
+  );
+  const [mood, setMood] = useState<string[]>(
+    isEditMode ? normalizeMetaList(existingMeta.mood) : normalizeMetaList(initialDraft?.mood)
+  );
   const [route, setRoute] = useState(isEditMode ? existingMeta.route : (initialDraft?.route || ''));
   const [locationName, setLocationName] = useState(isEditMode ? (editData?.location?.name || '') : (initialDraft?.locationName || ''));
   const [selectedLocation, setSelectedLocation] = useState<AMapPoi | null>(
@@ -777,7 +793,7 @@ const CreateMemoryModal = ({
 
   useEffect(() => {
     if (isEditMode || !onDraftChange) return;
-    onDraftChange({
+      onDraftChange({
       content,
       weather,
       mood,
@@ -846,6 +862,14 @@ const CreateMemoryModal = ({
     setSelectedFriends(prev => 
       prev.includes(friendId) ? prev.filter(id => id !== friendId) : [...prev, friendId]
     );
+  };
+
+  const toggleWeather = (emoji: string) => {
+    setWeather(prev => prev.includes(emoji) ? prev.filter(e => e !== emoji) : [...prev, emoji]);
+  };
+
+  const toggleMood = (emoji: string) => {
+    setMood(prev => prev.includes(emoji) ? prev.filter(e => e !== emoji) : [...prev, emoji]);
   };
 
   const handleLocationSelect = (poi: AMapPoi) => {
@@ -1047,9 +1071,9 @@ const CreateMemoryModal = ({
                 <button
                   key={w.emoji}
                   type="button"
-                  onClick={() => setWeather(weather === w.emoji ? '' : w.emoji)}
+                  onClick={() => toggleWeather(w.emoji)}
                   className="shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all"
-                  style={weather === w.emoji
+                  style={weather.includes(w.emoji)
                     ? { background: 'color-mix(in srgb, #00D9FF 18%, transparent)', borderColor: 'color-mix(in srgb, #00D9FF 38%, transparent)', color: '#0ea5e9' }
                     : { background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                 >
@@ -1068,9 +1092,9 @@ const CreateMemoryModal = ({
                 <button
                   key={m.emoji}
                   type="button"
-                  onClick={() => setMood(mood === m.emoji ? '' : m.emoji)}
+                  onClick={() => toggleMood(m.emoji)}
                   className="shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all"
-                  style={mood === m.emoji
+                  style={mood.includes(m.emoji)
                     ? { background: 'color-mix(in srgb, #10B981 18%, transparent)', borderColor: 'color-mix(in srgb, #10B981 38%, transparent)', color: '#059669' }
                     : { background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                 >
@@ -2131,7 +2155,7 @@ export default function MemoryStreamPage() {
                             <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
                               {new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
                               {memory.location && <span className="ml-1">· 📍 {memory.location.name}</span>}
-                              {(mWeather || mMood) && <span className="ml-1">{mWeather}{mMood}</span>}
+                              {(mWeather.length || mMood.length) && <span className="ml-1">{[...mWeather, ...mMood].join(' ')}</span>}
                             </p>
                           </div>
                         </div>
@@ -2257,7 +2281,7 @@ export default function MemoryStreamPage() {
                             <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
                               {formatTime(memory.memory_date || memory.created_at)}
                               {memory.location && <span className="ml-1">· 📍 {memory.location.name}</span>}
-                              {(mWeather || mMood) && <span className="ml-2">{mWeather}{mMood}</span>}
+                              {(mWeather.length || mMood.length) && <span className="ml-2">{[...mWeather, ...mMood].join(' ')}</span>}
                             </p>
                           </div>
                         </div>

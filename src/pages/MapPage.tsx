@@ -64,7 +64,7 @@ const decodeMemoryContent = (content: string): { text: string; weather: string; 
 
 export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: () => void }) {
   const { selectedPin, setSelectedPin } = useMapStore();
-  const { memories, fetchMemories, selectedFriendId, setSelectedFriendId } = useMemoryStore();
+  const { memories, fetchMemories, selectedFriendIds, setSelectedFriendIds } = useMemoryStore();
   const { friends, currentUser } = useUserStore();
   
   const [showMemoryDetail, setShowMemoryDetail] = useState(false);
@@ -215,14 +215,16 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
 
   // 根据选中的好友过滤光点
   const basePins = mapGroupBy === 'city' ? cityPins : derivedPins;
-  const filteredPins = selectedFriendId
-    ? basePins.filter(pin => pin.friends.some((f: any) => f.id === selectedFriendId))
+  const filteredPins = selectedFriendIds.length
+    ? basePins.filter(pin => pin.friends.some((f: any) => selectedFriendIds.includes(f.id)))
     : basePins;
 
   // 获取选中光点的所有记忆
-  const pinMemories = selectedPin?.memories.filter((m: any) => 
-    !selectedFriendId || m.tagged_friends?.includes(selectedFriendId) || m.user_id === selectedFriendId
-  ) || [];
+  const pinMemories = selectedPin?.memories.filter((m: any) => {
+    if (!selectedFriendIds.length) return true;
+    const tagged = m.tagged_friends || [];
+    return selectedFriendIds.some((id) => tagged.includes(id) || m.user_id === id);
+  }) || [];
 
   // 初始化高德地图 (只执行一次)
   useEffect(() => {
@@ -413,22 +415,26 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
             {/* 好友头像筛选器 */}
             <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1">
               <motion.button
-                onClick={() => setSelectedFriendId(null)}
+                onClick={() => setSelectedFriendIds([])}
                 whileTap={{ scale: 0.95 }}
-                className={`flex flex-col items-center gap-2 flex-shrink-0 transition-all ${selectedFriendId === null ? 'opacity-100' : 'opacity-50'}`}
+                className={`flex flex-col items-center gap-2 flex-shrink-0 transition-all ${selectedFriendIds.length === 0 ? 'opacity-100' : 'opacity-50'}`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${selectedFriendId === null ? 'bg-gradient-to-br from-[#00FFB3] to-[#00D9FF] shadow-[0_0_15px_rgba(0,255,179,0.3)]' : 'bg-white/10'}`}>
-                  <span className={`text-sm font-bold ${selectedFriendId === null ? 'text-black' : 'text-white'}`}>全部</span>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${selectedFriendIds.length === 0 ? 'bg-gradient-to-br from-[#00FFB3] to-[#00D9FF] shadow-[0_0_15px_rgba(0,255,179,0.3)]' : 'bg-white/10'}`}>
+                  <span className={`text-sm font-bold ${selectedFriendIds.length === 0 ? 'text-black' : 'text-white'}`}>全部</span>
                 </div>
               </motion.button>
               
               {friends.map((friendship: any) => {
                 const friend = friendship.friend;
-                const isSelected = selectedFriendId === friend.id;
+                const isSelected = selectedFriendIds.includes(friend.id);
                 return (
                   <motion.button
                     key={friend.id}
-                    onClick={() => setSelectedFriendId(isSelected ? null : friend.id)}
+                    onClick={() => setSelectedFriendIds(
+                      isSelected
+                        ? selectedFriendIds.filter((id) => id !== friend.id)
+                        : [...selectedFriendIds, friend.id]
+                    )}
                     whileTap={{ scale: 0.95 }}
                     className={`flex flex-col items-center gap-2 flex-shrink-0 transition-all ${isSelected ? 'opacity-100' : 'opacity-50'}`}
                   >

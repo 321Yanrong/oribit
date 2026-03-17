@@ -210,6 +210,11 @@ const [posterLoading, setPosterLoading] = useState(false);
 const audioRef = useRef<HTMLAudioElement | null>(null);
 const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 const swipeHandledRef = useRef(false);
+const pinchActiveRef = useRef(false);
+const pinchStartDistRef = useRef(0);
+const pinchStartScaleRef = useRef(1);
+const clampScale = (s: number) => Math.min(3, Math.max(1, s));
+const [zoomScale, setZoomScale] = useState(1);
 // Always use a single audio element, update src/volume as needed
 const ensureAudio = useCallback(() => {
 if (!audioRef.current) {

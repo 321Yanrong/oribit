@@ -215,8 +215,8 @@ export const getUserById = (userId: string): any | undefined => {
 interface MemoryState {
   memories: any[];
   selectedMemory: Memory | null;
-  selectedFriendId: string | null;
-  setSelectedFriendId: (friendId: string | null) => void;
+  selectedFriendIds: string[];
+  setSelectedFriendIds: (friendIds: string[]) => void;
   fetchMemories: () => Promise<void>;
   addMemory: (memory: Memory) => void;
   editMemory: (id: string, updatedData: any) => Promise<void>;
@@ -226,8 +226,8 @@ interface MemoryState {
 export const useMemoryStore = create<MemoryState>((set) => ({
   memories: [],
   selectedMemory: null,
-  selectedFriendId: null,
-  setSelectedFriendId: (friendId) => set({ selectedFriendId: friendId }),
+  selectedFriendIds: [],
+  setSelectedFriendIds: (friendIds) => set({ selectedFriendIds: friendIds }),
   fetchMemories: async () => {
     const userId = useUserStore.getState().currentUser?.id; 
     if (!userId || !isRealUUID(userId)) return;
