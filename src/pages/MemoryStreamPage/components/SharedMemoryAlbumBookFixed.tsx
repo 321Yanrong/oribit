@@ -105,6 +105,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
     overscrollBehaviorX: 'contain',
     touchAction: 'pan-x',
   }}
+  onTouchMove={(e) => e.stopPropagation()}
 >
 {friends.map((f) => {
   const active = selectedFriendIds.includes(f.id);

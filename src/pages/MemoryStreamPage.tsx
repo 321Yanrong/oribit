@@ -541,6 +541,7 @@ const FriendSelector = ({
           overscrollBehaviorX: 'contain',
           touchAction: 'pan-x',
         }}
+        onTouchMove={(e) => e.stopPropagation()}
       >
         {friends.map((friendship: any) => {
           const friend = friendship.friend;
@@ -811,6 +812,12 @@ const CreateMemoryModal = ({
     }
     if (!memoryDate || Number.isNaN(new Date(memoryDate).getTime())) {
       alert('请选择有效的时间');
+      return;
+    }
+    try {
+      await refreshSessionQuick('handleSubmit');
+    } catch {
+      alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
       return;
     }
     setIsSubmitting(true);
@@ -1217,6 +1224,22 @@ export default function MemoryStreamPage() {
   const [settings, setSettings] = useState(readSettings());
   const lastAutoRefreshRef = useRef(0);
   const resumeTrigger = useAppStore((state) => state.resumeTrigger);
+  const [sessionInvalid, setSessionInvalid] = useState(false);
+
+  const refreshSessionQuick = useCallback(async (label: string) => {
+    if (!shouldAllowRefresh()) return;
+    try {
+      await Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('refresh-timeout')), 5000)),
+      ]);
+      setSessionInvalid(false);
+    } catch (err) {
+      console.warn('[memory-stream] refreshSession failed:', label, err);
+      setSessionInvalid(true);
+      throw err;
+    }
+  }, []);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1255,6 +1278,7 @@ export default function MemoryStreamPage() {
     if (!text || !currentUser?.id) return;
 
     try {
+      await refreshSessionQuick('addRoast');
       const comment = await addMemoryComment(memoryId, currentUser.id, text);
       setCommentsByMemory(prev => ({
         ...prev,
@@ -1273,6 +1297,7 @@ export default function MemoryStreamPage() {
     if (!window.confirm('确定删除这条评论吗？')) return;
 
     try {
+      await refreshSessionQuick('deleteRoast');
       await deleteMemoryComment(commentId);
       setCommentsByMemory(prev => ({
         ...prev,
@@ -1576,6 +1601,7 @@ export default function MemoryStreamPage() {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
+      await refreshSessionQuick('refreshMemoryStream');
       const fetchPromise = Promise.all([
         fetchMemories(),
         useUserStore.getState().fetchFriends(),
@@ -1705,6 +1731,7 @@ export default function MemoryStreamPage() {
     setIsRefreshingPull(true);
     
     try {
+      await refreshSessionQuick('pull-to-refresh');
       // 1. 把所有要拉取的数据打包成一个内部函数
       const fetchAllData = async () => {
         await Promise.all([
