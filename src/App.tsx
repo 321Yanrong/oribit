@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
@@ -63,7 +63,8 @@ const usePWAKeeper = (onResume: () => void) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const HARD_RELOAD_THRESHOLD_MS = 5 * 60 * 1000;
+    // 缩短唤醒硬刷新阈值，移动端 30s 即触发，避免长后台假连接
+    const HARD_RELOAD_THRESHOLD_MS = 30 * 1000;
     const SESSION_TIMEOUT_MS = 5000;
 
     const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -100,6 +101,11 @@ const usePWAKeeper = (onResume: () => void) => {
         await withTimeout(supabase.auth.getSession(), SESSION_TIMEOUT_MS);
       } catch (err) {
         console.warn('[PWA keeper] getSession failed:', reason, err);
+      }
+      try {
+        await withTimeout(supabase.auth.refreshSession(), SESSION_TIMEOUT_MS);
+      } catch (err) {
+        console.warn('[PWA keeper] refreshSession failed:', reason, err);
       }
       onResume();
     };
@@ -148,6 +154,30 @@ function App() {
   const resumeTimerRef = useRef<number | null>(null);
   const triggerResume = useAppStore((state) => state.triggerResume);
   usePWAKeeper(triggerResume);
+
+  const fetchCoreData = useCallback(() => {
+    useMemoryStore.getState().fetchMemories();
+    useUserStore.getState().fetchFriends();
+    useUserStore.getState().fetchPendingRequests();
+    useLedgerStore.getState().fetchLedgers();
+  }, []);
+
+  const refreshSessionAndData = useCallback(async (reason: string) => {
+    if (isDemoMode) return;
+    try {
+      await supabase.removeAllChannels();
+    } catch (err) {
+      console.warn('[session-refresh] removeAllChannels failed:', reason, err);
+    }
+    try {
+      await supabase.auth.refreshSession();
+      fetchCoreData();
+      setSessionInvalid(false);
+    } catch (err) {
+      console.warn('[session-refresh] refreshSession failed:', reason, err);
+      setSessionInvalid(true);
+    }
+  }, [fetchCoreData, isDemoMode]);
 
   const onboardingSteps: Step[] = [
     {
@@ -281,6 +311,21 @@ function App() {
     }
   }, [loading, currentUser, isDemoMode]);
 
+  // 前台可见即尝试刷新 Session + 重拉核心数据，解决短暂后台后假连接的问题
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshSessionAndData('visibility');
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [refreshSessionAndData]);
+
   const attemptReconnect = async () => {
     setSessionInvalid(false);
     try {
@@ -310,7 +355,7 @@ function App() {
   };
 
   const handleJoyrideCallback = ({ action, index, status, type }: CallBackProps) => {
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       setGuideRun(false);
       setShowNewbieGuide(false);
       setGuideStepIndex(0);
@@ -352,7 +397,8 @@ function App() {
 
       // 前台恢复时先刷新会话，避免“断线”后全部清空
       const now = Date.now();
-      if (now - lastRefreshRef.current > 5 * 60 * 1000) {
+      // 缩短会话刷新节流，移动端唤醒 30s 内也刷新一次
+      if (now - lastRefreshRef.current > 30 * 1000) {
         lastRefreshRef.current = now;
         try {
           await supabase.auth.getSession();
