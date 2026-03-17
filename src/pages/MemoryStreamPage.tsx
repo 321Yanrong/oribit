@@ -646,6 +646,7 @@ const CreateMemoryModal = ({
   initialDraft,
   onDraftChange,
   onClearDraft,
+  refreshSessionQuick,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -655,6 +656,7 @@ const CreateMemoryModal = ({
   initialDraft?: MemoryStreamDraft | null;
   onDraftChange?: (draft: MemoryStreamDraft) => void;
   onClearDraft?: () => void;
+  refreshSessionQuick: (label: string) => Promise<boolean>;
 }) => {
   const { currentUser } = useUserStore(); 
   const isEditMode = !!editData;
@@ -814,9 +816,8 @@ const CreateMemoryModal = ({
       alert('请选择有效的时间');
       return;
     }
-    try {
-      await refreshSessionQuick('handleSubmit');
-    } catch {
+    const ok = await refreshSessionQuick('handleSubmit');
+    if (!ok) {
       alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
       return;
     }
@@ -1227,19 +1228,20 @@ export default function MemoryStreamPage() {
   const [sessionInvalid, setSessionInvalid] = useState(false);
 
   const refreshSessionQuick = useCallback(async (label: string) => {
-    if (!shouldAllowRefresh()) return;
+    if (!shouldAllowRefresh()) return true;
     try {
       await Promise.race([
         supabase.auth.refreshSession(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('refresh-timeout')), 5000)),
       ]);
       setSessionInvalid(false);
+      return true;
     } catch (err) {
       console.warn('[memory-stream] refreshSession failed:', label, err);
       setSessionInvalid(true);
-      throw err;
+      return false;
     }
-  }, []);
+  }, [shouldAllowRefresh]);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1277,8 +1279,13 @@ export default function MemoryStreamPage() {
     const text = (roastInput[memoryId] || '').trim();
     if (!text || !currentUser?.id) return;
 
+    const ok = await refreshSessionQuick('addRoast');
+    if (!ok) {
+      alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
+      return;
+    }
+
     try {
-      await refreshSessionQuick('addRoast');
       const comment = await addMemoryComment(memoryId, currentUser.id, text);
       setCommentsByMemory(prev => ({
         ...prev,
@@ -1296,8 +1303,13 @@ export default function MemoryStreamPage() {
   const deleteRoast = async (memoryId: string, commentId: string) => {
     if (!window.confirm('确定删除这条评论吗？')) return;
 
+    const ok = await refreshSessionQuick('deleteRoast');
+    if (!ok) {
+      alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
+      return;
+    }
+
     try {
-      await refreshSessionQuick('deleteRoast');
       await deleteMemoryComment(commentId);
       setCommentsByMemory(prev => ({
         ...prev,
@@ -1501,6 +1513,12 @@ export default function MemoryStreamPage() {
       await new Promise(r => setTimeout(r, 800));
 
       try {
+        const ok = await refreshSessionQuick('fetch-comments');
+        if (!ok) {
+          setSessionInvalid(true);
+          return;
+        }
+
         const fetchPromise = getMemoryComments(memoryIds);
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('评论拉取超时')), 5000)
@@ -1538,12 +1556,18 @@ export default function MemoryStreamPage() {
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const subscribe = () => {
+    const subscribe = async () => {
       const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
       if (memoryIds.length === 0) return;
 
       const idList = memoryIds.join(',');
       if (channel) supabase.removeChannel(channel);
+      const ok = await refreshSessionQuick('comments-subscribe');
+      if (!ok) {
+        console.warn('[comments-subscribe] refresh failed, skip subscribe');
+        setSessionInvalid(true);
+        return;
+      }
       channel = supabase
         .channel(`memory-comments-${currentUser.id}`)
         .on(
@@ -1581,12 +1605,12 @@ export default function MemoryStreamPage() {
         .subscribe();
     };
 
-    subscribe();
+    void subscribe();
 
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, [memories, currentUser?.id, resumeTrigger]);
+  }, [memories, currentUser?.id, resumeTrigger, refreshSessionQuick]);
 
   useEffect(() => {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
@@ -1601,7 +1625,12 @@ export default function MemoryStreamPage() {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
-      await refreshSessionQuick('refreshMemoryStream');
+      const ok = await refreshSessionQuick('refreshMemoryStream');
+      if (!ok) {
+        setIsLoading(false);
+        setSessionInvalid(true);
+        return;
+      }
       const fetchPromise = Promise.all([
         fetchMemories(),
         useUserStore.getState().fetchFriends(),
@@ -1731,7 +1760,12 @@ export default function MemoryStreamPage() {
     setIsRefreshingPull(true);
     
     try {
-      await refreshSessionQuick('pull-to-refresh');
+      const ok = await refreshSessionQuick('pull-to-refresh');
+      if (!ok) {
+        setIsRefreshingPull(false);
+        setSessionInvalid(true);
+        return;
+      }
       // 1. 把所有要拉取的数据打包成一个内部函数
       const fetchAllData = async () => {
         await Promise.all([
@@ -2347,6 +2381,7 @@ export default function MemoryStreamPage() {
             initialDraft={memoryStreamDraft}
             onDraftChange={setMemoryStreamDraft}
             onClearDraft={clearMemoryStreamDraft}
+            refreshSessionQuick={refreshSessionQuick}
           />
         )}
       </AnimatePresence>
@@ -2360,6 +2395,7 @@ export default function MemoryStreamPage() {
             onSuccess={fetchMemories}
             friends={friends}
             editData={editingMemory} // ✨ 传过去回显！
+            refreshSessionQuick={refreshSessionQuick}
           />
         )}
       </AnimatePresence>
