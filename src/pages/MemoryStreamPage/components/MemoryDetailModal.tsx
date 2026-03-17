@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { VoiceRecorder } from '../../../components/MediaUploader';
+import { uploadAvatar, updateProfileAvatarUrl } from '../../../api/supabase';
+import { useUserStore } from '../../../store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, FaQuoteLeft } from 'react-icons/fa';
 import { decodeMemoryContent, formatDateGroup, formatTime, MOOD_OPTIONS, WEATHER_OPTIONS } from '../utils';
@@ -18,6 +21,12 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [comments, setComments] = useState<any[]>([]);
   const [commentInput, setCommentInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [commentAudios, setCommentAudios] = useState<string[]>([]);
+  const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; isSelf: boolean; userId?: string } | null>(null);
+  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const setCurrentUser = useUserStore((s) => s.setCurrentUser);
+  const userStoreUser = useUserStore((s) => s.currentUser);
   const photos = memory.photos || [];
   const videos = memory.videos || [];
   const audios = memory.audios || [];
@@ -56,6 +65,11 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     return getMemoryAuthor(authorId);
   };
 
+  const openAvatarPreview = (avatarUrl: string, name: string, userId?: string) => {
+    const isSelf = !!currentUser?.id && userId === currentUser.id;
+    setAvatarPreview({ url: avatarUrl, name, isSelf, userId });
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -72,12 +86,16 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
 
   const handleAddComment = async () => {
     const text = commentInput.trim();
-    if (!text || !currentUser?.id) return;
+    const audioUrl = commentAudios[0];
+    if (!text && !audioUrl) return;
+    if (!currentUser?.id) return;
     try {
       setIsSending(true);
-      const item = await addMemoryComment(memory.id, currentUser.id, text);
+      const payload = encodeCommentContent(text, audioUrl);
+      const item = await addMemoryComment(memory.id, currentUser.id, payload);
       setComments((prev) => [...prev, item]);
       setCommentInput('');
+      setCommentAudios([]);
     } finally {
       setIsSending(false);
     }
@@ -90,6 +108,48 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   };
 
   const routeStops = route ? route.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
+
+  const encodeCommentContent = (text: string, audioUrl?: string) => {
+    const base = text;
+    if (audioUrl) return `[audio]${audioUrl}||${base}`;
+    return base;
+  };
+
+  const decodeCommentContent = (content: string) => {
+    let rest = content || '';
+    let audioUrl: string | undefined;
+    const prefix = '[audio]';
+    const sep = '||';
+    if (rest.startsWith(prefix)) {
+      const idx = rest.indexOf(sep);
+      if (idx !== -1) {
+        audioUrl = rest.slice(prefix.length, idx);
+        rest = rest.slice(idx + sep.length);
+      }
+    }
+    return { text: rest, audioUrl };
+  };
+
+  const goPrevPhoto = () => setCurrentPhotoIndex((idx) => Math.max(0, idx - 1));
+  const goNextPhoto = () => setCurrentPhotoIndex((idx) => Math.min(photos.length - 1, idx + 1));
+
+  const handleLightboxTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches?.[0];
+    if (!t) return;
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const handleLightboxTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    const t = e.changedTouches?.[0];
+    if (!start || !t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) goNextPhoto();
+    else goPrevPhoto();
+  };
 
   return (
     <motion.div
@@ -246,7 +306,12 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 94%, transparent)' }}
                 onClick={() => setIsLightboxOpen(false)}
               >
-                <div className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center px-4" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center px-4"
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={handleLightboxTouchStart}
+                  onTouchEnd={handleLightboxTouchEnd}
+                >
                   <img
                     src={photos[currentPhotoIndex]}
                     alt={`原图 ${currentPhotoIndex + 1}`}
@@ -255,7 +320,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                   {photos.length > 1 && (
                     <>
                       <button
-                        onClick={() => setCurrentPhotoIndex((idx) => Math.max(0, idx - 1))}
+                        onClick={goPrevPhoto}
                         className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition disabled:opacity-40"
                         style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}
                         disabled={currentPhotoIndex === 0}
@@ -263,7 +328,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                         <FaChevronRight className="text-white rotate-180" />
                       </button>
                       <button
-                        onClick={() => setCurrentPhotoIndex((idx) => Math.min(photos.length - 1, idx + 1))}
+                        onClick={goNextPhoto}
                         className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition disabled:opacity-40"
                         style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}
                         disabled={currentPhotoIndex === photos.length - 1}
@@ -362,7 +427,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           )}
 
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.38 }} className="mb-8">
-              <div className="text-sm mb-3" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>评论</div>
+            <div className="text-sm mb-3" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>评论</div>
             <div className="space-y-3">
               {comments.length === 0 && (
                 <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>暂无评论</div>
@@ -370,6 +435,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
               {comments.map((item: any) => {
                 const author = getCommentAuthor(item.author_id);
                 const canDelete = currentUser?.id === item.author_id || currentUser?.id === memory.user_id;
+                const decoded = decodeCommentContent(item.content);
                 return (
                   <div key={item.id} className="flex items-start gap-2">
                     <img src={author.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
@@ -385,28 +451,44 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                           >撤回</button>
                         )}
                       </div>
-                      <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{item.content}</p>
+                      <div className="space-y-1">
+                        {decoded.audioUrl && (
+                          <audio src={decoded.audioUrl} controls className="w-full h-8" />
+                        )}
+                        {(decoded.text || !decoded.audioUrl) && (
+                          <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{decoded.text}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-4 flex items-center gap-2">
-              <input
-                value={commentInput}
-                onChange={(e) => setCommentInput(e.target.value)}
-                placeholder={currentUser?.id ? '写下你的评论...' : '登录后可评论'}
-                disabled={!currentUser?.id || isSending}
-                className="flex-1 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"
-                style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', boxShadow: '0 0 0 1px var(--orbit-border)' }}
+
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder={currentUser?.id ? '文字 + 表情 或 留空配语音' : '登录后可评论'}
+                  disabled={!currentUser?.id || isSending}
+                  className="flex-1 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"
+                  style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', boxShadow: '0 0 0 1px var(--orbit-border)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleAddComment()}
+                  disabled={!currentUser?.id || (!commentInput.trim() && commentAudios.length === 0) || isSending}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold"
+                  style={{ backgroundColor: '#00FFB3', color: '#0f172a', opacity: (!currentUser?.id || (!commentInput.trim() && commentAudios.length === 0) || isSending) ? 0.5 : 1 }}
+                >发表</button>
+              </div>
+              <VoiceRecorder
+                userId={currentUser?.id || ''}
+                audios={commentAudios}
+                onAudiosChange={setCommentAudios}
+                compact
               />
-              <button
-                type="button"
-                onClick={() => void handleAddComment()}
-                disabled={!currentUser?.id || !commentInput.trim() || isSending}
-                className="px-4 py-2 rounded-xl text-sm font-semibold border transition-colors disabled:opacity-40"
-                style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 88%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-              >发送</button>
             </div>
           </motion.div>
 

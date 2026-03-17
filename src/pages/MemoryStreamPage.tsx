@@ -45,6 +45,54 @@ interface MemoryReactionState {
   roastOpen: boolean;
 }
 
+const REPLY_PREFIX = '[reply=';
+const AUDIO_PREFIX = '[audio]';
+const AUDIO_SPLIT = '||';
+
+const encodeReplyContent = (text: string, target?: { commentId: string; authorId: string; authorName: string }) => {
+  if (!target) return text;
+  const meta = btoa(JSON.stringify(target));
+  return `${REPLY_PREFIX}${meta}]${text}`;
+};
+
+const decodeReplyContent = (content: string): { text: string; replyTo?: { commentId: string; authorId: string; authorName: string } } => {
+  if (!content?.startsWith(REPLY_PREFIX)) return { text: content };
+  const end = content.indexOf(']');
+  if (end === -1) return { text: content };
+  const metaRaw = content.slice(REPLY_PREFIX.length, end);
+  const text = content.slice(end + 1);
+  try {
+    const parsed = JSON.parse(atob(metaRaw));
+    return { text, replyTo: parsed };
+  } catch {
+    return { text: content };
+  }
+};
+
+const encodeCommentContent = (
+  text: string,
+  replyTarget?: { commentId: string; authorId: string; authorName: string } | null,
+  audioUrl?: string
+) => {
+  const payload = encodeReplyContent(text, replyTarget || undefined);
+  if (audioUrl) return `${AUDIO_PREFIX}${audioUrl}${AUDIO_SPLIT}${payload}`;
+  return payload;
+};
+
+const decodeCommentContent = (content: string) => {
+  let rest = content || '';
+  let audioUrl: string | undefined;
+  if (rest.startsWith(AUDIO_PREFIX)) {
+    const idx = rest.indexOf(AUDIO_SPLIT);
+    if (idx !== -1) {
+      audioUrl = rest.slice(AUDIO_PREFIX.length, idx);
+      rest = rest.slice(idx + AUDIO_SPLIT.length);
+    }
+  }
+  const decoded = decodeReplyContent(rest);
+  return { ...decoded, audioUrl };
+};
+
 const encodeSharePayload = (payload: Record<string, any>) => {
   const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json);
@@ -805,7 +853,7 @@ const CreateMemoryModal = ({
   };
   
   const handleSubmit = async () => {
-    if (isSubmitting || resuming) return;
+    if (isSubmitting) return;
     const hasContent = content.trim().length > 0 || audios.length > 0 || photos.length > 0 || videos.length > 0;
     if (!currentUser || !hasContent) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -1227,6 +1275,11 @@ export default function MemoryStreamPage() {
   const resumeTrigger = useAppStore((state) => state.resumeTrigger);
   const [sessionInvalid, setSessionInvalid] = useState(false);
   const [resuming, setResuming] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<Record<string, { commentId: string; authorId: string; authorName: string } | null>>({});
+  const [albumFilterFriendIds, setAlbumFilterFriendIds] = useState<string[]>([]);
+  const [albumDateRange, setAlbumDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [showAlbumFilterDialog, setShowAlbumFilterDialog] = useState(false);
+  const [commentAudios, setCommentAudios] = useState<Record<string, string[]>>({});
 
   const refreshSessionQuick = useCallback(async (label: string) => {
     if (!shouldAllowRefresh()) return true;
@@ -1283,6 +1336,17 @@ export default function MemoryStreamPage() {
     };
   }, [refreshSessionQuick]);
 
+    useEffect(() => {
+      if (showStoryEntry) {
+        setShowAlbumFilterDialog(true);
+        if (albumFilterFriendIds.length === 0 && filterFriendIds.length > 0) {
+          setAlbumFilterFriendIds(filterFriendIds);
+        }
+      } else {
+        setShowAlbumFilterDialog(false);
+      }
+    }, [showStoryEntry, filterFriendIds, albumFilterFriendIds.length]);
+
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
     try { return JSON.parse(localStorage.getItem('orbit_reactions') || '{}'); } catch { return {}; }
@@ -1319,6 +1383,10 @@ export default function MemoryStreamPage() {
     const text = (roastInput[memoryId] || '').trim();
     if (!text || !currentUser?.id || resuming) return;
 
+    const target = replyTarget[memoryId] || undefined;
+    const audioUrl = (commentAudios[memoryId] || [])[0];
+    const payload = encodeCommentContent(text, target || undefined, audioUrl);
+
     const ok = await refreshSessionQuick('addRoast');
     if (!ok) {
       alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
@@ -1326,7 +1394,7 @@ export default function MemoryStreamPage() {
     }
 
     try {
-      const comment = await addMemoryComment(memoryId, currentUser.id, text);
+      const comment = await addMemoryComment(memoryId, currentUser.id, payload);
       setCommentsByMemory(prev => ({
         ...prev,
         [memoryId]: [...(prev[memoryId] || []), comment as MemoryCommentItem],
@@ -1338,6 +1406,8 @@ export default function MemoryStreamPage() {
     }
 
     setRoastInput(prev => ({ ...prev, [memoryId]: '' }));
+    setReplyTarget(prev => ({ ...prev, [memoryId]: null }));
+    setCommentAudios(prev => ({ ...prev, [memoryId]: [] }));
   };
 
   const deleteRoast = async (memoryId: string, commentId: string) => {
@@ -1536,6 +1606,32 @@ export default function MemoryStreamPage() {
     }
     return result;
   }, [memories, searchQuery, filterFriendIds]);
+
+  const albumFilteredMemories = useMemo(() => {
+    let result = filteredMemories;
+
+    if (albumFilterFriendIds.length > 0) {
+      result = result.filter((m: any) =>
+        albumFilterFriendIds.every((id) => m.tagged_friends?.includes(id) || m.user_id === id)
+      );
+    }
+
+    if (albumDateRange.start || albumDateRange.end) {
+      const start = albumDateRange.start ? new Date(albumDateRange.start) : null;
+      const end = albumDateRange.end ? new Date(albumDateRange.end) : null;
+      if (end) end.setHours(23, 59, 59, 999);
+
+      result = result.filter((m: any) => {
+        const ts = new Date(m.memory_date || m.created_at).getTime();
+        if (Number.isNaN(ts)) return false;
+        if (start && ts < start.getTime()) return false;
+        if (end && ts > end.getTime()) return false;
+        return true;
+      });
+    }
+
+    return result;
+  }, [filteredMemories, albumFilterFriendIds, albumDateRange]);
 
   // 按日期分组
   const groupedMemories = useMemo(() => groupMemoriesByDate(filteredMemories), [filteredMemories]);
@@ -2307,45 +2403,96 @@ export default function MemoryStreamPage() {
                               {reaction.roasts.map((r: MemoryCommentItem) => {
                                 const commentAuthor = getCommentAuthor(memory, r.author_id);
                                 const canDeleteComment = currentUser?.id === r.author_id || currentUser?.id === memory.user_id;
+                                const decoded = decodeCommentContent(r.content);
+                                const replyTo = decoded.replyTo;
+                                const handleReply = () => {
+                                  setReplyTarget(prev => ({
+                                    ...prev,
+                                    [memory.id]: {
+                                      commentId: r.id,
+                                      authorId: replyTo?.authorId || r.author_id,
+                                      authorName: replyTo?.authorName || commentAuthor.name,
+                                    },
+                                  }));
+                                };
+
                                 return (
-                                <div key={r.id} className="flex items-start gap-2">
-                                  <img src={commentAuthor.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
-                                  <div className="flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--orbit-card)' }}>
-                                    <div className="flex items-start justify-between gap-3 mb-0.5">
-                                      <p className="text-[#00FFB3] text-xs font-medium">{commentAuthor.name}</p>
-                                      {canDeleteComment && (
-                                        <button
-                                          type="button"
-                                          onClick={() => void deleteRoast(memory.id, r.id)}
-                                          className="text-[11px] hover:text-red-500 transition-colors shrink-0"
-                                          style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
-                                        >撤回</button>
-                                      )}
+                                  <div key={r.id} className="flex items-start gap-2">
+                                    <img src={commentAuthor.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                                    <div className="flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--orbit-card)' }}>
+                                      <div className="flex items-start justify-between gap-3 mb-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-[#00FFB3] text-xs font-medium">{commentAuthor.name}</p>
+                                          {replyTo && (
+                                            <span className="text-[11px] text-[color:var(--orbit-text-muted,#9ca3af)]">回复 {replyTo.authorName}</span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={handleReply}
+                                            className="text-[11px] text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"
+                                          >回复</button>
+                                          {canDeleteComment && (
+                                            <button
+                                              type="button"
+                                              onClick={() => void deleteRoast(memory.id, r.id)}
+                                              className="text-[11px] hover:text-red-500 transition-colors shrink-0"
+                                              style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
+                                            >撤回</button>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {decoded.audioUrl && (
+                                          <audio src={decoded.audioUrl} controls className="w-full h-8" />
+                                        )}
+                                        {(decoded.text || !decoded.audioUrl) && (
+                                          <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{decoded.text}</p>
+                                        )}
+                                      </div>
                                     </div>
-                                    <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{r.content}</p>
                                   </div>
-                                </div>
-                              )})}
-                              <div className="flex items-center gap-2">
-                                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                                <div
-                                  className="flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 border"
-                                  style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
-                                >
-                                  <input
-                                    type="text"
-                                    placeholder="留下你的吐槽..."
-                                    value={roastInput[memory.id] || ''}
-                                    onChange={(e) => setRoastInput(prev => ({ ...prev, [memory.id]: e.target.value }))}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') void addRoast(memory.id); }}
-                                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"
-                                    style={{ color: 'var(--orbit-text)' }}
-                                  />
+                                );
+                              })}
+                              {replyTarget[memory.id] && (
+                                <div className="flex items-center gap-2 px-1 text-xs" style={{ color: 'var(--orbit-text-muted,#9ca3af)' }}>
+                                  <span>回复 {replyTarget[memory.id]?.authorName}</span>
                                   <button
-                                    onClick={() => void addRoast(memory.id)}
-                                    disabled={!roastInput[memory.id]?.trim()}
-                                    className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
-                                  >发</button>
+                                    type="button"
+                                    className="hover:text-[#00FFB3]"
+                                    onClick={() => setReplyTarget(prev => ({ ...prev, [memory.id]: null }))}
+                                  >取消</button>
+                                </div>
+                              )}
+                              <div className="flex items-start gap-2">
+                                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                  <div
+                                    className="flex items-center gap-2 rounded-2xl px-3 py-2 border"
+                                    style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                                  >
+                                    <input
+                                      type="text"
+                                      placeholder="文字 + 表情 或 留空配语音"
+                                      value={roastInput[memory.id] || ''}
+                                      onChange={(e) => setRoastInput(prev => ({ ...prev, [memory.id]: e.target.value }))}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') void addRoast(memory.id); }}
+                                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"
+                                      style={{ color: 'var(--orbit-text)' }}
+                                    />
+                                    <button
+                                      onClick={() => void addRoast(memory.id)}
+                                      disabled={!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)}
+                                      className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
+                                    >发</button>
+                                  </div>
+                                  <VoiceRecorder
+                                    userId={currentUser?.id || ''}
+                                    audios={commentAudios[memory.id] || []}
+                                    onAudiosChange={(urls) => setCommentAudios(prev => ({ ...prev, [memory.id]: urls }))}
+                                    compact
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -2378,16 +2525,134 @@ export default function MemoryStreamPage() {
                 className="w-full max-w-3xl"
                 onClick={(e) => e.stopPropagation()}
               >
+                <div
+                  className="mb-4 rounded-2xl border p-4"
+                  style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                >
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>按时间范围筛选</p>
+                      <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>默认查看全部，可选择一段时间的回忆相册</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
+                        <span>从</span>
+                        <input
+                          type="date"
+                          value={albumDateRange.start}
+                          onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                          className="rounded-lg px-2 py-1 text-sm border"
+                          style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
+                        <span>到</span>
+                        <input
+                          type="date"
+                          value={albumDateRange.end}
+                          onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                          className="rounded-lg px-2 py-1 text-sm border"
+                          style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setAlbumDateRange({ start: '', end: '' })}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                        style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                      >清空</button>
+                    </div>
+                  </div>
+                </div>
+
                 <MemoryStoryEntry
-                  memories={filteredMemories}
+                  memories={albumFilteredMemories}
                   onClick={(memories) => {
                     setActiveStoryMemories(memories);
                     setShowStoryEntry(false);
                   }}
                   friends={friends.map((f: any) => ({ id: f.friend.id, name: f.friend.username, avatar: f.friend.avatar_url }))}
-                  selectedFriendIds={filterFriendIds}
-                  onSelectFriend={(ids) => setMemoryStreamFilterFriendIds(ids)}
+                  selectedFriendIds={albumFilterFriendIds}
+                  onSelectFriend={(ids) => setAlbumFilterFriendIds(ids)}
                 />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showStoryEntry && showAlbumFilterDialog && (
+            <motion.div
+              key="album-filter-dialog"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[190] flex items-center justify-center px-6"
+              onClick={() => setShowAlbumFilterDialog(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+                className="w-full max-w-md rounded-2xl border p-4 shadow-xl"
+                style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-base font-semibold" style={{ color: 'var(--orbit-text)' }}>选择想看的朋友</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>多选好友即可过滤相册内容，默认展示全部好友</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAlbumFilterDialog(false)}
+                    className="p-2 rounded-full"
+                    style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
+                    aria-label="关闭筛选弹窗"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                  <button
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                    style={albumFilterFriendIds.length === 0
+                      ? { backgroundColor: '#00FFB3', color: '#0f172a', borderColor: '#00FFB3' }
+                      : { backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
+                    onClick={() => setAlbumFilterFriendIds([])}
+                  >
+                    全部好友
+                  </button>
+                  {friends.map((f: any) => {
+                    const active = albumFilterFriendIds.includes(f.friend.id);
+                    return (
+                      <button
+                        key={f.friend.id}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                        style={active
+                          ? { backgroundColor: '#00B37A', color: '#fff', borderColor: '#00B37A' }
+                          : { backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
+                        onClick={() => {
+                          setAlbumFilterFriendIds((prev) =>
+                            active ? prev.filter((id) => id !== f.friend.id) : [...prev, f.friend.id]
+                          );
+                        }}
+                      >
+                        <img src={f.friend.avatar_url} className="w-5 h-5 rounded-full object-cover" />
+                        {f.friend.username}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowAlbumFilterDialog(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                    style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                  >完成</button>
+                </div>
               </motion.div>
             </motion.div>
           )}

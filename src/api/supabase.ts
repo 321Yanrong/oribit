@@ -225,6 +225,27 @@ export const uploadAvatar = async (
   return finalUrl
 }
 
+export const updateProfileAvatarUrl = async (userId: string, avatarUrl: string): Promise<string> => {
+  ensureOnlineForWrite('更新头像链接')
+  const cleanUrl = avatarUrl.trim()
+  if (!cleanUrl) throw new Error('头像链接不能为空')
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: cleanUrl })
+    .eq('id', userId)
+
+  if (error) throw error
+
+  try {
+    await supabase.auth.updateUser({ data: { avatar_url: cleanUrl } })
+  } catch (metaError) {
+    console.warn('同步 auth metadata 失败（已忽略）:', metaError)
+  }
+
+  return cleanUrl
+}
+
 // ==================== 认证相关 ====================
 
 export const signUp = async (email: string, password: string, username: string) => {
