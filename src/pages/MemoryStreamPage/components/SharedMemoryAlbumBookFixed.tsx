@@ -97,7 +97,15 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 </div>
 
 {friends.length > 0 && onSelectFriend && (
-<div className="relative mt-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+<div
+  className="relative mt-4 flex gap-2 overflow-x-auto"
+  style={{
+    scrollbarWidth: 'none',
+    WebkitOverflowScrolling: 'touch',
+    overscrollBehaviorX: 'contain',
+    touchAction: 'pan-x',
+  }}
+>
 {friends.map((f) => {
   const active = selectedFriendIds.includes(f.id);
   return (
