@@ -805,7 +805,7 @@ const CreateMemoryModal = ({
   };
   
   const handleSubmit = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || resuming) return;
     const hasContent = content.trim().length > 0 || audios.length > 0 || photos.length > 0 || videos.length > 0;
     if (!currentUser || !hasContent) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -1226,6 +1226,7 @@ export default function MemoryStreamPage() {
   const lastAutoRefreshRef = useRef(0);
   const resumeTrigger = useAppStore((state) => state.resumeTrigger);
   const [sessionInvalid, setSessionInvalid] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const refreshSessionQuick = useCallback(async (label: string) => {
     if (!shouldAllowRefresh()) return true;
@@ -1242,6 +1243,45 @@ export default function MemoryStreamPage() {
       return false;
     }
   }, [shouldAllowRefresh]);
+
+  // 前台可见/获得焦点时快速刷新会话并拉取关键数据，避免短后台后卡死
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      setResuming(true);
+      const ok = await refreshSessionQuick('visibility-resume');
+      if (ok) {
+        try {
+          await Promise.all([
+            useMemoryStore.getState().fetchMemories(),
+            useUserStore.getState().fetchFriends(),
+          ]);
+          const latestIds = (useMemoryStore.getState().memories || []).map((m: any) => m.id).filter(Boolean);
+          if (latestIds.length > 0) {
+            const comments = await getMemoryComments(latestIds);
+            const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
+              const memoryId = item.memory_id;
+              if (!memoryId) return acc;
+              if (!acc[memoryId]) acc[memoryId] = [];
+              acc[memoryId].push(item as MemoryCommentItem);
+              return acc;
+            }, {});
+            setCommentsByMemory(grouped);
+          }
+        } catch (err) {
+          console.warn('[visibility-resume] refresh data failed:', err);
+        }
+      }
+      setResuming(false);
+    };
+    document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('focus', handleVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('focus', handleVisible);
+    };
+  }, [refreshSessionQuick]);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1277,7 +1317,7 @@ export default function MemoryStreamPage() {
 
   const addRoast = async (memoryId: string) => {
     const text = (roastInput[memoryId] || '').trim();
-    if (!text || !currentUser?.id) return;
+    if (!text || !currentUser?.id || resuming) return;
 
     const ok = await refreshSessionQuick('addRoast');
     if (!ok) {
@@ -1302,6 +1342,7 @@ export default function MemoryStreamPage() {
 
   const deleteRoast = async (memoryId: string, commentId: string) => {
     if (!window.confirm('确定删除这条评论吗？')) return;
+    if (resuming) return;
 
     const ok = await refreshSessionQuick('deleteRoast');
     if (!ok) {
