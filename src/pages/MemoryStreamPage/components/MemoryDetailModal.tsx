@@ -15,6 +15,54 @@ interface MemoryDetailModalProps {
   currentUser?: any;
 }
 
+const REPLY_PREFIX = '[reply=';
+const AUDIO_PREFIX = '[audio]';
+const AUDIO_SPLIT = '||';
+
+const encodeReplyContent = (text: string, target?: { commentId: string; authorId: string; authorName: string }) => {
+  if (!target) return text;
+  const meta = btoa(JSON.stringify(target));
+  return `${REPLY_PREFIX}${meta}]${text}`;
+};
+
+const decodeReplyContent = (content: string): { text: string; replyTo?: { commentId: string; authorId: string; authorName: string } } => {
+  if (!content?.startsWith(REPLY_PREFIX)) return { text: content };
+  const end = content.indexOf(']');
+  if (end === -1) return { text: content };
+  const metaRaw = content.slice(REPLY_PREFIX.length, end);
+  const text = content.slice(end + 1);
+  try {
+    const parsed = JSON.parse(atob(metaRaw));
+    return { text, replyTo: parsed };
+  } catch {
+    return { text: content };
+  }
+};
+
+const encodeCommentContent = (
+  text: string,
+  replyTarget?: { commentId: string; authorId: string; authorName: string } | null,
+  audioUrl?: string,
+) => {
+  const payload = encodeReplyContent(text, replyTarget || undefined);
+  if (audioUrl) return `${AUDIO_PREFIX}${audioUrl}${AUDIO_SPLIT}${payload}`;
+  return payload;
+};
+
+const decodeCommentContent = (content: string) => {
+  let rest = content || '';
+  let audioUrl: string | undefined;
+  if (rest.startsWith(AUDIO_PREFIX)) {
+    const idx = rest.indexOf(AUDIO_SPLIT);
+    if (idx !== -1) {
+      audioUrl = rest.slice(AUDIO_PREFIX.length, idx);
+      rest = rest.slice(idx + AUDIO_SPLIT.length);
+    }
+  }
+  const decoded = decodeReplyContent(rest);
+  return { ...decoded, audioUrl };
+};
+
 const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDetailModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -23,6 +71,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [isSending, setIsSending] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [commentAudios, setCommentAudios] = useState<string[]>([]);
+  const [replyTarget, setReplyTarget] = useState<{ commentId: string; authorId: string; authorName: string } | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; isSelf: boolean; userId?: string } | null>(null);
   const avatarFileRef = useRef<HTMLInputElement>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
@@ -92,11 +141,12 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     if (!currentUser?.id) return;
     try {
       setIsSending(true);
-      const payload = encodeCommentContent(text, audioUrl);
+      const payload = encodeCommentContent(text, replyTarget || undefined, audioUrl);
       const item = await addMemoryComment(memory.id, currentUser.id, payload);
       setComments((prev) => [...prev, item]);
       setCommentInput('');
       setCommentAudios([]);
+      setReplyTarget(null);
     } finally {
       setIsSending(false);
     }
@@ -149,27 +199,6 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   };
 
   const routeStops = route ? route.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
-
-  const encodeCommentContent = (text: string, audioUrl?: string) => {
-    const base = text;
-    if (audioUrl) return `[audio]${audioUrl}||${base}`;
-    return base;
-  };
-
-  const decodeCommentContent = (content: string) => {
-    let rest = content || '';
-    let audioUrl: string | undefined;
-    const prefix = '[audio]';
-    const sep = '||';
-    if (rest.startsWith(prefix)) {
-      const idx = rest.indexOf(sep);
-      if (idx !== -1) {
-        audioUrl = rest.slice(prefix.length, idx);
-        rest = rest.slice(idx + sep.length);
-      }
-    }
-    return { text: rest, audioUrl };
-  };
 
   const goPrevPhoto = () => setCurrentPhotoIndex((idx) => Math.max(0, idx - 1));
   const goNextPhoto = () => setCurrentPhotoIndex((idx) => Math.min(photos.length - 1, idx + 1));
@@ -477,6 +506,14 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 const author = getCommentAuthor(item.author_id);
                 const canDelete = currentUser?.id === item.author_id || currentUser?.id === memory.user_id;
                 const decoded = decodeCommentContent(item.content);
+                const replyTo = decoded.replyTo;
+                const handleReply = () => {
+                  setReplyTarget({
+                    commentId: item.id,
+                    authorId: replyTo?.authorId || item.author_id,
+                    authorName: replyTo?.authorName || author.name,
+                  });
+                };
                 return (
                   <div key={item.id} className="flex items-start gap-2">
                     <img
@@ -486,15 +523,27 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                     />
                     <div className="flex-1 rounded-2xl px-3 py-2 border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
                       <div className="flex items-start justify-between gap-3 mb-0.5">
-                        <p className="text-xs font-medium" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
-                        {canDelete && (
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-medium" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
+                          {replyTo && (
+                            <span className="text-[11px]" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>回复 {replyTo.authorName}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => void handleDeleteComment(item.id)}
-                            className="text-[11px] hover:text-red-500 transition-colors shrink-0"
-                            style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
-                          >撤回</button>
-                        )}
+                            onClick={handleReply}
+                            className="text-[11px] text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"
+                          >回复</button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteComment(item.id)}
+                              className="text-[11px] hover:text-red-500 transition-colors shrink-0"
+                              style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
+                            >撤回</button>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-1">
                         {decoded.audioUrl && (
@@ -528,6 +577,16 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                   style={{ backgroundColor: '#00FFB3', color: '#0f172a', opacity: (!currentUser?.id || (!commentInput.trim() && commentAudios.length === 0) || isSending) ? 0.5 : 1 }}
                 >发表</button>
               </div>
+              {replyTarget && (
+                <div className="flex items-center gap-2 px-1 text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                  <span>回复 {replyTarget.authorName}</span>
+                  <button
+                    type="button"
+                    className="hover:text-[#00FFB3]"
+                    onClick={() => setReplyTarget(null)}
+                  >取消</button>
+                </div>
+              )}
               <VoiceRecorder
                 userId={currentUser?.id || ''}
                 audios={commentAudios}
@@ -577,34 +636,6 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 <p className="text-lg font-semibold" style={{ color: 'var(--orbit-text)' }}>{avatarPreview.name}</p>
                 <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>点击空白处关闭</p>
               </div>
-              {avatarPreview.isSelf && (
-                <div className="space-y-2">
-                  <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>换头像（可选随机或上传）</p>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleRandomAvatar('boy')}
-                      disabled={avatarSaving}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
-                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', opacity: avatarSaving ? 0.6 : 1 }}
-                    >随机男生</button>
-                    <button
-                      type="button"
-                      onClick={() => void handleRandomAvatar('girl')}
-                      disabled={avatarSaving}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
-                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', opacity: avatarSaving ? 0.6 : 1 }}
-                    >随机女生</button>
-                    <button
-                      type="button"
-                      onClick={() => avatarFileRef.current?.click()}
-                      disabled={avatarSaving}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
-                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', opacity: avatarSaving ? 0.6 : 1 }}
-                    >上传图片</button>
-                  </div>
-                </div>
-              )}
               <button
                 type="button"
                 onClick={() => setAvatarPreview(null)}

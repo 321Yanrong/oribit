@@ -1078,6 +1078,7 @@ export default function ProfilePage() {
   const [resetLoading, setResetLoading] = useState(false);
   // 文档弹窗状态
   const [docModal, setDocModal] = useState({ isOpen: false, title: '', content: '' });
+  const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAutoRefreshRef = useRef(0);
   const appVersion = import.meta.env.VITE_APP_VERSION || '0.0.0';
@@ -1527,7 +1528,12 @@ const handleAddFriend = async (name: string, remark: string) => {
       setDeletingAccount(false);
     }
   };
-  const handleAvatarClick = () => { if (!uploadingAvatar) fileInputRef.current?.click(); };
+  const handleAvatarClick = () => { if (!uploadingAvatar) setShowAvatarPreview(true); };
+  const handleUploadAvatarFromPicker = useCallback(() => {
+    if (uploadingAvatar) return;
+    setShowAvatarPicker(false);
+    fileInputRef.current?.click();
+  }, [uploadingAvatar]);
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser || uploadingAvatar) return;
@@ -1684,6 +1690,38 @@ const handleAddFriend = async (name: string, remark: string) => {
               >
                 <FaDice className="text-black text-xs" />
               </button>
+              {/* 头像预览弹窗 */}
+              <AnimatePresence>
+                {showAvatarPreview && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+                    onClick={() => setShowAvatarPreview(false)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, y: 12 }}
+                      animate={{ scale: 1, y: 0 }}
+                      exit={{ scale: 0.9, y: 12 }}
+                      className="relative max-w-sm w-full"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <img
+                        src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'}
+                        alt={currentUser?.username}
+                        className="w-full rounded-3xl border border-white/10 shadow-2xl object-contain bg-black/40"
+                      />
+                      <button
+                        onClick={() => setShowAvatarPreview(false)}
+                        className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg"
+                      >
+                        <FaTimes />
+                      </button>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               {/* 性别选择弹窗 — fixed overlay，避免被 overflow-hidden 裁切 */}
               <AnimatePresence>
                 {showAvatarPicker && (
@@ -1708,6 +1746,13 @@ const handleAddFriend = async (name: string, remark: string) => {
                           <span className="text-pink-300 text-sm font-semibold">女款</span>
                         </button>
                       </div>
+                      <button
+                        onClick={handleUploadAvatarFromPicker}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 border border-white/15 hover:bg-white/15 active:scale-95 transition-all text-white"
+                      >
+                        <FaCamera className="text-lg" />
+                        <span className="text-sm font-semibold">上传头像</span>
+                      </button>
                       <button onClick={() => setShowAvatarPicker(false)} className="text-white/30 text-xs mt-1">取消</button>
                     </motion.div>
                   </motion.div>

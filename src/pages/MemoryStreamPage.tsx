@@ -2599,20 +2599,7 @@ export default function MemoryStreamPage() {
                 style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-base font-semibold" style={{ color: 'var(--orbit-text)' }}>选择想看的朋友</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>多选好友即可过滤相册内容，默认展示全部好友</p>
-                  </div>
-                  <button
-                    onClick={() => setShowAlbumFilterDialog(false)}
-                    className="p-2 rounded-full"
-                    style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
-                    aria-label="关闭筛选弹窗"
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
+
 
                 <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                   <button
