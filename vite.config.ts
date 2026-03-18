@@ -6,6 +6,7 @@ import fs from 'node:fs';
 const pkg = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
 
 const PWA_CACHE_VERSION = 'orbit-pwa-v3-20260314';
+const runtimeVersionSuffix = `-${PWA_CACHE_VERSION}`;
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -33,7 +34,7 @@ export default defineConfig({
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkOnly',
             options: {
-              cacheName: 'navigate-network-only',
+              cacheName: `navigate-network-only${runtimeVersionSuffix}`,
               plugins: [
                 {
                   handlerDidError: async () => {
@@ -51,7 +52,7 @@ export default defineConfig({
               url.pathname.startsWith('/rest/v1/'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'supabase-rest-get',
+              cacheName: `supabase-rest-get${runtimeVersionSuffix}`,
               networkTimeoutSeconds: 4,
               cacheableResponse: {
                 statuses: [0, 200],
@@ -69,7 +70,7 @@ export default defineConfig({
               url.pathname.startsWith('/storage/v1/object/public/'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'supabase-public-storage',
+              cacheName: `supabase-public-storage${runtimeVersionSuffix}`,
               cacheableResponse: {
                 // Avoid caching opaque responses (status 0) so CORS fetches don't receive opaque responses from cache
                 statuses: [200],
@@ -84,7 +85,7 @@ export default defineConfig({
             urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'unsplash-images',
+              cacheName: `unsplash-images${runtimeVersionSuffix}`,
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
@@ -95,7 +96,7 @@ export default defineConfig({
             urlPattern: /^https:\/\/api\.dicebear\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'dicebear-avatars',
+              cacheName: `dicebear-avatars${runtimeVersionSuffix}`,
               expiration: {
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
