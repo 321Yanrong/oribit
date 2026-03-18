@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import OneSignal from 'react-onesignal';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
@@ -1092,6 +1091,21 @@ export default function ProfilePage() {
 
   const updateSettings = (patch: Partial<typeof DEFAULT_SETTINGS>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
+
+    // If user is logged in, persist notification-related settings to Supabase
+    const notifKeys = ['notifyAt', 'notifyComment', 'notifyFriendRequest'];
+    const hasNotifPatch = Object.keys(patch).some((k) => notifKeys.includes(k));
+    const userId = useUserStore.getState().currentUser?.id;
+    if (hasNotifPatch && userId) {
+      const store = useUserStore.getState();
+      const serverPrefs = store.notificationPrefs || {};
+      const patchPrefs: Record<string, any> = {};
+      notifKeys.forEach((k) => {
+        if ((patch as any)[k] !== undefined) patchPrefs[k] = (patch as any)[k];
+      });
+      const next = { ...serverPrefs, ...patchPrefs };
+      if (store.updateNotificationPrefs) void store.updateNotificationPrefs(next);
+    }
   };
 
   const handleRefreshHome = async () => {
@@ -1764,13 +1778,6 @@ const handleAddFriend = async (name: string, remark: string) => {
               </motion.div>
             ))}
           </div>
-
-          <button
-            onClick={() => OneSignal.Slidedown.promptPush()}
-            className="mt-4 w-full bg-[#00FFB3] text-black px-6 py-3 rounded-2xl font-semibold shadow-[0_12px_32px_rgba(0,0,0,0.2)] active:scale-95 transition-transform"
-          >
-            开启消息通知测试
-          </button>
         </motion.div>
       </div>
       
@@ -2143,6 +2150,7 @@ const handleAddFriend = async (name: string, remark: string) => {
                       <motion.div animate={{ x: settings.notifyFriendRequest ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
+                  
                 </div>
 
                 {/* 4. 隐私设置 */}
@@ -2219,6 +2227,7 @@ const handleAddFriend = async (name: string, remark: string) => {
       <AnimatePresence>
         {showAllFriends && (
           <motion.div
+            key="all-friends-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2268,15 +2277,16 @@ const handleAddFriend = async (name: string, remark: string) => {
             </motion.div>
           </motion.div>
         )}
-        {selectedFriend && <SharedMemoriesModal friend={selectedFriend} memories={memories.filter(m =>
+        {selectedFriend && <SharedMemoriesModal key={`shared-${selectedFriend.id || 'unknown'}`} friend={selectedFriend} memories={memories.filter(m =>
           // 我发布的、@了对方的记忆
           m.tagged_friends?.includes(selectedFriend.id) ||
           // 对方发布的、@了我的记忆（通过 RLS 已拉取到本地）
           m.user_id === selectedFriend.id
         )} onClose={() => setSelectedFriend(null)} />}
-        {bindingFriend && <BindFriendModal friend={bindingFriend} isOpen={!!bindingFriend} onClose={() => setBindingFriend(null)} onBind={handleBindFriend} />}
+        {bindingFriend && <BindFriendModal key={`bind-${bindingFriend.id || 'unknown'}`} friend={bindingFriend} isOpen={!!bindingFriend} onClose={() => setBindingFriend(null)} onBind={handleBindFriend} />}
         {acceptingRequest && (
           <AcceptFriendModal
+            key={`accept-${acceptingRequest.id || 'unknown'}`}
             isOpen={!!acceptingRequest}
             onClose={() => setAcceptingRequest(null)}
             requester={acceptingRequest.requester}
@@ -2285,10 +2295,11 @@ const handleAddFriend = async (name: string, remark: string) => {
             loading={acceptingLoading}
           />
         )}
-        {showAddFriend && <AddFriendModal isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
-        {showInviteCode && <InviteCodeModal isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
+        {showAddFriend && <AddFriendModal key="add-friend-modal" isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
+        {showInviteCode && <InviteCodeModal key="invite-code-modal" isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
         {randomMemory && (
           <RandomMemoryModal
+            key={`random-${randomMemory.id || randomMemory.created_at || 'mem'}`}
             memory={randomMemory}
             onClose={() => setRandomMemory(null)}
             friends={friends}
@@ -2297,6 +2308,7 @@ const handleAddFriend = async (name: string, remark: string) => {
         )}
         {showAccountDiagnostics && (
           <AccountDiagnosticsModal
+            key="account-diagnostics-modal"
             isOpen={showAccountDiagnostics}
             onClose={() => setShowAccountDiagnostics(false)}
             currentUser={currentUser}
@@ -2306,24 +2318,28 @@ const handleAddFriend = async (name: string, remark: string) => {
           />
         )}
         <ChangeEmailModal
+          key="change-email-modal"
           isOpen={showEmailModal}
           onClose={() => setShowEmailModal(false)}
           onSubmit={handleSubmitEmail}
           loading={actionLoading}
         />
         <ChangePasswordModal
+          key="change-password-modal"
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
           onSubmit={handleSubmitPassword}
           loading={actionLoading}
         />
         <ResetPasswordModal
+          key="reset-password-modal"
           isOpen={showResetModal}
           onClose={() => setShowResetModal(false)}
           onSubmit={handleResetPassword}
           loading={resetLoading}
         />
         <DocumentModal
+          key={`doc-${docModal.title || 'doc'}`}
           isOpen={docModal.isOpen}
           onClose={() => setDocModal({ ...docModal, isOpen: false })}
           title={docModal.title}

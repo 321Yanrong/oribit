@@ -1248,3 +1248,42 @@ export const deleteMemoryComment = async (commentId: string) => {
 
   if (error) throw error
 }
+
+// ==================== 通知偏好相关 ====================
+
+export const getUserNotificationPrefs = async (userId: string) => {
+  const res: any = await supabase
+    .from('profiles')
+    .select('notification_prefs')
+    .eq('id', userId)
+    .single()
+
+  if (res.error) throw res.error
+  const data = res.data as any
+  return (data && data.notification_prefs) ? data.notification_prefs : {}
+}
+
+export const updateUserNotificationPrefs = async (userId: string, prefs: Record<string, any>) => {
+  ensureOnlineForWrite('更新通知设置')
+
+  const res: any = await supabase
+    .from('profiles')
+    .update({ notification_prefs: prefs } as any)
+    .eq('id', userId)
+    .select('notification_prefs')
+    .single()
+
+  if (res.error) throw res.error
+  return res.data?.notification_prefs
+}
+
+export const setOneSignalPlayerId = async (userId: string, playerId: string | null) => {
+  ensureOnlineForWrite('更新推送标识')
+
+  const res: any = await supabase
+    .from('profiles')
+    .update({ one_signal_player_id: playerId } as any)
+    .eq('id', userId)
+
+  if (res.error) throw res.error
+}

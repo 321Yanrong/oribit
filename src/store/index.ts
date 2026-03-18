@@ -92,7 +92,10 @@ interface UserState {
   currentUser: any | null;
   friends: Friend[];
   pendingRequests: any[];
+  notificationPrefs?: Record<string, any> | null;
   setCurrentUser: (user: any | null) => void;
+  fetchNotificationPrefs?: () => Promise<void>;
+  updateNotificationPrefs?: (prefs: Record<string, any>) => Promise<void>;
   fetchFriends: () => Promise<void>;
   fetchPendingRequests: () => Promise<void>;
   addFriend: (friendshipData: any) => Promise<void>;
@@ -104,6 +107,29 @@ export const useUserStore = create<UserState>((set, get) => ({
   friends: [],
   pendingRequests: [],
   setCurrentUser: (user) => set({ currentUser: user }),
+  notificationPrefs: null,
+  fetchNotificationPrefs: async () => {
+    const { currentUser } = get();
+    if (!currentUser || !isRealUUID(currentUser.id)) return;
+    const { getUserNotificationPrefs } = await import('../api/supabase');
+    try {
+      const prefs = await getUserNotificationPrefs(currentUser.id);
+      set({ notificationPrefs: prefs });
+    } catch (e) {
+      console.warn('fetchNotificationPrefs failed', e);
+    }
+  },
+  updateNotificationPrefs: async (prefs) => {
+    const { currentUser } = get();
+    if (!currentUser || !isRealUUID(currentUser.id)) return;
+    const { updateUserNotificationPrefs } = await import('../api/supabase');
+    try {
+      const next = await updateUserNotificationPrefs(currentUser.id, prefs);
+      set({ notificationPrefs: next });
+    } catch (e) {
+      console.warn('updateNotificationPrefs failed', e);
+    }
+  },
   fetchPendingRequests: async () => {
     const { currentUser } = get();
     if (!currentUser || !isRealUUID(currentUser.id)) return;
