@@ -253,14 +253,16 @@ const SIGNUP_ACCESS_CODE = (import.meta.env.VITE_SIGNUP_CODE || '').trim();
 export const signUp = async (email: string, password: string, username: string, inviteCode?: string) => {
   ensureOnlineForWrite('注册账号')
 
-  if (SIGNUP_ACCESS_CODE) {
-    const cleaned = (inviteCode || '').trim();
-    if (!cleaned) {
-      throw new Error('需要邀请码/口令才能注册');
-    }
-    if (cleaned !== SIGNUP_ACCESS_CODE) {
-      throw new Error('邀请码/口令不正确，向邀请人确认后再试');
-    }
+  if (!SIGNUP_ACCESS_CODE) {
+    throw new Error('注册通道未配置邀请码，请联系管理员');
+  }
+
+  const cleaned = (inviteCode || '').trim();
+  if (!cleaned) {
+    throw new Error('需要邀请码/口令才能注册');
+  }
+  if (cleaned !== SIGNUP_ACCESS_CODE) {
+    throw new Error('邀请码/口令不正确，向邀请人确认后再试');
   }
 
   // 预先统计已注册人数，用于内测额度与序号
