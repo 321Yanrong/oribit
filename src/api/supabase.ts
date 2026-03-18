@@ -248,14 +248,45 @@ export const updateProfileAvatarUrl = async (userId: string, avatarUrl: string):
 
 // ==================== 认证相关 ====================
 
-export const signUp = async (email: string, password: string, username: string) => {
+const SIGNUP_ACCESS_CODE = (import.meta.env.VITE_SIGNUP_CODE || '').trim();
+
+export const signUp = async (email: string, password: string, username: string, inviteCode?: string) => {
   ensureOnlineForWrite('注册账号')
+
+  if (SIGNUP_ACCESS_CODE) {
+    const cleaned = (inviteCode || '').trim();
+    if (!cleaned) {
+      throw new Error('需要邀请码/口令才能注册');
+    }
+    if (cleaned !== SIGNUP_ACCESS_CODE) {
+      throw new Error('邀请码/口令不正确，向邀请人确认后再试');
+    }
+  }
+
+  // 预先统计已注册人数，用于内测额度与序号
+  const { count, error: countError } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+
+  if (countError) {
+    throw new Error(`获取内测名额失败，请稍后再试或联系管理员：${countError.message || countError}`)
+  }
+
+  const currentCount = typeof count === 'number' ? count : 0
+  const BETA_CAP = 50
+  if (currentCount >= BETA_CAP) {
+    throw new Error('内测名额已满（50 人），请等待下一轮开放')
+  }
+
+  const betaJoinOrder = currentCount + 1
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         username,
+        beta_join_order: betaJoinOrder,
       },
     },
   })
@@ -264,8 +295,19 @@ export const signUp = async (email: string, password: string, username: string) 
   
   // Profile 会由数据库触发器自动创建
   // 触发器会从 auth.users.raw_user_meta_data 中读取 username
+  // 同步内测序号到 profile（若触发器已创建则覆盖，若未创建则 upsert）
+  try {
+    const userId = data.user?.id
+    if (userId) {
+      await supabase
+        .from('profiles')
+        .upsert({ id: userId, beta_join_order: betaJoinOrder }, { onConflict: 'id' })
+    }
+  } catch (syncError) {
+    console.warn('同步 beta_join_order 失败（已忽略）：', syncError)
+  }
   
-  return data
+  return { data, betaJoinOrder }
 }
 
 export const signIn = async (email: string, password: string) => {

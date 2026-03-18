@@ -33,6 +33,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
@@ -137,9 +138,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           throw new Error(`邮件发送太频繁，请 ${seconds} 秒后再试`);
         }
 
-        await signUp(email, password, username);
+        const { betaJoinOrder } = await signUp(email, password, username, inviteCode);
         markEmailActionTriggered('signup', email);
-        setError('✅ 注册成功！请前往邮箱点击验证链接，再回来登录。');
+        setError(`✅ 注册成功！你是第 ${betaJoinOrder}/50 位内测用户，请前往邮箱点击验证链接，再回来登录。`);
         setIsLogin(true);
       }
     } catch (err: any) {
@@ -285,6 +286,18 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
                   onChange={(e) => setUsername(e.target.value)}
                   className="input-glass pl-12"
                   placeholder="你的昵称"
+                />
+              </div>
+              <label className="block text-white/60 text-sm mb-2 mt-4">邀请码 / 口令</label>
+              <div className="relative">
+                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  className="input-glass pl-12"
+                  placeholder="向邀请人索取专属口令"
+                  autoComplete="off"
                 />
               </div>
             </motion.div>
