@@ -438,7 +438,26 @@ fallback.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HA
 fallback.onload = () => resolve(fallback);
 fallback.onerror = () => resolve(fallback);
 };
-img.src = src;
+ // Try fetching the image as a Blob first to avoid tainting canvas
+ try {
+   fetch(src, { mode: 'cors' })
+     .then((res) => {
+       if (!res.ok) throw new Error('fetch failed');
+       return res.blob();
+     })
+     .then((blob) => {
+       const objectUrl = URL.createObjectURL(blob);
+       // attach for cleanup later
+       (img as any).__objectUrl = objectUrl;
+       img.src = objectUrl;
+     })
+     .catch(() => {
+       // fallback to direct src (may be cross-origin)
+       img.src = src;
+     });
+ } catch (e) {
+   img.src = src;
+ }
 });
 
 const generatePoster = useCallback(async () => {
@@ -551,10 +570,52 @@ ctx.save();
 ctx.globalAlpha = 0.95;
 ctx.drawImage(qrImg, w - 180, h - 220, 120, 120);
 ctx.restore();
-setPendingPosterDataUrl(canvas.toDataURL('image/png'));
+    // cleanup object URLs if we created them
+    try {
+      if ((img1 as any).__objectUrl) URL.revokeObjectURL((img1 as any).__objectUrl);
+    } catch {}
+    try {
+      if ((img2 as any).__objectUrl) URL.revokeObjectURL((img2 as any).__objectUrl);
+    } catch {}
+
+    try {
+      setPendingPosterDataUrl(canvas.toDataURL('image/png'));
+    } catch (err) {
+      // canvas may be tainted despite our best effort; fall back to null
+      console.warn('canvas toDataURL failed:', err);
+      setPendingPosterDataUrl(null);
+    }
 };
-qrImg.onerror = () => setPendingPosterDataUrl(canvas.toDataURL('image/png'));
-qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`;
+qrImg.onerror = () => {
+  try {
+    if ((img1 as any).__objectUrl) URL.revokeObjectURL((img1 as any).__objectUrl);
+  } catch {}
+  try {
+    if ((img2 as any).__objectUrl) URL.revokeObjectURL((img2 as any).__objectUrl);
+  } catch {}
+  try {
+    setPendingPosterDataUrl(canvas.toDataURL('image/png'));
+  } catch (err) {
+    console.warn('canvas toDataURL failed on error path:', err);
+    setPendingPosterDataUrl(null);
+  }
+};
+
+// Try to fetch QR as blob to avoid any cross-origin taint; fall back to direct src
+try {
+  fetch(`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`, { mode: 'cors' })
+    .then((r) => r.blob())
+    .then((b) => {
+      const qrUrl = URL.createObjectURL(b);
+      (qrImg as any).__objectUrl = qrUrl;
+      qrImg.src = qrUrl;
+    })
+    .catch(() => {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`;
+    });
+} catch (e) {
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`;
+}
 } catch (e) {
 console.error(e);
 setPendingPosterDataUrl(null);
