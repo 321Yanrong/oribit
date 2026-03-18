@@ -11,6 +11,7 @@ const MUSIC_TRACKS = [
 { label: '本地音乐 · bgm3', url: '/music/bgm3.mp3' },
 { label: '本地音乐 · bgm4', url: '/music/bgm4.mp3' },
 ];
+
 const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 const formatDateZh = (input: string | number | Date) => {
   const d = new Date(input);
@@ -157,7 +158,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
     touchAction: 'pan-x', // 保证横滑始终可用
     msOverflowStyle: 'none',
   }}
-  onTouchMove={(e) => e.stopPropagation()}
+  // onTouchMove={(e) => e.stopPropagation()}
 >
 {friends.map((f) => {
   const active = selectedFriendIds.includes(f.id);
@@ -385,7 +386,13 @@ const getPoint = (e: React.MouseEvent | React.TouchEvent) => {
   return { x: m.clientX, y: m.clientY };
 };
 
+const manualNavCooldownRef = useRef(0);
+
+// Prevent double-advancing when autoplay正好切到下一张时用户又点了一下
 const goPrev = () => {
+  const now = Date.now();
+  if (now - manualNavCooldownRef.current < 200) return;
+  manualNavCooldownRef.current = now;
   if (activeIndex > 0) {
     setActiveIndex((a) => a - 1);
     setProgress(0);
@@ -393,6 +400,9 @@ const goPrev = () => {
 };
 
 const goNext = () => {
+  const now = Date.now();
+  if (now - manualNavCooldownRef.current < 200) return;
+  manualNavCooldownRef.current = now;
   if (activeIndex < playlist.length - 1) {
     setActiveIndex((a) => a + 1);
     setProgress(0);
@@ -911,6 +921,7 @@ className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-s
 >返回</button>
 <button
 onClick={() => {
+    if (posterLoading) return; // 避免重复触发生成
 if (onShare) {
 onShare(currentItem.memory);
 return;
@@ -919,9 +930,18 @@ return;
 if (!posterDataUrl) generatePoster();
 setShowPosterPreview(true);
 }}
-className="flex-[1.6] py-3.5 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold text-sm hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,179,0.3)]"
+  disabled={posterLoading}
+  aria-busy={posterLoading}
+  className={`flex-[1.6] py-3.5 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold text-sm shadow-[0_0_20px_rgba(0,255,179,0.3)] transition-transform ${posterLoading ? 'opacity-80 cursor-wait' : 'hover:scale-[1.02]'}`}
 >
-去微信分享回忆
+  {posterLoading ? (
+    <span className="flex items-center justify-center gap-2">
+      <span className="inline-block h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+      正在生成...
+    </span>
+  ) : (
+    '去微信分享回忆'
+  )}
 </button>
 </div>
 {(
