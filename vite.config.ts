@@ -71,7 +71,8 @@ export default defineConfig({
             options: {
               cacheName: 'supabase-public-storage',
               cacheableResponse: {
-                statuses: [0, 200],
+                // Avoid caching opaque responses (status 0) so CORS fetches don't receive opaque responses from cache
+                statuses: [200],
               },
               expiration: {
                 maxEntries: 200,
