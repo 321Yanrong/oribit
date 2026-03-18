@@ -41,6 +41,35 @@ onSelectFriend?: (ids: string[]) => void;
 }) => {
 const storyMemories = memories.filter((m) => m.photos && m.photos.length > 0);
 const hasStory = storyMemories.length > 0;
+const friendSwipeRef = useRef({ x: 0, y: 0, dragging: false });
+const suppressFriendTapRef = useRef(false);
+
+const handleFriendTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const t = e.touches[0];
+  if (!t) return;
+  friendSwipeRef.current = { x: t.clientX, y: t.clientY, dragging: false };
+  e.stopPropagation();
+};
+
+const handleFriendTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+  const t = e.touches[0];
+  if (!t) return;
+  const dx = Math.abs(t.clientX - friendSwipeRef.current.x);
+  const dy = Math.abs(t.clientY - friendSwipeRef.current.y);
+  if (dx > 6 && dx > dy) {
+    friendSwipeRef.current.dragging = true;
+  }
+  e.stopPropagation();
+};
+
+const handleFriendTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+  suppressFriendTapRef.current = friendSwipeRef.current.dragging;
+  friendSwipeRef.current.dragging = false;
+  window.setTimeout(() => {
+    suppressFriendTapRef.current = false;
+  }, 120);
+  e.stopPropagation();
+};
 
   // 监听主题变化，保证入口卡片随浅/深模式变换
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
@@ -151,6 +180,11 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 {friends.length > 0 && onSelectFriend && (
 <div
   className="relative mt-4 flex gap-2 overflow-x-auto flex-nowrap pointer-events-auto"
+  onClick={(e) => e.stopPropagation()}
+  onPointerDownCapture={(e) => e.stopPropagation()}
+  onTouchStart={handleFriendTouchStart}
+  onTouchMove={handleFriendTouchMove}
+  onTouchEnd={handleFriendTouchEnd}
   style={{
     scrollbarWidth: 'none',
     WebkitOverflowScrolling: 'touch',
@@ -167,6 +201,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
       key={f.id}
       onClick={(e) => {
         e.stopPropagation();
+        if (suppressFriendTapRef.current) return;
         if (active) onSelectFriend(selectedFriendIds.filter((id) => id !== f.id));
         else onSelectFriend([...selectedFriendIds, f.id]);
       }}

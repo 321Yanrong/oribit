@@ -17,6 +17,7 @@ import LedgerPage from './pages/LedgerPage';
 import ProfilePage from './pages/ProfilePage';
 import GamesPage from './pages/GamesPage';
 import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
+import { Analytics } from '@vercel/analytics/react';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -678,7 +679,7 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, isDemoMode]);
 
-useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
     let invalidSessionHandled = false;
 
@@ -1033,6 +1034,8 @@ useEffect(() => {
       <AnimatePresence>
         {showSplash && <SplashScreen />}
       </AnimatePresence>
+
+      <Analytics />
     </div>
   );
 }
