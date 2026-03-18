@@ -22,6 +22,8 @@ export default defineConfig({
       // 在离线或导航失败时返回 offline.html 作为兜底
       workbox: {
         cacheId: PWA_CACHE_VERSION,
+        // Allow precaching slightly larger bundles (default 2 MiB)
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: null, // disable default index fallback so custom handler runs
