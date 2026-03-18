@@ -39,7 +39,7 @@ selectedFriendIds?: string[];
 onSelectFriend?: (ids: string[]) => void;
 }) => {
 const storyMemories = memories.filter((m) => m.photos && m.photos.length > 0);
-if (storyMemories.length === 0) return null;
+const hasStory = storyMemories.length > 0;
 
   // 监听主题变化，保证入口卡片随浅/深模式变换
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
@@ -98,7 +98,10 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
       <motion.div
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => onClick(storyMemories)}
+        onClick={() => {
+          if (!hasStory) return;
+          onClick(storyMemories);
+        }}
         className="relative overflow-hidden rounded-2xl p-4 cursor-pointer group border min-h-[150px]"
         style={entryStyle}
       >
@@ -110,18 +113,25 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 <div className="relative flex items-center justify-between">
 <div>
 <p className="text-[11px] tracking-[0.2em] uppercase" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>memory story</p>
-<h3 className="text-lg font-semibold mt-1" style={{ color: 'var(--orbit-text)' }}>共 {memoriesCount} 段回忆 · {photosCount} 张照片</h3>
-{(weather || mood) && (
+<h3 className="text-lg font-semibold mt-1" style={{ color: 'var(--orbit-text)' }}>
+  共 {memoriesCount} 段回忆 · {photosCount} 张照片
+</h3>
+{(weather || mood) && hasStory && (
 <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
 {weather && <span className="mr-2">{weather}</span>}
 {mood && <span>{mood}</span>}
 </p>
 )}
-{latestMemory.location?.name && (
+{hasStory && latestMemory.location?.name && (
 <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
 <FaMapMarkerAlt className="text-[10px]" />
 {latestMemory.location.name}
 </p>
+)}
+{!hasStory && (
+  <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+    没有符合当前筛选的回忆，调整时间或好友试试
+  </p>
 )}
 </div>
         <div
@@ -133,7 +143,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
             boxShadow: '0 12px 28px rgba(11,17,24,0.55), inset 0 1px 0 rgba(255,255,255,0.06)'
           }}
         >
-          ▶
+          {hasStory ? '▶' : '—'}
         </div>
 </div>
 
@@ -144,7 +154,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
     scrollbarWidth: 'none',
     WebkitOverflowScrolling: 'touch',
     overscrollBehaviorX: 'contain',
-    touchAction: 'pan-x',
+    touchAction: 'pan-x', // 保证横滑始终可用
     msOverflowStyle: 'none',
   }}
 >
