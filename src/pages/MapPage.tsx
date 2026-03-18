@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft } from 'react-icons/fa';
-import AMapLoader from '@amap/amap-jsapi-loader';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
 import FloatingParticles from '../components/FloatingParticles';
 
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 
 
-const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 const getCityFromMemory = (memory: any): string => {
   const addr = memory.location?.address || '';
@@ -19,8 +20,6 @@ const getCityFromMemory = (memory: any): string => {
   if (parts[0] && parts[0].length <= 6) return parts[0];
   return name.substring(0, 4) || '未知城市';
 };
-const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
-
 const META_PREFIX = '[orbit_meta:';
 const LEGACY_META_PREFIX = '[orbit_data:';
 
@@ -58,10 +57,6 @@ const decodeMemoryContent = (content: string): { text: string; weather: string; 
   return { text, weather, mood, route };
 };
 
-(window as any)._AMapSecurityConfig = {
-  securityJsCode: AMAP_SECURITY_CODE,
-};
-
 export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: () => void }) {
   const { selectedPin, setSelectedPin } = useMapStore();
   const { memories, fetchMemories, selectedFriendIds, setSelectedFriendIds } = useMemoryStore();
@@ -75,12 +70,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const [mapGroupBy, setMapGroupBy] = useState<'location' | 'city'>('location');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]); // ✨ 新增：用来存储高德的 Marker 实例，方便后续清理
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]); // 存储 Mapbox 的 Marker 实例，方便后续清理
   const containerRef = useRef<HTMLDivElement>(null);
   const readyFiredRef = useRef(false);
   const toastTimerRef = useRef<number | null>(null);
   const fitViewTimeoutRef = useRef<number | null>(null);
+  const fallbackShowTimerRef = useRef<number | null>(null);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -226,54 +222,110 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     return selectedFriendIds.some((id) => tagged.includes(id) || m.user_id === id);
   }) || [];
 
-  // 初始化高德地图 (只执行一次)
+  // 初始化 Mapbox (只执行一次)
   useEffect(() => {
-    AMapLoader.load({
-      key: AMAP_KEY,
-      version: '2.0',
-      plugins: ['AMap.Scale'],
-    }).then((AMap) => {
-      if (!containerRef.current) return;
-      
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const isDarkTheme = currentTheme === 'dark' || (!currentTheme && prefersDark);
+    if (!containerRef.current) return;
 
-      const map = new AMap.Map(containerRef.current, {
-        zoom: 12,
-        center: [121.4737, 31.2304], // 默认中心点 (上海)，后续可以根据数据自动调整视野
-        mapStyle: isDarkTheme ? 'amap://styles/dark' : 'amap://styles/normal',
-      });
-      
-      map.addControl(new AMap.Scale());
-      mapRef.current = map;
+    if (!MAPBOX_TOKEN) {
+      console.warn('Missing Mapbox token, please set VITE_MAPBOX_TOKEN');
+      showToast('地图服务未配置');
       setMapLoaded(true);
-    }).catch(e => {
-      console.error('地图加载失败:', e);
-      setMapLoaded(true); // 不阻塞闪屏收起
-    });
+      return;
+    }
 
-    return () => mapRef.current?.destroy();
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const isDarkTheme = currentTheme === 'dark' || (!currentTheme && prefersDark);
+
+    if (!mapboxgl.supported()) {
+      console.error('Mapbox 不支持当前浏览器的 WebGL');
+      showToast('当前浏览器不支持地图');
+      setMapLoaded(true);
+      return;
+    }
+
+    try {
+      const applyChineseLabels = (mp: mapboxgl.Map) => {
+        try {
+          const zhName = ['coalesce', ['get', 'name_zh'], ['get', 'name_zh-Hans'], ['get', 'name_zh-Hant'], ['get', 'name'], ['get', 'name_en']];
+          const style = mp.getStyle();
+          if (!style?.layers) return;
+          style.layers
+            .filter((layer) => layer.type === 'symbol' && (layer.layout as any)?.['text-field'])
+            .forEach((layer) => {
+              mp.setLayoutProperty(layer.id, 'text-field', zhName as any);
+            });
+        } catch (err) {
+          console.warn('切换中文标注失败', err);
+        }
+      };
+
+      const map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: isDarkTheme ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
+        center: [121.4737, 31.2304],
+        zoom: 12,
+        attributionControl: false,
+      });
+
+      map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'metric' }));
+      mapRef.current = map;
+      map.on('load', () => {
+        setMapLoaded(true);
+        map.resize();
+        applyChineseLabels(map);
+      });
+      map.on('styledata', () => applyChineseLabels(map));
+      map.on('error', (e) => {
+        console.error('Mapbox 运行错误:', e?.error || e);
+        showToast('地图加载失败');
+        setMapLoaded(true); // 避免因未触发 load 导致容器永久透明
+      });
+
+      const handleResize = () => map.resize();
+      window.addEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    } catch (e) {
+      console.error('Mapbox 加载失败:', e);
+      showToast('地图加载失败');
+      setMapLoaded(true);
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      if (fallbackShowTimerRef.current) window.clearTimeout(fallbackShowTimerRef.current);
+    };
   }, []);
 
-  // ✨ 核心修复 3：监听数据的变化，动态往真实的高德地图上画光点
+  // 兜底：如果 1.5 秒内没有 load 事件，也显示容器便于查看错误
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current || !(window as any).AMap) return;
-    const map = mapRef.current;
-    const AMap = (window as any).AMap;
+    if (mapLoaded) return;
+    fallbackShowTimerRef.current = window.setTimeout(() => setMapLoaded(true), 1500);
+    return () => {
+      if (fallbackShowTimerRef.current) window.clearTimeout(fallbackShowTimerRef.current);
+    };
+  }, [mapLoaded]);
+
+  // ✨ 核心修复 3：监听数据的变化，动态往 Mapbox 上画光点
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+    const map = mapRef.current as mapboxgl.Map;
 
     // 清除旧的 Markers
-    map.remove(markersRef.current);
+    markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
     // 画新的 Markers
     filteredPins.forEach((pin: any) => {
       const isCityPin = mapGroupBy === 'city';
 
-      // 光点始终显示自己的头像
       const myAvatar = currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest';
-
-      // 同行人头像叠加（最多显示 2 个）
       const friendAvatarsHtml = pin.friends.slice(0, 2).map((f: any) =>
         `<img src="${f.avatar_url}" class="w-5 h-5 rounded-full ring-1 ring-[#121212] object-cover -ml-1.5" />`
       ).join('');
@@ -285,7 +337,6 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
            </div>`
         : '';
 
-      // city pin uses bigger badge style
       const markerContent = isCityPin ? `
         <div class="relative flex flex-col items-center cursor-pointer transition-transform duration-300 hover:scale-110" style="z-index:0">
           <div class="relative w-14 h-14 rounded-2xl border-2 border-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.5)] overflow-hidden bg-[#1a1a1a] flex items-center justify-center">
@@ -307,52 +358,45 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         </div>
       `;
 
-      const marker = new AMap.Marker({
-        position: [pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat],
-        content: markerContent,
-        offset: new AMap.Pixel(-24, -24), // 往左上偏移一半，确保指针居中
-        extData: pin
-      });
-      // ... 下面的 onClick 逻辑保持不变
-      
-      marker.on('click', (e: any) => {
-        const clickedPin = e.target.getExtData();
+      const el = document.createElement('div');
+      el.innerHTML = markerContent;
+
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat]);
+
+      el.addEventListener('click', () => {
+        const clickedPin = pin;
         if (mapGroupBy === 'city') {
-          // city pin: wrap into a pin-like object for display
           setSelectedPin({ ...clickedPin, location: { name: clickedPin.city, address: `${clickedPin.city} · ${clickedPin.memories.length} 个回忆` } });
         } else {
           setSelectedPin(clickedPin);
         }
         setShowMemoryDetail(true);
       });
-      
-      map.add(marker);
+
+      marker.addTo(map);
       markersRef.current.push(marker);
     });
 
     if (fitViewTimeoutRef.current) window.clearTimeout(fitViewTimeoutRef.current);
     fitViewTimeoutRef.current = window.setTimeout(() => {
-      const targetMap = mapRef.current;
+      const targetMap = mapRef.current as mapboxgl.Map | null;
       if (!targetMap) return;
-      const PADDING = [50, 50, 50, 50];
-      const MAX_ZOOM = 14;
       if (markersRef.current.length === 0) {
         showToast('该好友暂无回忆足迹');
-        const currentZoom = typeof targetMap.getZoom === 'function' ? targetMap.getZoom() : null;
-        if (typeof currentZoom === 'number' && Number.isFinite(currentZoom)) {
-          targetMap.setZoom(Math.max(currentZoom - 1, 4));
-        } else {
-          targetMap.setZoom(4);
-        }
+        const currentZoom = targetMap.getZoom();
+        targetMap.setZoom(Math.max(currentZoom - 1, 4));
         return;
       }
-      targetMap.setFitView(markersRef.current, false, PADDING, MAX_ZOOM);
+      const bounds = new mapboxgl.LngLatBounds();
+      filteredPins.forEach((pin: any) => bounds.extend([pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat]));
+      targetMap.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 600 });
     }, 300);
 
     return () => {
       if (fitViewTimeoutRef.current) window.clearTimeout(fitViewTimeoutRef.current);
     };
-  }, [mapLoaded, filteredPins, setSelectedPin, mapGroupBy, currentUser]);
+  }, [mapLoaded, filteredPins, setSelectedPin, mapGroupBy, currentUser, showToast]);
 
   useEffect(() => () => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -372,11 +416,11 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
           </div>
         </div>
       )}
-      {/* 高德地图容器 */}
+      {/* Mapbox 地图容器 */}
       <div 
         ref={containerRef} 
         className="absolute inset-0"
-        style={{ opacity: mapLoaded ? 1 : 0, transition: 'opacity 1s' }}
+        style={{ opacity: mapLoaded ? 1 : 0.25, transition: 'opacity 0.8s', width: '100%', height: '100%' }}
       />
       
       {/* 顶部导航栏 (加了 pointer-events-none 防止挡住地图点击) */}

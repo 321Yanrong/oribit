@@ -311,24 +311,25 @@ const reverseNominatim = async (lat: number, lng: number) => {
 };
 
 // 地点搜索组件
-const LocationSearch = ({
-  value,
-  onChange,
-  onSelect,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  onSelect: (poi: AMapPoi) => void;
-}) => {
+const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange: (val: string) => void; onSelect: (poi: AMapPoi) => void; }) => {
   const [results, setResults] = useState<AMapPoi[]>([]);
+  const [city, setCity] = useState('');
+  const [needCityHint, setNeedCityHint] = useState(false);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [locating, setLocating] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const placeSearchRef = useRef<any>(null);
-  const aMapRef = useRef<any>(null); // 保存 AMap 实例，供 Geocoder 使用
+  const aMapRef = useRef<any>(null);
   const lastKnownCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
-  // 初始化高德地点搜索
+  const isLikelyOverseasCity = (name: string) => {
+    const n = name.trim();
+    if (!n) return false;
+    if (/[A-Za-z]/.test(n)) return true;
+    return /爱丁堡|伦敦|巴黎|纽约|东京|悉尼|新加坡|柏林|多伦多|温哥华/i.test(n);
+  };
+
   useEffect(() => {
     const initPlaceSearch = async () => {
       try {
@@ -339,7 +340,7 @@ const LocationSearch = ({
         }));
 
         aMapRef.current = AMap;
-        
+
         placeSearchRef.current = new AMap.PlaceSearch({
           pageSize: 10,
           pageIndex: 1,
@@ -348,26 +349,34 @@ const LocationSearch = ({
         console.error('初始化地点搜索失败:', error);
       }
     };
-    
+
     initPlaceSearch();
   }, []);
 
-  // 搜索地点
   const searchLocation = async (keyword: string) => {
-    if (!keyword.trim()) {
+    const trimmed = keyword.trim();
+    if (!trimmed) {
       setResults([]);
       return;
     }
 
+    if (!city.trim()) {
+      setNeedCityHint(true);
+      setResults([]);
+      setShowResults(true);
+      setSearching(false);
+      return;
+    }
+
     const last = lastKnownCoordsRef.current;
-    const preferGlobal = !!last && !isInChina(last.lat, last.lng);
+    const preferGlobal = isLikelyOverseasCity(city) || (!!last && !isInChina(last.lat, last.lng));
     const hasAmap = !!placeSearchRef.current;
 
     setSearching(true);
 
     if (!hasAmap || preferGlobal) {
       try {
-        const pois = await searchNominatim(keyword.trim());
+        const pois = await searchNominatim(`${city} ${trimmed}`.trim());
         setResults(pois);
       } catch {
         setResults([]);
@@ -377,7 +386,9 @@ const LocationSearch = ({
       return;
     }
 
-    placeSearchRef.current.search(keyword, async (status: string, result: any) => {
+    try { placeSearchRef.current.setCity(city); } catch {}
+
+    placeSearchRef.current.search(trimmed, async (status: string, result: any) => {
       if (status === 'complete' && result.poiList?.pois?.length) {
         const pois = result.poiList.pois.map((poi: any) => ({
           id: poi.id,
@@ -391,10 +402,9 @@ const LocationSearch = ({
         return;
       }
 
-      // 若在海外或 AMap 无结果，尝试全球服务
       if (preferGlobal) {
         try {
-          const pois = await searchNominatim(keyword.trim());
+          const pois = await searchNominatim(`${city} ${trimmed}`.trim());
           setResults(pois);
         } catch {
           setResults([]);
@@ -406,12 +416,11 @@ const LocationSearch = ({
     });
   };
 
-  // 输入防抖 - 增加到 500ms 减少请求频率
   useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
-    
+
     if (value.trim()) {
       debounceRef.current = setTimeout(() => {
         searchLocation(value);
@@ -427,7 +436,7 @@ const LocationSearch = ({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [value]);
+  }, [value, city]);
 
   const handleSelect = (poi: AMapPoi) => {
     onChange(poi.name);
@@ -435,8 +444,6 @@ const LocationSearch = ({
     setShowResults(false);
   };
 
-  // GPS 定位
-  const [locating, setLocating] = useState(false);
   const handleGPS = () => {
     if (!navigator.geolocation) { alert('浏览器不支持定位'); return; }
     setLocating(true);
@@ -447,7 +454,6 @@ const LocationSearch = ({
         lastKnownCoordsRef.current = { lat, lng };
         const inChina = isInChina(lat, lng);
 
-        // 优先用已加载的 AMap 实例（仅在国内）
         const AMap = aMapRef.current || (window as any).AMap;
         if (inChina && AMap?.Geocoder) {
           const gc = new AMap.Geocoder({ radius: 500 });
@@ -465,7 +471,6 @@ const LocationSearch = ({
               onChange(poi.name);
               onSelect(poi);
             } else {
-              // 逆地址解析失败，用坐标兜底
               const poi: AMapPoi = { id: `gps-${Date.now()}`, name: '我的位置', address: `${lat.toFixed(5)},${lng.toFixed(5)}`, location: `${lng},${lat}`, type: '' };
               onChange(poi.name);
               onSelect(poi);
@@ -474,7 +479,6 @@ const LocationSearch = ({
           return;
         }
 
-        // 海外：使用全球服务
         try {
           const poi = await reverseNominatim(lat, lng);
           if (poi) {
@@ -486,7 +490,6 @@ const LocationSearch = ({
           // ignore
         }
 
-        // 兜底：显示坐标
         const fallbackPoi: AMapPoi = {
           id: `gps-${Date.now()}`,
           name: '我的位置',
@@ -503,70 +506,91 @@ const LocationSearch = ({
   };
 
   return (
-    <div className="relative">
-      <div className="flex items-center gap-2 p-3 rounded-xl border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
-        <div className="p-2 rounded-full bg-[#00FFB3]/10">
-          <FaMapMarkerAlt className="text-[#00FFB3]" />
+    <div className="space-y-3">
+      <div className="p-3 rounded-xl border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-full bg-[#00FFB3]/10">
+            <FaMapMarkerAlt className="text-[#00FFB3]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs mb-1" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>城市</p>
+            <input
+              type="text"
+              placeholder="先选城市（例：上海 / Edinburgh）"
+              value={city}
+              onChange={(e) => { setCity(e.target.value); setNeedCityHint(false); }}
+              className="w-full bg-transparent outline-none placeholder:opacity-60"
+              style={{ color: 'var(--orbit-text)', caretColor: 'var(--orbit-text)' }}
+            />
+          </div>
+          {city && (
+            <button
+              type="button"
+              onClick={() => { setCity(''); setResults([]); setShowResults(false); }}
+              className="p-2 text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[color:var(--orbit-text)]"
+            >
+              <FaTimes />
+            </button>
+          )}
         </div>
-        <input
-          type="text"
-          placeholder="搜索地点（如：星巴克、外滩）"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => value.trim() && setShowResults(true)}
-          className="flex-1 bg-transparent outline-none min-w-0 placeholder:opacity-60"
-          style={{ color: 'var(--orbit-text)', caretColor: 'var(--orbit-text)' }}
-        />
-        {searching && <FaSpinner className="animate-spin shrink-0" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }} />}
-        <button
-          type="button"
-          onClick={handleGPS}
-          title="用我的位置"
-          className="shrink-0 p-2 rounded-full bg-[#00FFB3]/10 hover:bg-[#00FFB3]/20 text-[#00FFB3] transition-colors"
-        >
-          {locating ? <FaSpinner className="animate-spin text-xs" /> : <span className="text-xs">📍</span>}
-        </button>
+        {needCityHint && (
+          <p className="mt-2 text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>先选城市，再搜具体地点</p>
+        )}
       </div>
 
-      {/* 搜索结果 */}
-      <AnimatePresence>
+      <div className="relative">
+        <div className="flex items-center gap-2 p-3 rounded-xl border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
+          <div className="p-2 rounded-full bg-[#00FFB3]/10">
+            <FaSearch className="text-[#00FFB3]" />
+          </div>
+          <input
+            type="text"
+            placeholder="搜索地点（如：星巴克、外滩）"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => value.trim() && setShowResults(true)}
+            className="flex-1 bg-transparent outline-none min-w-0 placeholder:opacity-60"
+            style={{ color: 'var(--orbit-text)', caretColor: 'var(--orbit-text)' }}
+          />
+          {searching && <FaSpinner className="animate-spin shrink-0" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }} />}
+          <button
+            type="button"
+            onClick={handleGPS}
+            title="用我的位置"
+            className="shrink-0 p-2 rounded-full bg-[#00FFB3]/10 hover:bg-[#00FFB3]/20 text-[#00FFB3] transition-colors"
+          >
+            {locating ? <FaSpinner className="animate-spin text-xs" /> : <span className="text-xs">📍</span>}
+          </button>
+        </div>
+
         {showResults && results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl z-10 border"
+          <div
+            className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl border z-10"
             style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
           >
             {results.map((poi) => (
               <button
                 key={poi.id}
                 onClick={() => handleSelect(poi)}
-                className="w-full p-3 text-left border-b last:border-0"
-                style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                className="w-full p-3 text-left hover:bg-white/5 border-b last:border-0"
+                style={{ borderColor: 'var(--orbit-border)' }}
               >
                 <div className="font-medium" style={{ color: 'var(--orbit-text)' }}>{poi.name}</div>
-                <div className="text-sm truncate" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{poi.address}</div>
+                <div className="text-sm truncate" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{poi.address || '暂无地址信息'}</div>
               </button>
             ))}
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
-      
-      {/* 无结果提示 */}
-      <AnimatePresence>
+
         {showResults && !searching && value.trim() && results.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+          <div
             className="absolute top-full left-0 right-0 mt-2 p-4 rounded-xl border z-10 text-center"
             style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
           >
-            <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>未找到相关地点</p>
-          </motion.div>
+            <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{needCityHint ? '请先选择城市，再搜索具体地点' : '未找到相关地点'}</p>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };
