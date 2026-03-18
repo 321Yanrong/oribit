@@ -361,7 +361,7 @@ export default function LedgerPage() {
 
   return (
     <div className="relative min-h-screen bg-orbit-black pb-28">
-      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} />
+      {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_20%,rgba(255,179,71,0.2)_0%,transparent_50%)]" />
 
       {/* 顶部标题栏 */}

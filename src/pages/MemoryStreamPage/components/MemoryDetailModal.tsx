@@ -70,6 +70,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [commentInput, setCommentInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lightboxContainerRef = useRef<HTMLDivElement | null>(null);
   const [commentAudios, setCommentAudios] = useState<string[]>([]);
   const [replyTarget, setReplyTarget] = useState<{ commentId: string; authorId: string; authorName: string } | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; isSelf: boolean; userId?: string } | null>(null);
@@ -220,6 +221,42 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     if (dx < 0) goNextPhoto();
     else goPrevPhoto();
   };
+
+  const handleLightboxPointerDown = (e: React.PointerEvent) => {
+    // Only track primary pointer
+    if ((e as any).isPrimary === false) return;
+    touchStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleLightboxPointerUp = (e: React.PointerEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) goNextPhoto();
+    else goPrevPhoto();
+  };
+
+  const handleLightboxKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      goPrevPhoto();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      goNextPhoto();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsLightboxOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLightboxOpen && lightboxContainerRef.current) {
+      try { lightboxContainerRef.current.focus(); } catch {}
+    }
+  }, [isLightboxOpen]);
 
   return (
     <motion.div
@@ -377,10 +414,15 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 onClick={() => setIsLightboxOpen(false)}
               >
                 <div
+                  ref={lightboxContainerRef}
+                  tabIndex={0}
                   className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center px-4"
                   onClick={(e) => e.stopPropagation()}
                   onTouchStart={handleLightboxTouchStart}
                   onTouchEnd={handleLightboxTouchEnd}
+                  onPointerDown={handleLightboxPointerDown}
+                  onPointerUp={handleLightboxPointerUp}
+                  onKeyDown={handleLightboxKeyDown}
                 >
                   <img
                     src={photos[currentPhotoIndex]}

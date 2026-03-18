@@ -94,8 +94,8 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
         className="relative overflow-hidden rounded-2xl p-4 cursor-pointer group border min-h-[150px]"
         style={entryStyle}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/12 via-transparent to-white/14 mix-blend-screen" />
-        <div className="absolute inset-0 blur-3xl opacity-70" style={{
+        <div className="absolute inset-0 bg-gradient-to-br from-white/12 via-transparent to-white/14 mix-blend-screen pointer-events-none" />
+        <div className="absolute inset-0 blur-3xl opacity-70 pointer-events-none" style={{
           backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.12) 0, transparent 28%), radial-gradient(circle at 70% 60%, rgba(200,224,255,0.12) 0, transparent 32%)'
         }} />
 
@@ -131,7 +131,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
 
 {friends.length > 0 && onSelectFriend && (
 <div
-  className="relative mt-4 flex gap-2 overflow-x-auto flex-nowrap"
+  className="relative mt-4 flex gap-2 overflow-x-auto flex-nowrap pointer-events-auto"
   style={{
     scrollbarWidth: 'none',
     WebkitOverflowScrolling: 'touch',
@@ -207,6 +207,8 @@ const [storyCompleted, setStoryCompleted] = useState(false);
 // 海报预览弹窗开关
 const [showPosterPreview, setShowPosterPreview] = useState(false);
 const [posterLoading, setPosterLoading] = useState(false);
+const posterSeedRef = useRef<Record<string, string>>({});
+const photoCardRef = useRef<HTMLDivElement | null>(null);
 const audioRef = useRef<HTMLAudioElement | null>(null);
 const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 const swipeHandledRef = useRef(false);
@@ -375,6 +377,11 @@ const goNext = () => {
   if (activeIndex < playlist.length - 1) {
     setActiveIndex((a) => a + 1);
     setProgress(0);
+  } else {
+    // If user attempts to go next while on the last photo, show share/finish UI
+    setIsPaused(true);
+    setProgress(100);
+    setStoryCompleted(true);
   }
 };
 
@@ -462,7 +469,16 @@ fallback.onerror = () => resolve(fallback);
 
 const generatePoster = useCallback(async () => {
 if (!currentItem) return;
-const currentUrl = currentItem.photoUrl;
+// Choose a seeded random photo for this memory (so it stays stable while viewing)
+const memoryPhotos: string[] = currentItem.memory?.photos || [];
+let currentUrl = currentItem.photoUrl;
+if (memoryPhotos.length > 0) {
+  const mid = String(currentItem.memory.id || currentItem.memory.created_at || activeIndex);
+  if (!posterSeedRef.current[mid]) {
+    posterSeedRef.current[mid] = memoryPhotos[Math.floor(Math.random() * memoryPhotos.length)];
+  }
+  currentUrl = posterSeedRef.current[mid];
+}
 // Use previous photo for poster background, fallback to current if not available
 const prevUrl = playlist[activeIndex - 1]?.photoUrl || currentUrl;
 setPosterLoading(true);
@@ -507,54 +523,86 @@ ctx.restore();
 };
 
 // Draw previous photo as background (poker style: slightly rotated, under current)
-drawImg(img2, 80, 120, w - 160, 520, 36); // prev / cover
+drawImg(img2, 80, 60, w - 160, 480, 36); // prev / cover
 ctx.save();
 ctx.fillStyle = 'rgba(0,0,0,0.22)';
-ctx.fillRect(80, 120, w - 160, 520);
+ctx.fillRect(80, 100, w - 160, 520);
 ctx.restore();
 
-// Draw current photo on top
-drawImg(img1, 60, 380, w - 120, 620, 40);
+// Draw current photo on top (raise slightly to avoid sitting too low)
+drawImg(img1, 60, 190, w - 120, 640, 40);
 ctx.shadowColor = 'rgba(0,0,0,0.5)';
 ctx.shadowBlur = 24;
 ctx.shadowOffsetY = 18;
 
-ctx.fillStyle = 'rgba(255,255,255,0.9)';
+ctx.fillStyle = 'rgba(255,255,255,0.96)';
 ctx.font = 'bold 36px "Inter", "PingFang SC", "Helvetica"';
-const title = currentItem.memory?.title || '回忆故事';
-ctx.fillText(title, 70, 1080);
-
-ctx.fillStyle = 'rgba(255,255,255,0.75)';
-ctx.font = '24px "Inter", "PingFang SC"';
-const dateText = new Date(currentItem.memory.memory_date || currentItem.memory.created_at).toLocaleDateString('zh-CN', {
-year: 'numeric',
-month: 'short',
-day: 'numeric',
-});
-ctx.fillText(dateText, 70, 1130);
+const title = currentItem.memory?.title || '时光拾遗';
+ctx.fillText(title, 70, 900);
 
 if (weather || mood) {
-ctx.fillStyle = 'rgba(255,255,255,0.7)';
-ctx.font = '22px "Inter", "PingFang SC"';
-ctx.fillText([weather, mood].filter(Boolean).join(' · '), 70, 1170);
+ctx.fillStyle = 'rgba(255,255,255,0.9)';
+ctx.font = '24px "Inter", "PingFang SC"';
+ctx.fillText([weather, mood].filter(Boolean).join(' · '), 70, 1020);
 }
 
 // Memory/friend/location info
-ctx.fillStyle = 'rgba(255,255,255,0.7)';
+ctx.fillStyle = 'rgba(255,255,255,0.9)';
 ctx.font = '20px "Inter", "PingFang SC"';
 const memCount = playlist.filter((p, idx) => idx <= activeIndex && p.memory.id === currentItem.memory.id).length;
 const friendCount = currentItem.memory.friends?.length || 0;
 const location = currentItem.memory.location?.name || '';
-let infoY = 1200;
-ctx.fillText(`本段照片: ${memCount} 张`, 70, infoY);
+let infoY = 1070;
+ctx.fillText(`定格了 ${memCount} 个瞬间`, 70, infoY);
 infoY += 32;
 if (friendCount > 0) {
-ctx.fillText(`好友: ${friendCount} 位`, 70, infoY);
-infoY += 32;
+  try {
+    const fmt = (friendCount || 0).toLocaleString('zh-CN');
+    ctx.fillText(`与 ${fmt} 人同行`, 70, infoY);
+  } catch {
+    ctx.fillText(`与 ${friendCount} 人同行`, 70, infoY);
+  }
+  infoY += 32;
 }
 if (location) {
-ctx.fillText(`地点: ${location}`, 70, infoY);
-infoY += 32;
+  ctx.fillText(`漫步于 ${location}`, 70, infoY);
+  infoY += 32;
+}
+// ==========================================
+// 4. 新增：计算播放列表的全局时间范围
+// ==========================================
+infoY += 20; // 留一点空隙隔开
+try {
+  // 提取所有照片的时间，找出最早和最晚的
+  const dates = playlist.map(p => new Date(p.memory.memory_date || p.memory.created_at).getTime());
+  const minDate = new Date(Math.min(...dates));
+  const maxDate = new Date(Math.max(...dates));
+  const formatDate = (d) => d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+  
+  // 拼接时间范围：2026年3月2日 - 2026年3月17日
+  const dateRangeStr = `${formatDate(minDate)} - ${formatDate(maxDate)}`;
+  
+  ctx.fillStyle = 'rgba(255,255,255,0.96)';
+  ctx.font = 'bold 22px "Inter", "PingFang SC"';
+  ctx.fillText(dateRangeStr, 70, infoY);
+  infoY += 36;
+
+  // 统计故事总数和好友
+  const uniqueMemoryIds = Array.from(new Set(playlist.map((p) => p.memory.id)));
+  const totalMemoryCount = uniqueMemoryIds.length;
+  const firstFriendId = currentItem.memory.friends?.[0];
+  let countWithFriend = 0;
+  if (firstFriendId) {
+    countWithFriend = playlist.reduce((acc, p) => (p.memory.friends?.includes(firstFriendId) ? acc + 1 : acc), 0);
+  }
+  
+  ctx.fillStyle = 'rgba(255,255,255,0.94)';
+  ctx.font = '22px "Inter", "PingFang SC"';
+  const friendPhrase = firstFriendId ? `，其中 ${countWithFriend} 次有你相伴` : '';
+  ctx.fillText(`这段岁月藏着 ${totalMemoryCount} 个故事${friendPhrase}`, 70, infoY);
+  infoY += 50; // 为底部的“长按保存”留出空间
+} catch (err) {
+  console.warn("计算日期范围失败:", err);
 }
 
 ctx.fillStyle = '#00FFB3';
@@ -565,6 +613,7 @@ ctx.fillText('长按保存 · 微信分享', 70, infoY + 20);
 const qrImg = new window.Image();
 qrImg.crossOrigin = 'anonymous';
 const shareUrl = `https://orbit.yanrong.fun/share-memory/?id=${currentItem.memory.id}`;
+
 qrImg.onload = () => {
 ctx.save();
 ctx.globalAlpha = 0.95;
@@ -576,6 +625,9 @@ ctx.restore();
     } catch {}
     try {
       if ((img2 as any).__objectUrl) URL.revokeObjectURL((img2 as any).__objectUrl);
+    } catch {}
+    try {
+      if ((qrImg as any).__objectUrl) URL.revokeObjectURL((qrImg as any).__objectUrl);
     } catch {}
 
     try {
@@ -592,6 +644,9 @@ qrImg.onerror = () => {
   } catch {}
   try {
     if ((img2 as any).__objectUrl) URL.revokeObjectURL((img2 as any).__objectUrl);
+  } catch {}
+  try {
+    if ((qrImg as any).__objectUrl) URL.revokeObjectURL((qrImg as any).__objectUrl);
   } catch {}
   try {
     setPendingPosterDataUrl(canvas.toDataURL('image/png'));
@@ -624,12 +679,7 @@ setPosterLoading(false);
 }
 }, [activeIndex, currentItem, playlist, weather, mood]);
 
-// 先保留上一帧 posterDataUrl，等新图生成好再替换，避免闪黑
-useEffect(() => {
-setPendingPosterDataUrl(null); // 触发新一轮生成
-generatePoster();
-// eslint-disable-next-line
-}, [generatePoster]);
+// Do not auto-generate poster on every render/change. Generate on demand when user requests.
 
 // 监听 pendingPosterDataUrl，生成好后再替换 posterDataUrl
 useEffect(() => {
@@ -765,7 +815,7 @@ opacity: blurBgUrl ? 1 : 0,
 
 {stackedPhotos.length > 0 && (
 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-<div className="relative w-[82%] max-w-[540px] h-[80%]">
+<div ref={photoCardRef} className="relative w-[82%] max-w-[540px] h-[80%]">
 {stackedPhotos.map((src, idx) => (
 <div
 key={`${src}-${idx}`}
@@ -788,6 +838,30 @@ photo-{activeIndex + idx + 1}
 </div>
 )}
 </div>
+{/* Poster preview overlay placed inside the photo card so it covers the card area */}
+{showPosterPreview && posterDataUrl && (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto"
+    onClick={() => setShowPosterPreview(false)}
+  >
+    <div className="absolute inset-0 bg-black/10 rounded-3xl" />
+    <img
+      src={posterDataUrl}
+      alt="分享海报"
+      className="w-full h-full object-cover rounded-3xl shadow-2xl pointer-events-auto"
+      onClick={(e) => e.stopPropagation()}
+    />
+    <button
+      onClick={() => setShowPosterPreview(false)}
+      className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20"
+    >
+      <FaTimes />
+    </button>
+  </motion.div>
+)}
 </div>
 )}
 </div>
@@ -871,35 +945,7 @@ className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-s
 >
 {posterLoading ? '生成海报中…' : '查看/保存分享海报'}
 </button>
-{/* 💥 解决长按保存的海报预览弹窗 💥 */}
-<AnimatePresence>
-{showPosterPreview && posterDataUrl && (
-<motion.div
-initial={{ opacity: 0 }}
-animate={{ opacity: 1 }}
-exit={{ opacity: 0 }}
-className="fixed inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-6 backdrop-blur-md"
-onClick={() => setShowPosterPreview(false)}
->
-<p className="text-white/80 text-sm font-medium mb-4 tracking-wide animate-pulse pointer-events-none">
-👇 长按下方海报保存，或发送给微信好友
-</p>
-<img
-src={posterDataUrl}
-alt="分享海报"
-className="w-full max-w-[320px] rounded-2xl shadow-2xl pointer-events-auto"
-onClick={(e) => e.stopPropagation()}
-style={{ WebkitTouchCallout: 'default' }}
-/>
-<button
-onClick={() => setShowPosterPreview(false)}
-className="mt-8 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20 pointer-events-auto"
->
-<FaTimes />
-</button>
-</motion.div>
-)}
-</AnimatePresence>
+{/* poster preview is rendered inside the photo card container to cover the card */}
 </div>
 </div>
 )}

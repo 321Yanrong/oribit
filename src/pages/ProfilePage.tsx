@@ -275,17 +275,15 @@ const AddFriendModal = ({
         <div className="flex p-1 rounded-xl mb-5 border" style={{ background: 'color-mix(in srgb, var(--orbit-card) 70%, white)', borderColor: 'var(--orbit-border)' }}>
           <button
             onClick={() => setTab('virtual')}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-              tab === 'virtual' ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
-            }`}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${tab === 'virtual' ? 'bg-white shadow' : ''}`}
+            style={{ color: tab === 'virtual' ? '#ff3b30' : 'var(--orbit-text)' }}
           >
             🎭 临时好友
           </button>
           <button
             onClick={() => setTab('real')}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-              tab === 'real' ? 'bg-emerald-50 text-emerald-700 shadow' : 'text-gray-500'
-            }`}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${tab === 'real' ? 'bg-emerald-50 shadow' : ''}`}
+            style={{ color: tab === 'real' ? '#ff3b30' : 'var(--orbit-text)' }}
           >
             ✅ 已注册好友
           </button>
