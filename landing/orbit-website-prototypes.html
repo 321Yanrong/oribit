@@ -12,6 +12,7 @@
     <style>
       * { font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
       body { background:#f4f4f4; }
+      .frame-16x9 { width: 1600px; height: 900px; min-height: 900px; }
       .frame {
         width: 1440px;
         min-height: 1024px;
@@ -81,6 +82,27 @@
       }
       .sketch-title { font-size: 22px; font-weight: 900; }
       .sketch-desc { color: #444; line-height: 1.7; margin-top: 6px; }
+      .shot-frame {
+        border: 3px dashed #111;
+        border-radius: 20px;
+        padding: 14px;
+        background: linear-gradient(135deg, rgba(0,0,0,0.02), rgba(0,0,0,0.05));
+        box-shadow: 0 16px 32px rgba(0,0,0,0.14);
+      }
+      .shot-frame img {
+        width: 100%;
+        border: 2px solid #111;
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        background: #fff;
+      }
+      .shot-caption {
+        margin-top: 8px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #333;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -140,16 +162,234 @@
           <div class="flex items-center justify-center gap-6 relative py-6">
             <div class="phone rotate-[-6deg] translate-y-4">
               <div class="phone-header">地图页</div>
-              <img class="shot" src="screenshots/app/map.png" alt="地图页" />
+              <img class="shot" src="../screenshot_app/地图.jpg" alt="地图页" />
             </div>
             <div class="phone z-10">
-              <div class="phone-header">回忆相册</div>
-              <img class="shot" src="screenshots/app/memory-open.png" alt="回忆相册展开" />
+              <div class="phone-header">回忆入口</div>
+              <img class="shot" src="../screenshot_app/回忆入口.jpg" alt="回忆入口" />
             </div>
             <div class="phone rotate-[6deg] translate-y-4">
-              <div class="phone-header">小游戏</div>
-              <img class="shot" src="screenshots/app/games.png" alt="小游戏" />
+              <div class="phone-header">个人主页</div>
+              <img class="shot" src="../screenshot_app/主页2.jpg" alt="个人主页" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 01B: Hero screenshots board -->
+      <section class="frame p-12" id="frame-hero-board">
+        <div class="absolute top-8 left-8 sticker">01B / 首屏三图拼页</div>
+        <div class="text-center mt-8">
+          <h2 class="text-5xl font-black ink">首屏截图并排展示</h2>
+          <p class="mt-3 text-xl text-gray-700">直接用于海报或 Figma 单页导入</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8 mt-12">
+          <div class="shot-frame">
+            <img src="../screenshot_app/地图.jpg" alt="地图页" />
+            <div class="shot-caption">地图页 · 好友筛选 + 城市/地点切换</div>
+          </div>
+          <div class="shot-frame">
+            <img src="../screenshot_app/回忆入口.jpg" alt="回忆入口" />
+            <div class="shot-caption">回忆入口 · 一键开写</div>
+          </div>
+          <div class="shot-frame">
+            <img src="../screenshot_app/主页2.jpg" alt="个人主页" />
+            <div class="shot-caption">个人主页 · 关系与档案</div>
+          </div>
+        </div>
+
+        <div class="absolute right-8 bottom-8 text-sm text-gray-600">建议导出：1440 × 1024</div>
+      </section>
+
+      <!-- Frame 01C: 16:9 dark-mode board -->
+      <section class="frame frame-16x9 p-10" id="frame-hero-board-16x9">
+        <div class="absolute top-8 left-8 sticker">01C / 夜景三图拼页 (16:9)</div>
+        <div class="text-center mt-6">
+          <h2 class="text-5xl font-black ink">夜间风格 · 核心三屏并排</h2>
+          <p class="mt-3 text-xl text-gray-700">按 16:9 布局，直接导出海报或导入 Figma</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8 mt-10">
+          <div class="shot-frame max-w-[400px] mx-auto">
+            <img src="../screenshot_app/记忆按钮打开.jpg" alt="记忆按钮打开" />
+            <div class="shot-caption">记忆按钮打开 · 记忆流首屏</div>
+          </div>
+          <div class="shot-frame max-w-[400px] mx-auto">
+            <img src="../screenshot_app/主页2.jpg" alt="个人主页" />
+            <div class="shot-caption">个人主页 · 关系与档案</div>
+          </div>
+          <div class="shot-frame max-w-[400px] mx-auto">
+            <img src="../screenshot_app/地图.jpg" alt="友情地图" />
+            <div class="shot-caption">友情地图 · 夜景足迹</div>
+          </div>
+        </div>
+
+        <div class="absolute right-8 bottom-8 text-sm text-gray-600">导出尺寸：1600 × 900 (16:9)</div>
+      </section>
+
+      <!-- Frame 01D: 16:9 memory board -->
+      <section class="frame frame-16x9 p-10" id="frame-memory-board-16x9">
+        <div class="absolute top-8 left-8 sticker">01D / 记忆流三图拼页 (16:9)</div>
+        <div class="text-center mt-6">
+          <h2 class="text-5xl font-black ink">记忆流 · 入口 · 相册 三屏并排</h2>
+          <p class="mt-3 text-xl text-gray-700">16:9 布局，导出一页 PNG 或导入 Figma</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8 mt-10">
+          <div class="shot-frame max-w-[400px] mx-auto">
+            <img src="../screenshot_app/发布记忆.jpeg" alt="发布记忆" />
+            <div class="shot-caption">发布记忆 · 填写地点/心情/@好友</div>
+          </div>
+          <div class="shot-frame max-w-[400px] mx-auto">
+            <img src="../screenshot_app/回忆入口.jpg" alt="回忆入口" />
+            <div class="shot-caption">回忆入口 · 一键开写</div>
+          </div>
+          <div class="shot-frame max-w-[400px] mx-auto">
+            <img src="../screenshot_app/回忆相册.jpg" alt="回忆相册" />
+            <div class="shot-caption">回忆相册 · 浏览与分组</div>
+          </div>
+        </div>
+
+        <div class="absolute right-8 bottom-8 text-sm text-gray-600">导出尺寸：1600 × 900 (16:9)</div>
+      </section>
+
+      <!-- Frame 01E: Bill & memory linkage -->
+      <section class="frame p-16" id="frame-bill-memory">
+        <div class="absolute top-8 left-8 sticker">01E / 账单与记忆强绑定</div>
+
+        <div class="grid md:grid-cols-2 gap-10 items-start mt-8">
+          <div>
+            <h2 class="text-5xl font-black ink">账单中心 · 与记忆不分家</h2>
+            <p class="mt-4 text-2xl text-gray-700 leading-relaxed">账单不是零散列表，而是随记忆一起保存、同步与回溯。</p>
+            <ul class="mt-6 space-y-3 text-lg text-gray-900 font-semibold">
+              <li>• 创建方式：发布记忆时勾选“顺便记账”或在记忆卡片中绑定账本，支持个人和平摊两种模式。</li>
+              <li>• 分摊规则：平摊自动按参与人等分；个人模式仅记当前用户，日后可编辑参与人及金额。</li>
+              <li>• 展示：账本标记出现在记忆卡片，可从账本页查看列表、合计与参与人分摊详情。</li>
+              <li>• 同步：编辑或删除账本会同步更新记忆与账本列表；无网时提示重试，不会悄悄失败。</li>
+              <li>• 隐私：只有自己能看到账单，即使记忆中 @ 了好友，对方也不会看到账单。</li>
+            </ul>
+            <div class="mt-6 inline-flex items-center gap-2 line px-4 py-3 text-base font-black ink">
+              <i class="fa-solid fa-link"></i>
+              <span>账单与记忆一体化 · 不是零散条目</span>
+            </div>
+          </div>
+
+          <div class="shot-frame max-w-[520px] ml-auto">
+            <img src="../screenshot_app/账单.jpg" alt="账单中心" />
+            <div class="shot-caption">账单中心 · 绑定记忆、清晰分摊</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 01F: 游戏聚合页 -->
+      <section class="frame p-16" id="frame-game-hub">
+        <div class="absolute top-8 left-8 sticker">01F / 游戏聚合页</div>
+
+        <div class="grid md:grid-cols-2 gap-10 items-start mt-8">
+          <div>
+            <h2 class="text-5xl font-black ink">小游戏集合 · 秒开秒回</h2>
+            <p class="mt-4 text-2xl text-gray-700 leading-relaxed">轻量互动玩法，可随时退出返回主流程，状态不丢。</p>
+            <ul class="mt-6 space-y-3 text-lg text-gray-900 font-semibold">
+              <li>• 入口：底部导航进入小游戏聚合页，返回后记忆流状态保持。</li>
+              <li>• 内容：轻量化互动玩法，随时可退出返回主功能；遵守系统静音与网络策略。</li>
+              <li>• 成绩：支持本地记录基础成绩或回合数，未联网时不阻塞退出。</li>
+              <li>• 音效：iOS 需打开铃声开关才能听到音效。</li>
+            </ul>
+            <div class="mt-6 inline-flex items-center gap-2 line px-4 py-3 text-base font-black ink">
+              <i class="fa-solid fa-gamepad"></i>
+              <span>秒开秒收 · 不打扰主线</span>
+            </div>
+          </div>
+
+          <div class="shot-frame max-w-[520px] ml-auto">
+            <img src="../screenshot_app/游戏.jpg" alt="小游戏集合" />
+            <div class="shot-caption">小游戏集合 · 底部导航入口</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 01G: 地图页面 -->
+      <section class="frame p-16" id="frame-map-page">
+        <div class="absolute top-8 left-8 sticker">01G / 友情地图</div>
+
+        <div class="grid md:grid-cols-2 gap-10 items-start mt-8">
+          <div>
+            <h2 class="text-5xl font-black ink">友情地图 · 足迹与回忆</h2>
+            <p class="mt-4 text-2xl text-gray-700 leading-relaxed">按好友筛选，城市/地点双视角，光点直达回忆列表。</p>
+            <ul class="mt-6 space-y-3 text-lg text-gray-900 font-semibold">
+              <li>• 好友筛选：多选好友头像 AND 逻辑过滤光点与列表；点“全部”清空，足迹数量实时更新。</li>
+              <li>• 分组视图：在“按地点 / 按城市”切换，城市模式自动聚合并取均值坐标，地点模式逐点展示。</li>
+              <li>• 光点与记忆：点光点或城市聚合卡片展开记忆列表，按所选好友交集展示参与或发布的回忆。</li>
+              <li>• 地图交互：保留缩放/拖动，顶部导航和筛选条不遮挡地图点击；加载异常时降级占位，不阻塞页面。</li>
+            </ul>
+            <div class="mt-6 inline-flex items-center gap-2 line px-4 py-3 text-base font-black ink">
+              <i class="fa-solid fa-map-location-dot"></i>
+              <span>城市 / 地点双视角 · 好友交集足迹</span>
+            </div>
+          </div>
+
+          <div class="shot-frame max-w-[520px] ml-auto">
+            <img src="../screenshot_app/地图.jpg" alt="友情地图" />
+            <div class="shot-caption">友情地图 · 夜景视图</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 01H: 记忆模块 -->
+      <section class="frame p-16" id="frame-memory-module">
+        <div class="absolute top-8 left-8 sticker">01H / 记忆模块</div>
+
+        <div class="grid md:grid-cols-2 gap-10 items-start mt-8">
+          <div>
+            <h2 class="text-5xl font-black ink">记忆模块 · 从提示到回顾</h2>
+            <p class="mt-4 text-2xl text-gray-700 leading-relaxed">从顶部提醒到回忆相册，全链路可点击、可重试。</p>
+            <ul class="mt-6 space-y-3 text-lg text-gray-900 font-semibold">
+              <li>• 顶部提醒条：离线/仅 Wi‑Fi 上传/刷新、新版本提示；可“刷新/重载”或跳转网络设置，离线可关闭（UI 提示条待接入）。</li>
+              <li>• 好友筛选条：多选好友 AND 逻辑；“清除”恢复全量。</li>
+              <li>• 记忆发布入口：点击新建，若不满足“仅 Wi‑Fi 上传”可确认继续或延后排队。</li>
+              <li>• 视图切换：按日期 / 地点 / 城市分组查看。</li>
+              <li>• 回忆相册：可按日期/好友筛选，左右滑动浏览，支持生成分享海报。</li>
+              <li>• 记忆流卡片：媒体可全屏预览与滑动；语音可播放/暂停。时间/地点/天气/心情可点开或跳至地图；天气/心情支持多选；@ 好友双方同步。菜单含删除、编辑、账本绑定、复制链接/文案；删除需二次确认，编辑回到原编辑页；账本绑定同步账本页；列表上拉加载更多；评论作者与被 @ 的好友可评/回（文/音），作者可删任何评论，被 @ 只能删自己的。</li>
+              <li>• 上传与录制：图片/视频上传前校验网络与体积，超限提示压缩或分批；默认压缩，上传有超时防挂死。语音录制 30 秒上限，超时自动停止并可重录；成功即插入流。</li>
+              <li>• 占位与重试：上传失败显示原因与重试按钮；重试再校验网络；长按可删除失败任务。</li>
+            </ul>
+            <div class="mt-6 inline-flex items-center gap-2 line px-4 py-3 text-base font-black ink">
+              <i class="fa-solid fa-bolt"></i>
+              <span>全链路可见可控 · 失败可重试</span>
+            </div>
+          </div>
+
+          <div class="shot-frame max-w-[420px] ml-auto">
+            <img src="../screenshot_app/记忆按钮打开.jpg" alt="记忆入口" />
+            <div class="shot-caption">记忆入口 · 一键开写</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Frame 01I: 我的主页功能 -->
+      <section class="frame p-16" id="frame-home-profile">
+        <div class="absolute top-8 left-8 sticker">01I / 我的主页</div>
+
+        <div class="grid md:grid-cols-2 gap-10 items-start mt-8">
+          <div>
+            <h2 class="text-5xl font-black ink">我的主页 · 记录 / 浏览 / 协作汇总</h2>
+            <p class="mt-4 text-2xl text-gray-700 leading-relaxed">核心落点，头像区、密友、入口与状态一屏掌握。</p>
+            <ul class="mt-6 space-y-3 text-lg text-gray-900 font-semibold">
+              <li>• 头像区：左上头像可全屏预览再关，右下变换符号切随机男女头像或自定义上传；右侧展示姓名、邮箱、邀请码分享，下方汇总记忆总数与账本好友数。</li>
+              <li>• 我的密友：默认展示 5 位，可展开/搜索。添加途径：① 创建虚拟人，后续邀请码绑定；② 邀请真人同意后成好友；③ 删除转为虚拟占位。支持 @、查找、展开/收起。</li>
+              <li>• 入口与状态：随机回忆一键抽取往日记忆。设置覆盖网络策略（如仅 Wi‑Fi 上传/刷新）、隐私屏蔽、通知、语言/区域、账号安全/登出、数据备份导出、版本与缓存管理，SW 提示新版本可刷新。全局状态维护用户/好友/记忆/账单，切页或重开快速恢复，未完成上传会自动续传。</li>
+              <li>• 导航：底部主导航可在记忆流、地图、账本、小游戏、个人页间快速切换。</li>
+            </ul>
+            <div class="mt-6 inline-flex items-center gap-2 line px-4 py-3 text-base font-black ink">
+              <i class="fa-solid fa-user"></i>
+              <span>个人主页 · 关系与状态中心</span>
+            </div>
+          </div>
+
+          <div class="shot-frame max-w-[520px] ml-auto">
+            <img src="../screenshot_app/主页2.jpg" alt="个人主页" />
+            <div class="shot-caption">个人主页 · 汇总记录与关系</div>
           </div>
         </div>
       </section>
@@ -158,69 +398,135 @@
       <section class="frame p-16" id="frame-features">
         <div class="absolute top-8 left-8 sticker">02 / 核心功能展示</div>
         <div class="text-center mt-10">
-          <h2 class="text-6xl font-black ink">四个模块，一站式记录</h2>
-          <p class="mt-4 text-2xl text-gray-700">地图、记忆、账单、小游戏，陪你把日常变成有温度的故事</p>
+          <h2 class="text-6xl font-black ink">五页小册 · 简笔说明</h2>
+          <p class="mt-4 text-2xl text-gray-700">记忆流 · 地图 · 账单 · 游戏 · 个人主页，每页都配真实截图</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-10 mt-14">
-          <article class="sketch-box">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">🗺️</div>
+        <div class="space-y-10 mt-14">
+          <article class="sketch p-8">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-2">
+                <img src="../public/icons/orbit-logo.svg" alt="Orbit" class="w-9 h-9 rounded-xl border-2 border-black" />
+                <h3 class="text-3xl font-black ink">记忆流 · 入口与发布</h3>
+              </div>
+              <span class="sticker">随时开写 · @ 好友同步</span>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 items-center mt-6">
               <div>
-                <div class="sketch-title">地图 · 共同足迹</div>
-                <div class="sketch-desc">按好友筛选点位，点开即看地点下的回忆清单与详情。</div>
+                <p class="sketch-desc">从「回忆入口」进入，长按或点击即可发布图文、地点、天气与心情，@ 好友后双方流内同步。</p>
+                <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+                  <li>• 回忆入口快捷浮层，随时开写</li>
+                  <li>• 发布页可绑定地点 / 账单 / 标签</li>
+                  <li>• 首屏回忆流支持好友筛选与随机</li>
+                </ul>
+              </div>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div class="shot-frame">
+                  <img src="../screenshot_app/回忆入口.jpg" alt="回忆入口" />
+                  <div class="shot-caption">回忆入口 · 一键开写</div>
+                </div>
+                <div class="shot-frame">
+                  <img src="../screenshot_app/发布记忆.jpeg" alt="发布记忆" />
+                  <div class="shot-caption">发布记忆 · 填写地点/心情/@好友</div>
+                </div>
               </div>
             </div>
-            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 好友筛选 + 城市汇总</li>
-              <li>• 点位列表层 + 单条详情层</li>
-              <li>• 回忆参与者与位置并列呈现</li>
-            </ul>
           </article>
 
-          <article class="sketch-box">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">🖼️</div>
+          <article class="sketch p-8">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-2">
+                <img src="../public/icons/orbit-logo.svg" alt="Orbit" class="w-9 h-9 rounded-xl border-2 border-black" />
+                <h3 class="text-3xl font-black ink">友情地图 · 足迹可视化</h3>
+              </div>
+              <span class="sticker">城市/地点切换 · 按好友筛选</span>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 items-center mt-6">
               <div>
-                <div class="sketch-title">记忆流 · 图文胶囊</div>
-                <div class="sketch-desc">卡片式回顾照片、文字、地点和 @ 好友，支持编辑与删除。</div>
+                <p class="sketch-desc">按好友筛选足迹，支持地点与城市双视角。点击光点即可查看该地点的回忆列表与详情。</p>
+                <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+                  <li>• AND 逻辑好友筛选，专属足迹</li>
+                  <li>• 城市聚合 / 精确点位自由切换</li>
+                  <li>• 光点人数徽标，谁参与一目了然</li>
+                </ul>
+              </div>
+              <div class="shot-frame">
+                <img src="../screenshot_app/地图.jpg" alt="友情地图" />
+                <div class="shot-caption">友情地图 · 城市/地点切换 + 筛好友</div>
               </div>
             </div>
-            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 图文 + 地点 + @ 好友</li>
-              <li>• 多好友 AND 筛选</li>
-              <li>• 随机回忆一键打开</li>
-            </ul>
           </article>
 
-          <article class="sketch-box">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">💳</div>
+          <article class="sketch p-8">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-2">
+                <img src="../public/icons/orbit-logo.svg" alt="Orbit" class="w-9 h-9 rounded-xl border-2 border-black" />
+                <h3 class="text-3xl font-black ink">财务足迹 · 账单与回忆一体</h3>
+              </div>
+              <span class="sticker">自动分摊 · 状态清晰</span>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 items-center mt-6">
               <div>
-                <div class="sketch-title">账单中心 · 智能分摊</div>
-                <div class="sketch-desc">账单与回忆绑定，自动均摊与结算提示，避免漏单。</div>
+                <p class="sketch-desc">记忆时顺手记账，自动分摊。账单仅自己可见，但与回忆绑定，结算状态一眼看清。</p>
+                <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+                  <li>• 回忆绑定账单，自动均摊</li>
+                  <li>• 应收应付与结清状态醒目展示</li>
+                  <li>• 弱网/离线拦截，避免漏单</li>
+                </ul>
+              </div>
+              <div class="shot-frame">
+                <img src="../screenshot_app/账单.jpg" alt="账单中心" />
+                <div class="shot-caption">账单中心 · 明细与结算态</div>
               </div>
             </div>
-            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 回忆绑定账单</li>
-              <li>• 自动分摊 / 待结清标识</li>
-              <li>• 参与者应收应付清晰</li>
-            </ul>
           </article>
 
-          <article class="sketch-box">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center text-xl">🎮</div>
+          <article class="sketch p-8">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-2">
+                <img src="../public/icons/orbit-logo.svg" alt="Orbit" class="w-9 h-9 rounded-xl border-2 border-black" />
+                <h3 class="text-3xl font-black ink">聚会小游戏 · 破冰更快</h3>
+              </div>
+              <span class="sticker">骰子 / 转盘 / 真心话</span>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 items-center mt-6">
               <div>
-                <div class="sketch-title">聚会小游戏 · 破冰</div>
-                <div class="sketch-desc">骰子、转盘、真心话等轻量工具，快速活跃气氛。</div>
+                <p class="sketch-desc">6 款轻互动工具，Web Audio 实时合成 8-bit 音效，不依赖重媒体，秒开秒玩。</p>
+                <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+                  <li>• 今天谁买单、真心话、大冒险</li>
+                  <li>• 轻量动画与音效，移动端友好</li>
+                  <li>• 适配暗色主题，夜间聚会不刺眼</li>
+                </ul>
+              </div>
+              <div class="shot-frame">
+                <img src="../screenshot_app/游戏.jpg" alt="聚会小游戏" />
+                <div class="shot-caption">小游戏集合 · 一键破冰</div>
               </div>
             </div>
-            <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
-              <li>• 今天谁买单 / 真心话</li>
-              <li>• 翻翻卡通 4x4 / 6x6</li>
-              <li>• 旅途 / 聚会快速开场</li>
-            </ul>
+          </article>
+
+          <article class="sketch p-8">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-2">
+                <img src="../public/icons/orbit-logo.svg" alt="Orbit" class="w-9 h-9 rounded-xl border-2 border-black" />
+                <h3 class="text-3xl font-black ink">个人主页 · 关系与档案</h3>
+              </div>
+              <span class="sticker">主题切换 · 邀请码 · 版本可见</span>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 items-center mt-6">
+              <div>
+                <p class="sketch-desc">主页展示头像、好友状态、邀请码与应用版本，支持隐私、推送等偏好设置，便于排错与分享。</p>
+                <ul class="mt-4 space-y-2 text-lg text-gray-800 font-semibold">
+                  <li>• 好友状态与邀请码入口集中</li>
+                  <li>• 主题 / 字体等偏好一键切换</li>
+                  <li>• 版本号可见，更新入口清晰</li>
+                </ul>
+              </div>
+              <div class="shot-frame">
+                <img src="../screenshot_app/主页2.jpg" alt="个人主页" />
+                <div class="shot-caption">个人主页 · 主题与好友一屏掌握</div>
+              </div>
+            </div>
           </article>
         </div>
       </section>

@@ -396,7 +396,7 @@ const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
   const { x, y } = getPoint(e);
   const dx = x - swipeStartRef.current.x;
   const dy = y - swipeStartRef.current.y;
-  if (Math.abs(dx) < 15 || Math.abs(dx) < Math.abs(dy)) return;
+  if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
 
   swipeHandledRef.current = true;
   if (dx > 0) goPrev();
@@ -613,32 +613,7 @@ ctx.fillText('长按保存 · 微信分享', 70, infoY + 20);
 const qrImg = new window.Image();
 qrImg.crossOrigin = 'anonymous';
 const shareUrl = `https://orbit.yanrong.fun/share-memory/?id=${currentItem.memory.id}`;
-
-qrImg.onload = () => {
-ctx.save();
-ctx.globalAlpha = 0.95;
-ctx.drawImage(qrImg, w - 180, h - 220, 120, 120);
-ctx.restore();
-    // cleanup object URLs if we created them
-    try {
-      if ((img1 as any).__objectUrl) URL.revokeObjectURL((img1 as any).__objectUrl);
-    } catch {}
-    try {
-      if ((img2 as any).__objectUrl) URL.revokeObjectURL((img2 as any).__objectUrl);
-    } catch {}
-    try {
-      if ((qrImg as any).__objectUrl) URL.revokeObjectURL((qrImg as any).__objectUrl);
-    } catch {}
-
-    try {
-      setPendingPosterDataUrl(canvas.toDataURL('image/png'));
-    } catch (err) {
-      // canvas may be tainted despite our best effort; fall back to null
-      console.warn('canvas toDataURL failed:', err);
-      setPendingPosterDataUrl(null);
-    }
-};
-qrImg.onerror = () => {
+const finalizePoster = () => {
   try {
     if ((img1 as any).__objectUrl) URL.revokeObjectURL((img1 as any).__objectUrl);
   } catch {}
@@ -648,28 +623,46 @@ qrImg.onerror = () => {
   try {
     if ((qrImg as any).__objectUrl) URL.revokeObjectURL((qrImg as any).__objectUrl);
   } catch {}
+
   try {
     setPendingPosterDataUrl(canvas.toDataURL('image/png'));
   } catch (err) {
-    console.warn('canvas toDataURL failed on error path:', err);
+    // canvas may be tainted despite our best effort; fall back to null
+    console.warn('canvas toDataURL failed:', err);
     setPendingPosterDataUrl(null);
   }
 };
 
-// Try to fetch QR as blob to avoid any cross-origin taint; fall back to direct src
+qrImg.onload = () => {
+  ctx.save();
+  ctx.globalAlpha = 0.95;
+  ctx.drawImage(qrImg, w - 180, h - 220, 120, 120);
+  ctx.restore();
+  finalizePoster();
+};
+qrImg.onerror = () => {
+  finalizePoster();
+};
+
+// Try to fetch QR as blob to avoid any cross-origin taint; if失败则直接跳过 QR 也生成海报
 try {
-  fetch(`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`, { mode: 'cors' })
-    .then((r) => r.blob())
+  fetch(`https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&margin=1&size=160&format=png`, { mode: 'cors' })
+    .then((r) => {
+      if (!r.ok) throw new Error('qr fetch failed');
+      return r.blob();
+    })
     .then((b) => {
       const qrUrl = URL.createObjectURL(b);
       (qrImg as any).__objectUrl = qrUrl;
       qrImg.src = qrUrl;
     })
-    .catch(() => {
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`;
+    .catch((err) => {
+      console.warn('qr fetch failed, skip qr:', err);
+      finalizePoster();
     });
 } catch (e) {
-  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=1&data=${encodeURIComponent(shareUrl)}`;
+  console.warn('qr fetch threw, skip qr:', e);
+  finalizePoster();
 }
 } catch (e) {
 console.error(e);
