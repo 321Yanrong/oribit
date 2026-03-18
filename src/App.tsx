@@ -46,7 +46,7 @@ const resetClientData = () => {
 
 // RUM/日志：在应用层初始化，后续用户登录后再补充 uin
 const aegis = new Aegis({
-  id: 'rum-ddsm9qcQpKd1q7',
+  id: 'nG8gnTK2972Drrb304',
   uin: '',
   reportApiSpeed: true,
   reportAssetSpeed: true,
