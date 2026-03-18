@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft } from 'react-icons/fa';
 import mapboxgl from 'mapbox-gl';
@@ -77,12 +77,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const toastTimerRef = useRef<number | null>(null);
   const fitViewTimeoutRef = useRef<number | null>(null);
   const fallbackShowTimerRef = useRef<number | null>(null);
+  const lastNoPinsToastRef = useRef<number>(0);
 
-  const showToast = (message: string) => {
+  const showToast = useCallback((message: string) => {
     setToastMessage(message);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToastMessage(null), 2000);
-  };
+  }, []);
 
   // ✨ 核心修复 1：进页面立刻拉取最新回忆数据
   useEffect(() => {
@@ -211,9 +212,10 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
 
   // 根据选中的好友过滤光点
   const basePins = mapGroupBy === 'city' ? cityPins : derivedPins;
-  const filteredPins = selectedFriendIds.length
-    ? basePins.filter(pin => pin.friends.some((f: any) => selectedFriendIds.includes(f.id)))
-    : basePins;
+  const filteredPins = useMemo(() => {
+    if (selectedFriendIds.length === 0) return basePins;
+    return basePins.filter(pin => pin.friends.some((f: any) => selectedFriendIds.includes(f.id)));
+  }, [basePins, selectedFriendIds]);
 
   // 获取选中光点的所有记忆
   const pinMemories = selectedPin?.memories.filter((m: any) => {
@@ -383,7 +385,11 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
       const targetMap = mapRef.current as mapboxgl.Map | null;
       if (!targetMap) return;
       if (markersRef.current.length === 0) {
-        showToast('该好友暂无回忆足迹');
+        const now = Date.now();
+        if (now - lastNoPinsToastRef.current > 2500) {
+          lastNoPinsToastRef.current = now;
+          showToast('该好友暂无回忆足迹');
+        }
         const currentZoom = targetMap.getZoom();
         targetMap.setZoom(Math.max(currentZoom - 1, 4));
         return;

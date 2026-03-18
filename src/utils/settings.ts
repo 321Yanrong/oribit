@@ -15,7 +15,7 @@ export const SETTINGS_EVENT = 'orbit:settings';
 export const DEFAULT_SETTINGS: OrbitSettings = {
   fontSize: 'normal',
   darkMode: true,
-  themeMode: 'system',
+  themeMode: 'dark',
   wifiOnlyUpload: false,
   wifiOnlyRefresh: false,
   notifyAt: true,
