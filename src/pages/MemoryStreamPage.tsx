@@ -1328,6 +1328,7 @@ export default function MemoryStreamPage() {
   const [albumDateRange, setAlbumDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [showAlbumFilterDialog, setShowAlbumFilterDialog] = useState(false);
   const [commentAudios, setCommentAudios] = useState<Record<string, string[]>>({});
+  const initialFilterClearedRef = useRef(false);
 
   const refreshSessionQuick = useCallback(async (label: string) => {
     if (!shouldAllowRefresh()) return true;
@@ -1655,6 +1656,15 @@ export default function MemoryStreamPage() {
     return result;
   }, [memories, searchQuery, filterFriendIds]);
 
+  // 首次进入时若存在历史好友筛选，自动清空避免进来就空白
+  useEffect(() => {
+    if (initialFilterClearedRef.current) return;
+    if (filterFriendIds.length > 0) {
+      setMemoryStreamFilterFriendIds([]);
+    }
+    initialFilterClearedRef.current = true;
+  }, [filterFriendIds.length, setMemoryStreamFilterFriendIds]);
+
   const albumFilteredMemories = useMemo(() => {
     let result = filteredMemories;
 
@@ -1680,6 +1690,15 @@ export default function MemoryStreamPage() {
 
     return result;
   }, [filteredMemories, albumFilterFriendIds, albumDateRange]);
+
+  // 若筛选导致列表为空，自动清空筛选以恢复数据
+  useEffect(() => {
+    if (!filterFriendIds.length) return;
+    if (isLoading) return;
+    if (filteredMemories.length === 0) {
+      setMemoryStreamFilterFriendIds([]);
+    }
+  }, [filterFriendIds.length, filteredMemories.length, isLoading, setMemoryStreamFilterFriendIds]);
 
   // 按日期分组
   const groupedMemories = useMemo(() => groupMemoriesByDate(filteredMemories), [filteredMemories]);
@@ -2082,7 +2101,17 @@ export default function MemoryStreamPage() {
 
         {/* 好友筛选（支持多选，AND 逻辑：选中的好友必须同时出现） */}
         {friends.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
+          <div
+            className="flex gap-2 overflow-x-auto px-4 pb-3"
+            style={{
+              scrollbarWidth: 'none',
+              WebkitOverflowScrolling: 'touch',
+              msOverflowStyle: 'none',
+              overscrollBehaviorX: 'contain',
+              touchAction: 'pan-x',
+              WebkitMaskImage: '-webkit-linear-gradient(left, transparent, #000 10%, #000 90%, transparent)',
+            }}
+          >
             <button
               onClick={() => setMemoryStreamFilterFriendIds([])}
               className="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all border"

@@ -12,6 +12,14 @@ const MUSIC_TRACKS = [
 { label: '本地音乐 · bgm4', url: '/music/bgm4.mp3' },
 ];
 const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const formatDateZh = (input: string | number | Date) => {
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${y}年${m}月${day}日`;
+};
 type FriendChip = { id: string; name: string; avatar?: string };
 
 // ==========================================
@@ -577,7 +585,7 @@ try {
   const dates = playlist.map(p => new Date(p.memory.memory_date || p.memory.created_at).getTime());
   const minDate = new Date(Math.min(...dates));
   const maxDate = new Date(Math.max(...dates));
-  const formatDate = (d) => d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatDate = (d) => formatDateZh(d);
   
   // 拼接时间范围：2026年3月2日 - 2026年3月17日
   const dateRangeStr = `${formatDate(minDate)} - ${formatDate(maxDate)}`;
@@ -761,7 +769,7 @@ style={{ width: i < activeIndex ? '100%' : i === activeIndex ? `${progress}%` : 
 {mood && <span className="text-xl text-white">{mood}</span>}
 <div className="text-white">
 <p className="text-sm font-semibold">
-{new Date(currentItem.memory.memory_date || currentItem.memory.created_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
+{formatDateZh(currentItem.memory.memory_date || currentItem.memory.created_at)}
 </p>
 {currentItem.memory.location && (
 <p className="text-[10px] text-white/80 flex items-center gap-1"><FaMapMarkerAlt /> {currentItem.memory.location.name}</p>
