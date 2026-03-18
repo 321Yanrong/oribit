@@ -157,6 +157,7 @@ const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
     touchAction: 'pan-x', // 保证横滑始终可用
     msOverflowStyle: 'none',
   }}
+  onTouchMove={(e) => e.stopPropagation()}
 >
 {friends.map((f) => {
   const active = selectedFriendIds.includes(f.id);

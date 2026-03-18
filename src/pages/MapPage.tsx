@@ -486,11 +486,14 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                         : [...selectedFriendIds, friend.id]
                     )}
                     whileTap={{ scale: 0.95 }}
-                    className={`flex flex-col items-center gap-2 flex-shrink-0 transition-all ${isSelected ? 'opacity-100' : 'opacity-50'}`}
+                    className={`flex flex-col items-center gap-1 flex-shrink-0 transition-all ${isSelected ? 'opacity-100' : 'opacity-70'}`}
                   >
                     <div className={`w-12 h-12 rounded-xl overflow-hidden ring-2 transition-all ${isSelected ? 'ring-[#00FFB3] scale-110 shadow-[0_0_15px_rgba(0,255,179,0.3)]' : 'ring-transparent'}`}>
                       <img src={friend.avatar_url} alt={friend.username} className="w-full h-full object-cover" />
                     </div>
+                    <span className="text-[11px] text-white/90 max-w-[72px] truncate" title={friend.username}>
+                      {friend.username || '好友'}
+                    </span>
                   </motion.button>
                 );
               })}
