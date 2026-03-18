@@ -2615,23 +2615,45 @@ export default function MemoryStreamPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
                         <span>从</span>
-                        <input
-                          type="date"
-                          value={albumDateRange.start}
-                          onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, start: e.target.value }))}
-                          className="rounded-lg px-2 py-1 text-sm border"
-                          style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                        />
+                        <div className="relative">
+                          {!albumDateRange.start && (
+                            <span
+                              className="absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
+                              style={{ color: 'var(--orbit-text)', opacity: 0.55 }}
+                            >
+                              年/月/日
+                            </span>
+                          )}
+                          <input
+                            type="date"
+                            placeholder="年/月/日"
+                            value={albumDateRange.start}
+                            onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                            className="rounded-lg pl-2 pr-2 py-1 text-sm border min-w-[140px]"
+                            style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                          />
+                        </div>
                       </label>
                       <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
                         <span>到</span>
-                        <input
-                          type="date"
-                          value={albumDateRange.end}
-                          onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, end: e.target.value }))}
-                          className="rounded-lg px-2 py-1 text-sm border"
-                          style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                        />
+                        <div className="relative">
+                          {!albumDateRange.end && (
+                            <span
+                              className="absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
+                              style={{ color: 'var(--orbit-text)', opacity: 0.55 }}
+                            >
+                              年/月/日
+                            </span>
+                          )}
+                          <input
+                            type="date"
+                            placeholder="年/月/日"
+                            value={albumDateRange.end}
+                            onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                            className="rounded-lg pl-2 pr-2 py-1 text-sm border min-w-[140px]"
+                            style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                          />
+                        </div>
                       </label>
                       <button
                         type="button"
