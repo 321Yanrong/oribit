@@ -1,54 +1,26 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMap, FaImages, FaWallet, FaUser, FaGamepad } from 'react-icons/fa';
+import { IconType } from 'react-icons';
+import { FiMap, FiImage, FiCreditCard, FiTarget, FiUser } from 'react-icons/fi';
 import { useNavStore, useUserStore } from '../store';
 import { useUIStore } from '../store/ui';
 import { PageType } from '../types';
-
-// 简笔画开心表情 SVG 组件
-const HappyFace = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className={`w-7 h-7 ${active ? 'text-orbit-mint' : 'text-white/40'}`}>
-    <circle 
-      cx="50" cy="50" r="45" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="4"
-      strokeLinecap="round"
-    />
-    {/* 左眼 - 弯弯的 */}
-    <path 
-      d="M 30 40 Q 35 32 40 40" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="4"
-      strokeLinecap="round"
-    />
-    {/* 右眼 - 弯弯的 */}
-    <path 
-      d="M 60 40 Q 65 32 70 40" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="4"
-      strokeLinecap="round"
-    />
-    {/* 开心的嘴巴 */}
-    <path 
-      d="M 32 62 Q 50 80 68 62" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="4"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const navItems: { id: PageType; icon: typeof FaMap; label: string }[] = [
-  { id: 'map', icon: FaMap, label: '地图' },
-  { id: 'memory', icon: FaImages, label: '记忆' },
-  { id: 'ledger', icon: FaWallet, label: '账单' },
-  { id: 'games', icon: FaGamepad, label: '游戏' },
-  { id: 'profile', icon: FaUser, label: '我的' },
+import { SETTINGS_EVENT } from '../utils/settings';
+const navItems: { id: PageType; icon: IconType; label: string }[] = [
+  { id: 'map', icon: FiMap, label: '地图' },
+  { id: 'memory', icon: FiImage, label: '记忆' },
+  { id: 'ledger', icon: FiCreditCard, label: '账单' },
+  { id: 'games', icon: FiTarget, label: '游戏' },
+  { id: 'profile', icon: FiUser, label: '我的' },
 ];
+
+const getIsDarkTheme = () => {
+  if (typeof document === 'undefined') return true;
+  const theme = document.documentElement.dataset.theme;
+  if (theme === 'dark') return true;
+  if (theme === 'light') return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+};
 
 export default function BottomNav() {
   const { currentPage, setCurrentPage } = useNavStore();
@@ -56,6 +28,22 @@ export default function BottomNav() {
   const unreadCommentCount = useUIStore((s) => s.memoryCommentUnreadCount);
   const longPressTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const updateTheme = () => setIsDarkMode(getIsDarkTheme());
+    const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+    updateTheme();
+    media?.addEventListener('change', updateTheme);
+    window.addEventListener(SETTINGS_EVENT, updateTheme as EventListener);
+
+    return () => {
+      media?.removeEventListener('change', updateTheme);
+      window.removeEventListener(SETTINGS_EVENT, updateTheme as EventListener);
+    };
+  }, []);
 
   const clearLongPress = () => {
     if (longPressTimerRef.current) {
@@ -77,116 +65,103 @@ export default function BottomNav() {
     }, 900);
   };
 
+  const bgColor = isDarkMode ? '#000000' : '#ffffff';
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const inactiveColor = isDarkMode ? '#9ca3af' : '#6b7280';
+  const activeColor = isDarkMode ? '#f5f5f5' : '#111827';
+  const activeBg = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
-      <div className="mx-4 mb-4">
-        <motion.div 
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="glass-card rounded-3xl px-2 py-3"
-        >
-          <div className="flex items-center justify-around">
-            {navItems.map((item) => {
-              const isActive = currentPage === item.id;
-              const Icon = item.icon;
-              
-              return (
-                <motion.button
-                  data-tour-id={`nav-${item.id}`}
-                  key={item.id}
-                  onPointerDown={startLongPress}
-                  onPointerUp={clearLongPress}
-                  onPointerLeave={clearLongPress}
-                  onClick={() => {
-                    if (longPressTriggeredRef.current) {
-                      longPressTriggeredRef.current = false;
-                      return;
-                    }
-                    setCurrentPage(item.id);
-                  }}
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all"
-                >
-                  {/* 活跃背景 */}
-                  <AnimatePresence>
-                    {isActive && (
-                      <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        className="absolute inset-0 rounded-2xl bg-orbit-mint/10"
-                      />
-                    )}
-                  </AnimatePresence>
-                  
-                  {/* 图标 */}
-                  <div className="relative z-10">
-                    <AnimatePresence mode="wait">
-                      {isActive ? (
-                        <motion.div
-                          key="happy"
-                          initial={{ scale: 0, rotate: -180 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          exit={{ scale: 0, rotate: 180 }}
-                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                        >
-                          <HappyFace active={true} />
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="icon"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                        >
-                          <Icon
-                            className="w-6 h-6 text-white/40"
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {/* 记忆评论红点 */}
-                    {item.id === 'memory' && unreadCommentCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                        {unreadCommentCount > 99 ? '99+' : unreadCommentCount}
-                      </span>
-                    )}
-                    {/* 好友申请红点 */}
-                    {item.id === 'profile' && pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                        {pendingCount}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* 标签 */}
-                  <span
-                    className={`text-xs font-medium transition-colors duration-300 relative z-10 ${
-                      isActive ? 'text-orbit-mint' : 'text-white/40'
-                    }`}
+    <nav className="fixed bottom-0 left-0 right-0 z-20 safe-bottom pointer-events-none">
+      <motion.div
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="pointer-events-auto px-2 py-2"
+        style={{ background: bgColor, borderTop: `1px solid ${borderColor}` }}
+      >
+        <div className="flex items-center justify-around">
+          {navItems.map((item) => {
+            const isActive = currentPage === item.id;
+            const Icon = item.icon;
+            
+            return (
+              <motion.button
+                data-tour-id={`nav-${item.id}`}
+                key={item.id}
+                onPointerDown={startLongPress}
+                onPointerUp={clearLongPress}
+                onPointerLeave={clearLongPress}
+                onClick={() => {
+                  if (longPressTriggeredRef.current) {
+                    longPressTriggeredRef.current = false;
+                    return;
+                  }
+                  setCurrentPage(item.id);
+                }}
+                whileHover={{ scale: 1.06, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all"
+              >
+                <AnimatePresence>
+                  {isActive && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      className="absolute inset-0 rounded-2xl"
+                      style={{ background: activeBg }}
+                    />
+                  )}
+                </AnimatePresence>
+
+                <div className="relative z-10">
+                  <motion.div
+                    animate={{ scale: isActive ? 1.08 : 1 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 22 }}
                   >
-                    {item.label}
-                  </span>
-                  
-                  {/* 活跃小圆点 */}
-                  <AnimatePresence>
-                    {isActive && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orbit-mint shadow-lg"
-                        style={{ boxShadow: '0 0 10px rgba(0, 255, 179, 0.6)' }}
-                      />
-                    )}
-                  </AnimatePresence>
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.div>
-      </div>
+                    <Icon
+                      className="w-6 h-6"
+                      strokeWidth={isActive ? 2.6 : 2.2}
+                      style={{ color: isActive ? activeColor : inactiveColor }}
+                    />
+                  </motion.div>
+                  {item.id === 'memory' && unreadCommentCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                      {unreadCommentCount > 99 ? '99+' : unreadCommentCount}
+                    </span>
+                  )}
+                  {item.id === 'profile' && pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                      {pendingCount}
+                    </span>
+                  )}
+                </div>
+
+                <span
+                  className={`text-xs transition-colors duration-300 relative z-10 ${
+                    isActive ? 'font-semibold' : 'font-medium'
+                  }`}
+                  style={{ color: isActive ? activeColor : inactiveColor }}
+                >
+                  {item.label}
+                </span>
+
+                <AnimatePresence>
+                  {isActive && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                      style={{ background: activeColor }}
+                    />
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.div>
     </nav>
   );
 }

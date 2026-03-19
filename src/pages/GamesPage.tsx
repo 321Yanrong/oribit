@@ -1437,11 +1437,19 @@ export default function GamesPage() {
     writeSfxSettings({ muted: sfxMuted, volume: sfxVolume });
   }, [sfxMuted, sfxVolume]);
 
+  const isLightMode = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light';
+  const cardBase = isLightMode
+    ? 'glass-card rounded-2xl p-5 flex items-center gap-4 border bg-white/80 backdrop-blur'
+    : 'glass-card rounded-2xl p-5 flex items-center gap-4 border bg-gradient-to-r';
+  const iconBg = isLightMode ? 'bg-white/70 border border-black/5' : 'bg-black/30';
+
   return (
-    <div className="relative min-h-screen bg-orbit-black pb-28">
+    <div className={`relative min-h-screen pb-28 ${isLightMode ? 'bg-white' : 'bg-orbit-black'}`}>
       {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       <div className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{ background: `radial-gradient(circle at 30% 20%, rgba(162,155,254,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(0,255,179,0.2) 0%, transparent 40%)` }}
+        style={{ background: isLightMode
+          ? 'radial-gradient(circle at 30% 20%, rgba(162,155,254,0.12) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(0,255,179,0.10) 0%, transparent 40%)'
+          : 'radial-gradient(circle at 30% 20%, rgba(162,155,254,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(0,255,179,0.2) 0%, transparent 40%)' }}
       />
 
       {/* 顶部标题 */}
@@ -1486,16 +1494,16 @@ export default function GamesPage() {
             transition={{ delay: i * 0.07 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setActiveGame(game)}
-            className={`w-full glass-card rounded-2xl p-5 flex items-center gap-4 border bg-gradient-to-r ${game.bg} ${game.border} text-left`}
+            className={`w-full ${cardBase} ${isLightMode ? '' : `${game.bg} ${game.border}`} text-left`}
           >
-            <div className="w-14 h-14 rounded-2xl bg-black/30 flex items-center justify-center text-3xl shrink-0">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 ${iconBg}`}>
               {game.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-base">{game.title}</p>
-              <p className="text-white/40 text-sm mt-0.5 leading-snug">{game.desc}</p>
+              <p className={`${isLightMode ? 'text-gray-900' : 'text-white'} font-bold text-base`}>{game.title}</p>
+              <p className={`${isLightMode ? 'text-gray-500' : 'text-white/40'} text-sm mt-0.5 leading-snug`}>{game.desc}</p>
             </div>
-            <div className="text-white/20 text-xl shrink-0">›</div>
+            <div className={`${isLightMode ? 'text-gray-300' : 'text-white/20'} text-xl shrink-0`}>›</div>
           </motion.button>
         ))}
       </div>

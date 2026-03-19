@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { FaEdit, FaChevronRight, FaChevronLeft, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaUserPlus, FaBars, FaShareAlt, FaCopy, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt, FaComment, FaPaperPlane, FaInfoCircle, FaHeadset, FaEllipsisH, FaFont, FaMoon, FaWifi, FaAt, FaBell, FaUserShield, FaUserLock, FaStore, FaUndoAlt, FaTicketAlt, FaClipboardList, FaTruck, FaTrash, FaMicrophone } from 'react-icons/fa';
-import { FiLogOut, FiTrash2 } from 'react-icons/fi';
+import { FiLogOut, FiTrash2, FiInfo, FiHeadphones, FiMoreHorizontal } from 'react-icons/fi';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment, submitHelpQuestionFeedback } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
@@ -28,14 +28,20 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [currentPwd, setCurrentPwd] = useState('');
   if (!isOpen) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
         className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
         style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">更换邮箱</h2>
@@ -48,9 +54,27 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
           </button>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--orbit-text-muted)' }}>我们将向新邮箱发送一封确认邮件，点击邮件中的链接后即可生效。</p>
-        <input type="email" placeholder="输入新邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-        <input type="password" placeholder="输入当前密码以验证" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-        <button onClick={() => onSubmit(email, currentPwd)} disabled={!email || !currentPwd || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
+        <input
+          type="email"
+          placeholder="输入新邮箱"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl border outline-none mb-6"
+          style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        />
+        <input
+          type="password"
+          placeholder="输入当前密码以验证"
+          value={currentPwd}
+          onChange={(e) => setCurrentPwd(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl border outline-none mb-6"
+          style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        />
+        <button
+          onClick={() => onSubmit(email, currentPwd)}
+          disabled={!email || !currentPwd || loading}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30"
+        >
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送确认邮件'}
         </button>
       </motion.div>
@@ -64,36 +88,67 @@ const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [pwd1, setPwd1] = useState('');
   const [pwd2, setPwd2] = useState('');
   if (!isOpen) return null;
-        return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
-              style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">修改密码</h2>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-full shadow-sm"
-                  style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.9))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
-                >
-                  <FaTimes />
-                </button>
-              </div>
-              <div className="space-y-3 mb-6">
-                <input type="password" placeholder="输入当前密码" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-                <input type="password" placeholder="输入新密码（至少 6 位）" value={pwd1} onChange={e => setPwd1(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-                <input type="password" placeholder="再次确认新密码" value={pwd2} onChange={e => setPwd2(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-              </div>
-              <button onClick={() => onSubmit(currentPwd, pwd1, pwd2)} disabled={!currentPwd || !pwd1 || !pwd2 || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30">
-                {loading ? <FaSpinner className="animate-spin mx-auto" /> : '确认修改'}
-              </button>
-            </motion.div>
-          </motion.div>
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
+        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">修改密码</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full shadow-sm"
+            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(255,255,255,0.9))', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
+          >
+            <FaTimes />
+          </button>
+        </div>
+        <div className="space-y-3 mb-6">
+          <input
+            type="password"
+            placeholder="输入当前密码"
+            value={currentPwd}
+            onChange={(e) => setCurrentPwd(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border outline-none"
+            style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+          />
+          <input
+            type="password"
+            placeholder="输入新密码（至少 6 位）"
+            value={pwd1}
+            onChange={(e) => setPwd1(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border outline-none"
+            style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+          />
+          <input
+            type="password"
+            placeholder="再次确认新密码"
+            value={pwd2}
+            onChange={(e) => setPwd2(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border outline-none"
+            style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+          />
+        </div>
+        <button
+          onClick={() => onSubmit(currentPwd, pwd1, pwd2)}
+          disabled={!currentPwd || !pwd1 || !pwd2 || loading}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white font-semibold disabled:opacity-30"
+        >
+          {loading ? <FaSpinner className="animate-spin mx-auto" /> : '确认修改'}
+        </button>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -102,14 +157,20 @@ const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
   const [email, setEmail] = useState('');
   if (!isOpen) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
         className="w-full max-w-sm rounded-3xl p-6 border shadow-2xl"
         style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[color:var(--orbit-text)]">找回密码</h2>
@@ -122,8 +183,19 @@ const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
           </button>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--orbit-text-muted)' }}>请输入你注册时的邮箱，我们将为你发送一封包含重置密码链接的邮件。</p>
-        <input type="email" placeholder="输入注册邮箱" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border outline-none mb-6" style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }} />
-        <button onClick={() => onSubmit(email)} disabled={!email || loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30">
+        <input
+          type="email"
+          placeholder="输入注册邮箱"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl border outline-none mb-6"
+          style={{ background: 'color-mix(in srgb, var(--orbit-card) 55%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        />
+        <button
+          onClick={() => onSubmit(email)}
+          disabled={!email || loading}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold disabled:opacity-30"
+        >
           {loading ? <FaSpinner className="animate-spin mx-auto" /> : '发送重置邮件'}
         </button>
       </motion.div>
@@ -132,7 +204,7 @@ const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
 };
 
 // 通用文档/协议展示弹窗
-const DocumentModal = ({ isOpen, onClose, title, content }: any) => {
+const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => {
   if (!isOpen) return null;
 
   const lines = String(content || '').split('\n');
@@ -148,7 +220,7 @@ const DocumentModal = ({ isOpen, onClose, title, content }: any) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100]"
-      style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -161,16 +233,16 @@ const DocumentModal = ({ isOpen, onClose, title, content }: any) => {
           <button
             onClick={onClose}
             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
+            style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
           >
             <FaChevronLeft className="text-base" />
           </button>
-          <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>{title}</h2>
+          <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>{title}</h2>
         </div>
 
-        <div className="px-5 pt-2 pb-8" style={{ color: '#000000' }}>
+        <div className="px-5 pt-2 pb-8" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>
           {documentMainTitle ? (
-            <h3 className="text-center text-[26px] leading-9 font-extrabold mb-4" style={{ color: '#000000' }}>
+            <h3 className="text-center text-[26px] leading-9 font-extrabold mb-4" style={{ color: isDarkMode ? '#f8fafc' : '#000000' }}>
               {documentMainTitle}
             </h3>
           ) : null}
@@ -187,10 +259,12 @@ const CommunityGuidelinesPage = ({
   isOpen,
   onClose,
   content,
+  isDarkMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
   content: string;
+  isDarkMode: boolean;
 }) => {
   if (!isOpen) return null;
 
@@ -200,7 +274,7 @@ const CommunityGuidelinesPage = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[105]"
-      style={{ background: '#ffffff', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      style={{ background: isDarkMode ? '#0b1324' : '#ffffff', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -213,54 +287,39 @@ const CommunityGuidelinesPage = ({
           <button
             onClick={onClose}
             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
+            style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
           >
             <FaChevronLeft className="text-base" />
           </button>
-          <img src="/icons/orbit-logo.svg" alt="Orbit" className="h-8 w-8 object-contain" />
-          <button
-            onClick={() => {
-              if (typeof navigator !== 'undefined' && (navigator as any).share) {
-                (navigator as any).share({ title: 'Orbit 社区公约' }).catch(() => {});
-              }
-            }}
-            className="absolute right-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
-          >
-            <FaShareAlt className="text-sm" />
-          </button>
+          <img src="/icons/icon-384.png" alt="Orbit" className="h-8 w-8 object-contain" />
         </div>
 
         <div className="px-4 pb-24">
-          <div className="rounded-3xl p-6" style={{ background: '#ffffff', border: '2px solid #87CEEB' }}>
-            <div className="mb-4 flex items-center justify-center">
+          <div className="rounded-3xl p-6" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `2px solid ${isDarkMode ? '#1f2937' : '#87CEEB'}` }}>
+            {/* <div className="mb-4 flex items-center justify-center">
               <img
-                src="/icons/orbit-wordmark.svg"
+                // src="/icons/orbit-wordmark.svg"
                 alt="Orbit"
                 className="h-6 w-auto object-contain"
-                style={{ filter: 'brightness(0)' }}
+                style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
               />
-            </div>
+            </div> */}
 
-            <div className="mb-3 flex items-center justify-center">
-              <img src="/icons/icon-384.png" alt="Orbit icon" className="h-14 w-14 rounded-2xl object-cover" />
-            </div>
-
-            <h1 className="text-[52px] leading-[1.02] font-extrabold tracking-tight" style={{ color: '#000000' }}>
-              社区公约
+            <h1 className="text-[52px] leading-[1.02] font-extrabold tracking-tight" style={{ color: isDarkMode ? '#f8fafc' : '#000000' }}>
+              Orbit<br />社区公约
             </h1>
 
-            <div className="mt-4 inline-flex items-center px-3 py-1.5" style={{ background: '#e6f2ff', color: '#2E7D9A' }}>
+            <div className="mt-4 inline-flex items-center px-3 py-1.5" style={{ background: isDarkMode ? '#1e293b' : '#e6f2ff', color: isDarkMode ? '#93c5fd' : '#2E7D9A' }}>
               <span className="text-[34px] leading-none font-extrabold">0.0</span>
             </div>
 
-            <p className="mt-3 text-[36px] leading-[1.05] font-extrabold" style={{ color: '#9ca3af' }}>
+            <p className="mt-3 text-[36px] leading-[1.05] font-extrabold" style={{ color: isDarkMode ? '#64748b' : '#9ca3af' }}>
               COMMUNITY<br />GUIDELINES
             </p>
 
-            <div className="mt-5" style={{ borderTop: '2px solid #87CEEB' }} />
+            <div className="mt-5" style={{ borderTop: `2px solid ${isDarkMode ? '#1f2937' : '#87CEEB'}` }} />
 
-            <p className="mt-4 text-[16px] leading-8 whitespace-pre-wrap" style={{ color: '#000000' }}>
+            <p className="mt-4 text-[16px] leading-8 whitespace-pre-wrap" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>
               {content || '欢迎来到 Orbit 社区。请保持真诚、友善与尊重，一起维护健康交流环境。'}
             </p>
           </div>
@@ -274,10 +333,12 @@ const HelpSupportPage = ({
   isOpen,
   onClose,
   currentUser,
+  isDarkMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
   currentUser?: any;
+  isDarkMode: boolean;
 }) => {
   type QuestionTab = 'hot' | 'account' | 'settings';
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
@@ -453,13 +514,19 @@ const HelpSupportPage = ({
     setFaultContact('');
   };
 
+  const hsBg = isDarkMode ? '#0b1324' : '#f5f5f7';
+  const hsCard = isDarkMode ? '#0f172a' : '#ffffff';
+  const hsText = isDarkMode ? '#e5e7eb' : '#000000';
+  const hsSubText = isDarkMode ? '#94a3b8' : '#9ca3af';
+  const hsBorder = isDarkMode ? '#1f2937' : '#ececf1';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[106]"
-      style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      style={{ background: hsBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -472,22 +539,16 @@ const HelpSupportPage = ({
           <button
             onClick={onClose}
             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
+            style={{ color: hsText }}
           >
             <FaChevronLeft className="text-base" />
           </button>
-          <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>帮助与客服</h2>
-          <button
-            className="absolute right-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
-          >
-            <FaSearch className="text-base" />
-          </button>
+          <h2 className="text-[18px] font-semibold" style={{ color: hsText }}>帮助与客服</h2>
         </div>
 
         <div className="px-4 pb-28 space-y-3">
-          <div className="rounded-3xl p-4" style={{ background: '#ffffff' }}>
-            <p className="text-[16px] font-semibold mb-3" style={{ color: '#000000' }}>自助工具</p>
+          <div className="rounded-3xl p-4" style={{ background: hsCard, border: `1px solid ${hsBorder}` }}>
+            <p className="text-[16px] font-semibold mb-3" style={{ color: hsText }}>自助工具</p>
             <div className="grid grid-cols-5 gap-x-2 gap-y-4">
               {selfTools.map((tool, idx) => {
                 const Icon = tool.icon;
@@ -505,34 +566,34 @@ const HelpSupportPage = ({
                       setShowAccountRecoveryPage(true);
                     }}
                   >
-                    <Icon className="text-[24px]" style={{ color: '#303133' }} />
-                    <span className="text-[12px] leading-4 text-center" style={{ color: '#303133' }}>{tool.label}</span>
+                    <Icon className="text-[24px]" style={{ color: hsText }} />
+                    <span className="text-[12px] leading-4 text-center" style={{ color: hsText }}>{tool.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="rounded-3xl p-4" style={{ background: '#ffffff' }}>
-            <p className="text-[16px] font-semibold mb-3" style={{ color: '#000000' }}>猜你想问</p>
+          <div className="rounded-3xl p-4" style={{ background: hsCard, border: `1px solid ${hsBorder}` }}>
+            <p className="text-[16px] font-semibold mb-3" style={{ color: hsText }}>猜你想问</p>
             <div className="flex items-center gap-5 mb-2">
               <button
                 className="text-[14px] font-semibold pb-1"
-                style={{ color: questionTab === 'hot' ? '#000000' : '#9ca3af', borderBottom: questionTab === 'hot' ? '2px solid #ff2442' : '2px solid transparent' }}
+                style={{ color: questionTab === 'hot' ? hsText : hsSubText, borderBottom: questionTab === 'hot' ? '2px solid #ff2442' : '2px solid transparent' }}
                 onClick={() => setQuestionTab('hot')}
               >
                 热门问题
               </button>
               <button
                 className="text-[14px] pb-1"
-                style={{ color: questionTab === 'account' ? '#000000' : '#9ca3af', borderBottom: questionTab === 'account' ? '2px solid #ff2442' : '2px solid transparent' }}
+                style={{ color: questionTab === 'account' ? hsText : hsSubText, borderBottom: questionTab === 'account' ? '2px solid #ff2442' : '2px solid transparent' }}
                 onClick={() => setQuestionTab('account')}
               >
                 账号问题
               </button>
               <button
                 className="text-[14px] pb-1"
-                style={{ color: questionTab === 'settings' ? '#000000' : '#9ca3af', borderBottom: questionTab === 'settings' ? '2px solid #ff2442' : '2px solid transparent' }}
+                style={{ color: questionTab === 'settings' ? hsText : hsSubText, borderBottom: questionTab === 'settings' ? '2px solid #ff2442' : '2px solid transparent' }}
                 onClick={() => setQuestionTab('settings')}
               >
                 设置问题
@@ -543,7 +604,7 @@ const HelpSupportPage = ({
                 <button
                   key={`q-${idx}`}
                   className="w-full py-3 flex items-center justify-between text-left"
-                  style={{ borderBottom: idx === displayedQuestions.length - 1 ? 'none' : '0.5px solid #ececf1' }}
+                  style={{ borderBottom: idx === displayedQuestions.length - 1 ? 'none' : `0.5px solid ${hsBorder}` }}
                   onClick={() => {
                     setSelectedQuestion(q);
                     setSelectedQuestionTab(questionTab);
@@ -551,26 +612,26 @@ const HelpSupportPage = ({
                     setShowFeedbackToast(false);
                   }}
                 >
-                  <span className="text-[15px]" style={{ color: '#000000' }}>{q}</span>
-                  <FaChevronRight className="text-[13px]" style={{ color: '#b6b8bd' }} />
+                  <span className="text-[15px]" style={{ color: hsText }}>{q}</span>
+                  <FaChevronRight className="text-[13px]" style={{ color: hsSubText }} />
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2" style={{ background: '#f5f5f7' }}>
+        <div className="fixed bottom-0 left-0 right-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2" style={{ background: hsBg }}>
           <div className="grid grid-cols-2 gap-3">
             <button
               className="h-12 rounded-full border text-[24px]"
-              style={{ borderColor: '#d8d9dd', background: '#ffffff', color: '#000000' }}
+              style={{ borderColor: hsBorder, background: hsCard, color: hsText }}
               onClick={() => setShowFeedbackScenePage(true)}
             >
               <span className="inline-flex items-center gap-2 text-[15px]"><FaEdit className="text-[14px]" />意见反馈</span>
             </button>
             <button
               className="h-12 rounded-full border text-[24px]"
-              style={{ borderColor: '#d8d9dd', background: '#ffffff', color: '#000000' }}
+              style={{ borderColor: hsBorder, background: hsCard, color: hsText }}
               onClick={() => setShowContactModal(true)}
             >
               <span className="inline-flex items-center gap-2 text-[15px]"><FaHeadset className="text-[14px]" />联系官方客服</span>
@@ -586,7 +647,7 @@ const HelpSupportPage = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[109]"
-            style={{ background: '#f5f5f7' }}
+            style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7' }}
           >
             <motion.div
               initial={{ x: '100%' }}
@@ -595,26 +656,26 @@ const HelpSupportPage = ({
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               className="h-full w-full overflow-y-auto"
             >
-              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative" style={{ borderBottom: '0.5px solid #ececf1' }}>
+              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                 <button
                   onClick={() => setShowFeedbackScenePage(false)}
                   className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: '#000000' }}
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                 >
                   <FaChevronLeft className="text-base" />
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>意见反馈</h2>
+                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>意见反馈</h2>
               </div>
 
               <div className="px-4 pt-5 pb-10">
-                <p className="text-[15px] mb-3" style={{ color: '#9ca3af' }}>请选择问题发生的场景</p>
+                <p className="text-[15px] mb-3" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>请选择问题发生的场景</p>
 
-                <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff' }}>
+                <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   {feedbackScenes.map((scene, idx) => (
                     <button
                       key={scene.title}
                       className="w-full px-4 py-4 flex items-center justify-between text-left"
-                      style={{ borderBottom: idx === feedbackScenes.length - 1 ? 'none' : '0.5px solid #ececf1' }}
+                      style={{ borderBottom: idx === feedbackScenes.length - 1 ? 'none' : `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
                       onClick={() => {
                         setSelectedFeedbackScene(scene);
                         setFaultText('');
@@ -622,10 +683,10 @@ const HelpSupportPage = ({
                         setFaultContact('');
                       }}
                     >
-                      <span className="text-[16px]" style={{ color: '#000000' }}>{scene.title}</span>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>{scene.title}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-[14px]" style={{ color: '#9ca3af' }}>{scene.desc}</span>
-                        <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                        <span className="text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>{scene.desc}</span>
+                        <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }} />
                       </div>
                     </button>
                   ))}
@@ -638,7 +699,7 @@ const HelpSupportPage = ({
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       className="fixed inset-0 z-[112]"
-                      style={{ background: '#f5f5f7' }}
+                      style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7' }}
                     >
                       <motion.div
                         initial={{ x: '100%' }}
@@ -647,47 +708,47 @@ const HelpSupportPage = ({
                         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
                         className="h-full w-full overflow-y-auto"
                       >
-                        <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative" style={{ borderBottom: '0.5px solid #ececf1' }}>
+                        <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                           <button
                             onClick={() => setSelectedFeedbackScene(null)}
                             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                            style={{ color: '#000000' }}
+                            style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                           >
                             <FaChevronLeft className="text-base" />
                           </button>
-                          <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>故障提交</h2>
+                          <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>故障提交</h2>
                         </div>
 
                         <div className="px-4 pt-5 pb-14 space-y-6">
                           <div>
                             <div className="mb-2 flex items-center justify-between">
-                              <p className="text-[15px]" style={{ color: '#303133' }}>问题和意见 <span style={{ color: '#ff2442' }}>*</span></p>
-                              <p className="text-[15px]" style={{ color: '#9ca3af' }}>{faultText.length}/100</p>
+                              <p className="text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>问题和意见 <span style={{ color: '#ff2442' }}>*</span></p>
+                              <p className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>{faultText.length}/100</p>
                             </div>
-                            <div className="rounded-2xl p-4" style={{ background: '#ffffff' }}>
+                            <div className="rounded-2xl p-4" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                               <textarea
                                 maxLength={100}
                                 value={faultText}
                                 onChange={(e) => setFaultText(e.target.value)}
                                 placeholder="请填写你的功能建议，感谢你的支持～（必填）"
                                 className="w-full min-h-[150px] resize-none outline-none text-[18px]"
-                                style={{ color: '#303133', background: 'transparent' }}
+                                style={{ color: isDarkMode ? '#e5e7eb' : '#303133', background: 'transparent' }}
                               />
                             </div>
                           </div>
 
                           <div>
-                            <p className="text-[15px] mb-2" style={{ color: '#303133' }}>图片 <span style={{ color: '#ff2442' }}>*</span></p>
-                            <div className="rounded-2xl p-4" style={{ background: '#ffffff' }}>
+                            <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>图片 <span style={{ color: '#ff2442' }}>*</span></p>
+                            <div className="rounded-2xl p-4" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                               <button
                                 onClick={() => feedbackImageInputRef.current?.click()}
                                 className="w-[88px] h-[88px] rounded-xl flex items-center justify-center"
-                                style={{ background: '#f1f2f4', border: '0.5px solid #e5e7eb' }}
+                                style={{ background: isDarkMode ? '#111827' : '#f1f2f4', border: `0.5px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` }}
                               >
                                 {faultImagePreview ? (
                                   <img src={faultImagePreview} alt="feedback" className="w-full h-full rounded-xl object-cover" />
                                 ) : (
-                                  <span className="text-[42px]" style={{ color: '#c4c4c8' }}>＋</span>
+                                  <span className="text-[42px]" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }}>＋</span>
                                 )}
                               </button>
                               <input
@@ -701,14 +762,14 @@ const HelpSupportPage = ({
                           </div>
 
                           <div>
-                            <p className="text-[15px] mb-2" style={{ color: '#303133' }}>联系方式</p>
-                            <div className="rounded-2xl p-4" style={{ background: '#ffffff' }}>
+                            <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>联系方式</p>
+                            <div className="rounded-2xl p-4" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                               <input
                                 value={faultContact}
                                 onChange={(e) => setFaultContact(e.target.value)}
                                 placeholder="留下联系方式，更可能解决问题～"
                                 className="w-full outline-none text-[16px]"
-                                style={{ color: '#303133', background: 'transparent' }}
+                                style={{ color: isDarkMode ? '#e5e7eb' : '#303133', background: 'transparent' }}
                               />
                             </div>
                           </div>
@@ -718,7 +779,7 @@ const HelpSupportPage = ({
                               onClick={handleSubmitFault}
                               disabled={!faultText.trim() || !faultImagePreview}
                               className="w-[300px] h-12 rounded-full text-[36px] disabled:opacity-60"
-                              style={{ background: (!faultText.trim() || !faultImagePreview) ? '#eceff1' : '#111827', color: '#ffffff' }}
+                              style={{ background: (!faultText.trim() || !faultImagePreview) ? (isDarkMode ? '#1f2937' : '#eceff1') : '#111827', color: '#ffffff' }}
                             >
                               <span className="text-[16px]">提交</span>
                             </button>
@@ -738,15 +799,15 @@ const HelpSupportPage = ({
                 </AnimatePresence>
 
                 <div className="mt-8">
-                  <p className="text-[15px] mb-2" style={{ color: '#9ca3af' }}>联系我们</p>
-                  <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff' }}>
-                    <button className="w-full px-4 py-4 flex items-center justify-between" style={{ borderBottom: '0.5px solid #ececf1' }} onClick={() => setShowContactModal(true)}>
-                      <span className="text-[16px]" style={{ color: '#000000' }}>客服邮箱</span>
-                      <span className="text-[15px]" style={{ color: '#9ca3af' }}>3482407231@qq.com</span>
+                  <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>联系我们</p>
+                  <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <button className="w-full px-4 py-4 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }} onClick={() => setShowContactModal(true)}>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>客服邮箱</span>
+                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>3482407231@qq.com</span>
                     </button>
                     <div className="px-4 py-4 flex items-center justify-between">
-                      <span className="text-[16px]" style={{ color: '#000000' }}>紧急联系</span>
-                      <span className="text-[15px]" style={{ color: '#9ca3af' }}>110</span>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>紧急联系</span>
+                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>110</span>
                     </div>
                   </div>
                 </div>
@@ -763,7 +824,7 @@ const HelpSupportPage = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[108]"
-            style={{ background: '#f5f5f7' }}
+            style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7' }}
           >
             <motion.div
               initial={{ x: '100%' }}
@@ -776,16 +837,16 @@ const HelpSupportPage = ({
                 <button
                   onClick={() => setSelectedQuestion(null)}
                   className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: '#000000' }}
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                 >
                   <FaChevronLeft className="text-base" />
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>问题详情</h2>
+                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>问题详情</h2>
               </div>
 
               <div className="px-6 pt-16 pb-[max(18px,env(safe-area-inset-bottom))] min-h-[calc(100vh-92px)] flex flex-col justify-between">
                 <div>
-                  <p className="text-[17px] leading-10 whitespace-pre-wrap" style={{ color: '#303133' }}>
+                  <p className="text-[17px] leading-10 whitespace-pre-wrap" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>
                     {uniformAnswer}
                   </p>
 
@@ -799,15 +860,15 @@ const HelpSupportPage = ({
                 </div>
 
                 <div className="text-center pb-8">
-                  <p className="text-[14px]" style={{ color: '#c4c4c8' }}>—— 以上回答对你有帮助吗 ——</p>
-                  <div className="mt-4 rounded-2xl overflow-hidden" style={{ background: '#f1f2f4', border: '0.5px solid #ececf1' }}>
+                  <p className="text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#c4c4c8' }}>—— 以上回答对你有帮助吗 ——</p>
+                  <div className="mt-4 rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#f1f2f4', border: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <div className="grid grid-cols-2">
                       <button
                         className="py-4 text-[17px]"
                         disabled={feedback !== null}
                         style={{
-                          borderRight: '0.5px solid #e3e4e8',
-                          color: feedback === 'not-useful' ? '#303133' : '#303133',
+                          borderRight: `0.5px solid ${isDarkMode ? '#1f2937' : '#e3e4e8'}`,
+                          color: isDarkMode ? '#e5e7eb' : '#303133',
                           opacity: feedback === 'useful' ? 0.35 : 1,
                           filter: feedback === 'useful' ? 'grayscale(100%)' : 'none',
                         }}
@@ -834,7 +895,7 @@ const HelpSupportPage = ({
                         className="py-4 text-[17px]"
                         disabled={feedback !== null}
                         style={{
-                          color: '#303133',
+                          color: isDarkMode ? '#e5e7eb' : '#303133',
                           opacity: feedback === 'not-useful' ? 0.35 : 1,
                           filter: feedback === 'not-useful' ? 'grayscale(100%)' : 'none',
                         }}
@@ -882,7 +943,7 @@ const HelpSupportPage = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[110]"
-            style={{ background: '#ffffff' }}
+            style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }}
           >
             <motion.div
               initial={{ x: '100%' }}
@@ -895,35 +956,35 @@ const HelpSupportPage = ({
                 <button
                   onClick={() => setShowAccountRecoveryPage(false)}
                   className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: '#000000' }}
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                 >
                   <FaChevronLeft className="text-base" />
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>选择账号找回方式</h2>
+                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>选择账号找回方式</h2>
               </div>
 
               <div className="px-4 pt-6 pb-10">
-                <p className="text-[15px] mb-2" style={{ color: '#9ca3af' }}>通过以下任一方式定位到您需要找回的账号</p>
-                <div className="rounded-2xl overflow-hidden mb-7" style={{ background: '#fff' }}>
-                  <button className="w-full px-4 py-5 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#303133' }}>通过绑定的手机号确认</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#b6b8bd' }} />
+                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通过以下任一方式定位到您需要找回的账号</p>
+                <div className="rounded-2xl overflow-hidden mb-7" style={{ background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                  <button className="w-full px-4 py-5 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>通过绑定的手机号确认</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#b6b8bd' }} />
                   </button>
-                  <button className="w-full px-4 py-5 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#303133' }}>通过邮箱认证信息确认</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#b6b8bd' }} />
+                  <button className="w-full px-4 py-5 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>通过邮箱认证信息确认</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#b6b8bd' }} />
                   </button>
                   
                 </div>
 
-                <p className="text-[15px] mb-2" style={{ color: '#9ca3af' }}>此设备最近 7 天登录过的账户</p>
-                <div className="rounded-2xl overflow-hidden" style={{ background: '#fff' }}>
+                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>此设备最近 7 天登录过的账户</p>
+                <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   {recentDeviceAccounts.length > 0 ? (
                     recentDeviceAccounts.map((account, index) => (
                       <button
                         key={account.id}
                         className="w-full flex items-center gap-3 px-4 py-4 text-left"
-                        style={{ borderBottom: index === recentDeviceAccounts.length - 1 ? 'none' : '0.5px solid #ececf1' }}
+                        style={{ borderBottom: index === recentDeviceAccounts.length - 1 ? 'none' : `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
                       >
                         <img
                           src={account.avatar_url || '/icons/icon-384.png'}
@@ -931,13 +992,13 @@ const HelpSupportPage = ({
                           className="w-10 h-10 rounded-full object-cover"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[16px] font-medium truncate" style={{ color: '#303133' }}>{maskAccountName(account.username)}</p>
+                          <p className="text-[16px] font-medium truncate" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>{maskAccountName(account.username)}</p>
                         </div>
-                        <FaChevronRight className="text-[13px]" style={{ color: '#b6b8bd' }} />
+                        <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#b6b8bd' }} />
                       </button>
                     ))
                   ) : (
-                    <div className="px-4 py-6 text-[14px]" style={{ color: '#9ca3af' }}>暂无近 7 天登录记录</div>
+                    <div className="px-4 py-6 text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>暂无近 7 天登录记录</div>
                   )}
                 </div>
               </div>
@@ -953,7 +1014,7 @@ const HelpSupportPage = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[110]"
-            style={{ background: '#ffffff' }}
+            style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }}
           >
             <motion.div
               initial={{ x: '100%' }}
@@ -966,25 +1027,25 @@ const HelpSupportPage = ({
                 <button
                   onClick={() => setShowAccountCheckPage(false)}
                   className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: '#000000' }}
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                 >
                   <FaChevronLeft className="text-base" />
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>账号检测</h2>
+                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>账号检测</h2>
                 {/* 申诉中心按钮已移除 */}
               </div>
 
-              <div className="px-6 pt-8 pb-10" style={{ background: '#fff' }}>
+              <div className="px-6 pt-8 pb-10" style={{ background: isDarkMode ? '#0b1324' : '#fff' }}>
                 <div className="flex flex-col items-center">
                   <div
                     className="relative w-[160px] h-[160px] rounded-full flex items-center justify-center"
                     style={{
                       background: isCheckingAccount
-                        ? `conic-gradient(#4ea7ff ${Math.min(((checkingStep + 1) / accountCheckItems.length) * 360, 360)}deg, #e5e7eb 0deg)`
-                        : '#e5e7eb',
+                        ? `conic-gradient(#4ea7ff ${Math.min(((checkingStep + 1) / accountCheckItems.length) * 360, 360)}deg, ${isDarkMode ? '#1f2937' : '#e5e7eb'} 0deg)`
+                        : (isDarkMode ? '#1f2937' : '#e5e7eb'),
                     }}
                   >
-                    <div className="w-[150px] h-[150px] rounded-full" style={{ background: '#fff' }} />
+                    <div className="w-[150px] h-[150px] rounded-full" style={{ background: isDarkMode ? '#0b1324' : '#fff' }} />
                     <img
                       src={currentUser?.avatar_url || '/icons/icon-384.png'}
                       alt="avatar"
@@ -992,24 +1053,24 @@ const HelpSupportPage = ({
                     />
                   </div>
 
-                  <h3 className="mt-6 text-[32px] font-bold" style={{ color: '#111' }}>
+                  <h3 className="mt-6 text-[32px] font-bold" style={{ color: isDarkMode ? '#f8fafc' : '#111' }}>
                     {isCheckingAccount ? '账号检测中…' : (currentUser?.username || '我的账号')}
                   </h3>
-                  <p className="mt-1 text-[13px]" style={{ color: '#222' }}>
+                  <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#222' }}>
                     Orbit号：{currentUser?.id ? String(currentUser.id).replace(/-/g, '').slice(0, 11) : '未登录'}
                   </p>
                 </div>
 
                 {!isCheckingAccount && checkingStep < 0 ? (
                   <>
-                    <p className="mt-14 text-center text-[13px] leading-7" style={{ color: '#222' }}>
+                    <p className="mt-14 text-center text-[13px] leading-7" style={{ color: isDarkMode ? '#94a3b8' : '#222' }}>
                       可检测功能是否正常
                     </p>
 
                     <div className="mt-8 px-8">
                       <button
                         className="w-full h-14 rounded-full flex items-center justify-center"
-                        style={{ background: '#0f2a4d', color: '#fff' }}
+                        style={{ background: isDarkMode ? '#1e40af' : '#0f2a4d', color: '#fff' }}
                         onClick={() => {
                           setIsCheckingAccount(true);
                           setCheckingStep(0);
@@ -1026,7 +1087,7 @@ const HelpSupportPage = ({
                       const isCurrent = idx === checkingStep && isCheckingAccount;
                       return (
                         <div key={item} className="flex items-center justify-between">
-                          <span className="text-[14px]" style={{ color: '#111' }}>{item}</span>
+                          <span className="text-[14px]" style={{ color: isDarkMode ? '#e5e7eb' : '#111' }}>{item}</span>
                           {isDone ? (
                             <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ border: '2px solid #22c55e', color: '#22c55e' }}>
                               <FaCheck className="text-[12px]" />
@@ -1034,7 +1095,7 @@ const HelpSupportPage = ({
                           ) : isCurrent ? (
                             <span className="w-6 h-6 rounded-full animate-spin" style={{ border: '2px solid #60a5fa', borderTopColor: 'transparent' }} />
                           ) : (
-                            <span className="text-[14px]" style={{ color: '#9ca3af' }}>待检测</span>
+                            <span className="text-[14px]" style={{ color: isDarkMode ? '#64748b' : '#9ca3af' }}>待检测</span>
                           )}
                         </div>
                       );
@@ -1230,7 +1291,9 @@ const DarkModePage = ({
 }) => {
   if (!isOpen) return null;
 
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const followSystem = themeMode === 'system';
+  const isDark = themeMode === 'dark' || (followSystem && prefersDark);
   const darkEnabled = !followSystem && themeMode === 'dark';
 
   return (
@@ -1239,7 +1302,7 @@ const DarkModePage = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[106]"
-      style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      style={{ background: isDark ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -1247,40 +1310,43 @@ const DarkModePage = ({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="h-full w-full overflow-y-auto"
+        style={{ background: isDark ? '#0b1324' : undefined }}
       >
         <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
           <button
             onClick={onClose}
             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
+            style={{ color: isDark ? '#e5e7eb' : '#000000' }}
           >
             <FaChevronLeft className="text-base" />
           </button>
-          <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>深色模式</h2>
+          <h2 className="text-[18px] font-semibold" style={{ color: isDark ? '#f9fafb' : '#000000' }}>深色模式</h2>
         </div>
 
         <div className="px-4 pt-3 space-y-3">
-          <div className="rounded-2xl px-3 py-2.5 flex items-center justify-between" style={{ background: '#ffffff' }}>
-            <span className="text-[13px]" style={{ color: '#000000' }}>深色模式</span>
+          <div className="rounded-2xl px-3 py-2.5 flex items-center justify-between" style={{ background: isDark ? '#0f172a' : '#ffffff', border: `1px solid ${isDark ? '#1f2937' : '#ececf1'}` }}>
+            <span className="text-[13px]" style={{ color: isDark ? '#e5e7eb' : '#000000' }}>深色模式</span>
             <button
               onClick={() => onChangeTheme(darkEnabled ? 'light' : 'dark')}
-              className={`w-10 h-5 rounded-full transition-colors ${darkEnabled ? 'bg-[#87CEEB]' : 'bg-[#d1d5db]'}`}
+              className="w-10 h-5 rounded-full transition-colors"
+              style={{ background: darkEnabled ? '#38bdf8' : (isDark ? '#1f2937' : '#d1d5db') }}
             >
-              <motion.div animate={{ x: darkEnabled ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+              <motion.div animate={{ x: darkEnabled ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDark ? '#0b1324' : '#ffffff' }} />
             </button>
           </div>
 
-          <div className="rounded-2xl px-3 py-2.5" style={{ background: '#ffffff' }}>
+          <div className="rounded-2xl px-3 py-2.5" style={{ background: isDark ? '#0f172a' : '#ffffff', border: `1px solid ${isDark ? '#1f2937' : '#ececf1'}` }}>
             <div className="flex items-center justify-between">
-              <span className="text-[13px]" style={{ color: '#000000' }}>跟随系统设置</span>
+              <span className="text-[13px]" style={{ color: isDark ? '#e5e7eb' : '#000000' }}>跟随系统设置</span>
               <button
                 onClick={() => onChangeTheme(followSystem ? (darkEnabled ? 'dark' : 'light') : 'system')}
-                className={`w-10 h-5 rounded-full transition-colors ${followSystem ? 'bg-[#87CEEB]' : 'bg-[#d1d5db]'}`}
+                className="w-10 h-5 rounded-full transition-colors"
+                style={{ background: followSystem ? '#38bdf8' : (isDark ? '#1f2937' : '#d1d5db') }}
               >
-                <motion.div animate={{ x: followSystem ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                <motion.div animate={{ x: followSystem ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDark ? '#0b1324' : '#ffffff' }} />
               </button>
             </div>
-            <p className="mt-1 text-[11px]" style={{ color: '#9ca3af' }}>开启后根据系统设置同步切换深/浅模式</p>
+            <p className="mt-1 text-[11px]" style={{ color: isDark ? '#94a3b8' : '#9ca3af' }}>开启后根据系统设置同步切换深/浅模式</p>
           </div>
         </div>
       </motion.div>
@@ -1855,6 +1921,25 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
     setPhotoIndex((i) => (i + 1) % photos.length);
   };
 
+  const resolveCommentUser = (authorId?: string) => {
+    if (!authorId) return { username: '好友', avatar: '' };
+    if (currentUser?.id && authorId === currentUser.id) {
+      return { username: currentUser.username || '我', avatar: currentUser.avatar_url || '' };
+    }
+    const friend = friends.find((item: any) => item.friend?.id === authorId)?.friend || friends.find((item: any) => item.id === authorId);
+    if (friend) return { username: friend.username || '好友', avatar: friend.avatar_url || '' };
+    if (memory?.user_id && authorId === memory.user_id) {
+      return { username: memory?.username || '好友', avatar: memory?.avatar_url || '' };
+    }
+    return { username: '共同好友', avatar: '' };
+  };
+
+  const mapCommentList = (list: any[]) =>
+    (list || []).map((item) => {
+      const meta = resolveCommentUser(item.author_id);
+      return { ...item, username: item.username || meta.username, user_avatar: item.user_avatar || meta.avatar };
+    });
+
   const handleSubmitQuickComment = async () => {
     const text = quickCommentText.trim();
     if (!text || !memory?.id || !currentUser?.id || sendingComment) return;
@@ -1879,8 +1964,9 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
     setLoadingComments(true);
     try {
       const list = await getMemoryComments([memory.id]);
-      setComments(Array.isArray(list) ? list : []);
-      setCommentCount(Array.isArray(list) ? list.length : 0);
+      const mapped = mapCommentList(Array.isArray(list) ? list : []);
+      setComments(mapped);
+      setCommentCount(mapped.length);
     } catch (err) {
       console.error('load comments failed', err);
     } finally {
@@ -2368,6 +2454,7 @@ const AccountDiagnosticsModal = ({
   friendsCount,
   memoriesCount,
   ledgersCount,
+  isDarkMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -2375,6 +2462,7 @@ const AccountDiagnosticsModal = ({
   friendsCount: number;
   memoriesCount: number;
   ledgersCount: number;
+  isDarkMode: boolean;
 }) => {
   const [checking, setChecking] = useState(false);
   const [copying, setCopying] = useState(false);
@@ -2498,7 +2586,7 @@ const AccountDiagnosticsModal = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[95]"
-      style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -2511,25 +2599,25 @@ const AccountDiagnosticsModal = ({
           <button
             onClick={onClose}
             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ color: '#000000' }}
+            style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
           >
             <FaChevronLeft className="text-base" />
           </button>
-          <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>网络诊断</h2>
+          <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>网络诊断</h2>
           <button onClick={runDiagnostics} disabled={checking} className="absolute right-4 text-[13px] font-semibold disabled:opacity-50" style={{ color: '#0f9f6e' }}>
             {checking ? '检测中…' : items.length ? '重新检测' : '开始检测'}
           </button>
         </div>
 
         <div className="p-4 pb-24 space-y-3">
-          <div className="rounded-2xl border p-4" style={{ borderColor: '#ececf1', background: '#ffffff' }}>
-            <p className="text-[14px]" style={{ color: '#000000' }}>{checking ? '正在做健康检查，请稍等～' : summary}</p>
+          <div className="rounded-2xl border p-4" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececf1', background: isDarkMode ? '#0f172a' : '#ffffff' }}>
+            <p className="text-[14px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>{checking ? '正在做健康检查，请稍等～' : summary}</p>
             <div className="mt-3">
               <button
                 onClick={runDiagnostics}
                 disabled={checking}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50 mr-2"
-                style={{ background: '#eef7ff', border: '1px solid #d8e9ff', color: '#0f9f6e' }}
+                style={{ background: isDarkMode ? '#1e293b' : '#eef7ff', border: `1px solid ${isDarkMode ? '#334155' : '#d8e9ff'}`, color: isDarkMode ? '#93c5fd' : '#0f9f6e' }}
               >
                 <FaSearch className="text-[11px]" />
                 {checking ? '检测中…' : items.length ? '重新检测' : '开始检测'}
@@ -2538,7 +2626,7 @@ const AccountDiagnosticsModal = ({
                 onClick={handleCopyReport}
                 disabled={checking || !reportText || copying}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
-                style={{ background: '#f8fafc', border: '1px solid #ececf1', color: '#111827' }}
+                style={{ background: isDarkMode ? '#111827' : '#f8fafc', border: `1px solid ${isDarkMode ? '#374151' : '#ececf1'}`, color: isDarkMode ? '#e5e7eb' : '#111827' }}
               >
                 <FaCopy className="text-[11px]" />
                 {copying ? '复制中…' : copied ? '已复制诊断报告' : '一键导出诊断报告（复制文本）'}
@@ -2548,19 +2636,19 @@ const AccountDiagnosticsModal = ({
 
           <div className="space-y-2">
             {items.map((item) => (
-              <div key={item.name} className="rounded-2xl border p-4" style={{ borderColor: '#ececf1', background: '#ffffff' }}>
+              <div key={item.name} className="rounded-2xl border p-4" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececf1', background: isDarkMode ? '#0f172a' : '#ffffff' }}>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium" style={{ color: '#000000' }}>{item.name}</p>
+                  <p className="font-medium" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>{item.name}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${item.ok ? 'bg-[#10b981]/15 text-[#059669]' : 'bg-red-100 text-red-600'}`}>
                     {item.ok ? '正常' : '异常'}
                   </span>
                 </div>
-                <p className="text-sm break-all" style={{ color: '#6b7280' }}>{item.detail}</p>
+                <p className="text-sm break-all" style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}>{item.detail}</p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-2xl border p-4 text-sm" style={{ borderColor: '#e6f2ff', background: '#f8fbff', color: '#1f2937' }}>
+          <div className="rounded-2xl border p-4 text-sm" style={{ borderColor: isDarkMode ? '#334155' : '#e6f2ff', background: isDarkMode ? '#0f172a' : '#f8fbff', color: isDarkMode ? '#cbd5e1' : '#1f2937' }}>
             小贴士：当用户反馈“账号有问题”时，让 TA 打开这个页面并截图给你，通常能快速定位是登录、会话还是资料权限问题。
           </div>
         </div>
@@ -2599,6 +2687,8 @@ export default function ProfilePage() {
   const [showFontSizePage, setShowFontSizePage] = useState(false);
   const [showDarkModePage, setShowDarkModePage] = useState(false);
   const [showAboutOrbit, setShowAboutOrbit] = useState(false);
+  const [showEncouragePopup, setShowEncouragePopup] = useState(false);
+  const [showMoreQuickMenu, setShowMoreQuickMenu] = useState(false);
   const [showCommunityGuidelines, setShowCommunityGuidelines] = useState(false);
   const [showHelpSupport, setShowHelpSupport] = useState(false);
   const [settings, setSettings] = useState(readSettings());
@@ -2642,6 +2732,41 @@ export default function ProfilePage() {
   const modalPrimaryTextColor = isDarkMode ? '#f9fafb' : '#111';
   const modalSecondaryTextColor = isDarkMode ? '#9ca3af' : '#374151';
   const modalBorderColor = isDarkMode ? '#1f2937' : '#f3f4f6';
+
+  const handleClearCache = async () => {
+    if (typeof window === 'undefined') return;
+    const confirmed = window.confirm('确定清理本地缓存吗？\n这不会删除你的云端数据。');
+    if (!confirmed) return;
+
+    try {
+      const localKeys: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i += 1) {
+        const key = window.localStorage.key(i);
+        if (key && /^orbit_/i.test(key)) localKeys.push(key);
+      }
+      localKeys.forEach((key) => window.localStorage.removeItem(key));
+
+      const sessionKeys: string[] = [];
+      for (let i = 0; i < window.sessionStorage.length; i += 1) {
+        const key = window.sessionStorage.key(i);
+        if (key && /^orbit_/i.test(key)) sessionKeys.push(key);
+      }
+      sessionKeys.forEach((key) => window.sessionStorage.removeItem(key));
+
+      if ('caches' in window) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((name) => /orbit|workbox/i.test(name))
+            .map((name) => window.caches.delete(name))
+        );
+      }
+
+      alert('缓存清理完成');
+    } catch (e) {
+      alert('清理失败，请稍后再试');
+    }
+  };
 
   useEffect(() => {
     setNewName(currentUser?.username || '');
@@ -4122,79 +4247,79 @@ const handleAddFriend = async (name: string, remark: string) => {
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 280 }}
               className="h-full w-[72%] max-w-[300px] px-3 pt-4 pb-4 flex flex-col"
-              style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+              style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-2 px-1">
-                <p className="text-[13px] font-medium" style={{ color: '#c4c4c8' }}>{currentUser?.username || '设置'}</p>
+                <p className="text-[13px] font-medium" style={{ color: isDarkMode ? '#94a3b8' : '#c4c4c8' }}>{currentUser?.username || '设置'}</p>
               </div>
 
               <div className="flex-1 overflow-y-auto pr-1">
                 <div className="space-y-2">
-                  <div className="rounded-2xl px-3 py-2.5" style={{ background: '#ffffff' }}>
-                    <p className="text-[11px]" style={{ color: '#9ca3af' }}>显示</p>
+                  <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>显示</p>
 
                     <button
                       onClick={() => { setShowFontSizePage(true); }}
                       className="w-full mt-1.5 py-2 flex items-center justify-between"
-                      style={{ borderBottom: '0.5px solid #ececf1' }}
+                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
                     >
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaFont className="text-[12px]" />字体大小</span>
-                      <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaFont className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />字体大小</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                     </button>
 
                     <button
                       onClick={() => { setShowDarkModePage(true); }}
                       className="w-full py-2 flex items-center justify-between"
-                      style={{ borderBottom: '0.5px solid #ececf1' }}
+                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
                     >
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaMoon className="text-[12px]" />深色模式</span>
-                      <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaMoon className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />深色模式</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                     </button>
 
-                    <div className="py-2 flex items-center justify-between" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaWifi className="text-[12px]" />仅 Wi‑Fi 上传</span>
-                      <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className={`w-10 h-5 rounded-full transition-colors ${settings.wifiOnlyUpload ? 'bg-[#111827]' : 'bg-[#d1d5db]'}`}>
-                        <motion.div animate={{ x: settings.wifiOnlyUpload ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                    <div className="py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaWifi className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />仅 Wi‑Fi 上传</span>
+                      <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.wifiOnlyUpload ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                        <motion.div animate={{ x: settings.wifiOnlyUpload ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
                       </button>
                     </div>
 
-                    <div className="pt-2 pb-1 flex items-center justify-between">
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaSyncAlt className="text-[12px]" />仅 Wi‑Fi 刷新</span>
-                      <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className={`w-10 h-5 rounded-full transition-colors ${settings.wifiOnlyRefresh ? 'bg-[#111827]' : 'bg-[#d1d5db]'}`}>
-                        <motion.div animate={{ x: settings.wifiOnlyRefresh ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                    <div className="pt-2 pb-1 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaSyncAlt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />仅 Wi‑Fi 刷新</span>
+                      <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.wifiOnlyRefresh ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                        <motion.div animate={{ x: settings.wifiOnlyRefresh ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl px-3 py-2.5" style={{ background: '#ffffff' }}>
-                    <p className="text-[11px]" style={{ color: '#9ca3af' }}>通知设置</p>
-                    <div className="mt-1.5 py-2 flex items-center justify-between" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaAt className="text-[12px]" />@ 通知</span>
-                      <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className={`w-10 h-5 rounded-full transition-colors ${settings.notifyAt ? 'bg-[#111827]' : 'bg-[#d1d5db]'}`}>
-                        <motion.div animate={{ x: settings.notifyAt ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                  <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通知设置</p>
+                    <div className="mt-1.5 py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaAt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />@ 通知</span>
+                      <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyAt ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                        <motion.div animate={{ x: settings.notifyAt ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
                       </button>
                     </div>
-                    <div className="py-2 flex items-center justify-between" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaComment className="text-[12px]" />评论通知</span>
-                      <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className={`w-10 h-5 rounded-full transition-colors ${settings.notifyComment ? 'bg-[#111827]' : 'bg-[#d1d5db]'}`}>
-                        <motion.div animate={{ x: settings.notifyComment ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                    <div className="py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaComment className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />评论通知</span>
+                      <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyComment ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                        <motion.div animate={{ x: settings.notifyComment ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
                       </button>
                     </div>
                     <div className="pt-2 pb-1 flex items-center justify-between">
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: '#000000' }}><FaBell className="text-[12px]" />好友申请通知</span>
-                      <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className={`w-10 h-5 rounded-full transition-colors ${settings.notifyFriendRequest ? 'bg-[#111827]' : 'bg-[#d1d5db]'}`}>
-                        <motion.div animate={{ x: settings.notifyFriendRequest ? 20 : 2 }} className="w-4 h-4 rounded-full bg-white shadow" />
+                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaBell className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />好友申请通知</span>
+                      <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyFriendRequest ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                        <motion.div animate={{ x: settings.notifyFriendRequest ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff' }}>
-                    <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: '#000000', borderBottom: '0.5px solid #ececf1' }}>
-                      <FaInfoCircle className="text-[12px]" /> 社区公约
+                  <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000', borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <FaInfoCircle className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} /> 社区公约
                     </button>
-                    <button onClick={() => { setShowSideMenu(false); setShowAccountDiagnostics(true); }} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: '#000000' }}>
-                      <FaSearch className="text-[12px]" /> 网络诊断
+                    <button onClick={() => setShowAccountDiagnostics(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>
+                      <FaSearch className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} /> 网络诊断
                     </button>
                   </div>
                 </div>
@@ -4202,22 +4327,22 @@ const handleAddFriend = async (name: string, remark: string) => {
 
               <div className="mt-auto pt-4 flex items-start justify-around">
                 <button className="flex flex-col items-center gap-2" onClick={() => setShowAboutOrbit(true)}>
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#e9eaec' }}>
-                    <FaInfoCircle className="text-[#666]" />
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
+                    <FiInfo className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
                   </div>
-                  <span className="text-[12px]" style={{ color: '#6b7280' }}>关于Orbit</span>
+                  <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>关于Orbit</span>
                 </button>
                 <button className="flex flex-col items-center gap-2" onClick={() => setShowHelpSupport(true)}>
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#e9eaec' }}>
-                    <FaHeadset className="text-[#666]" />
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
+                    <FiHeadphones className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
                   </div>
-                  <span className="text-[12px]" style={{ color: '#6b7280' }}>帮助与客服</span>
+                  <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>帮助与客服</span>
                 </button>
-                <button className="flex flex-col items-center gap-2" onClick={() => setShowSettings(true)}>
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#e9eaec' }}>
-                    <FaEllipsisH className="text-[#666]" />
+                <button className="flex flex-col items-center gap-2" onClick={() => setShowMoreQuickMenu(true)}>
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
+                    <FiMoreHorizontal className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
                   </div>
-                  <span className="text-[12px]" style={{ color: '#6b7280' }}>更多</span>
+                  <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>更多</span>
                 </button>
               </div>
             </motion.div>
@@ -4255,61 +4380,57 @@ const handleAddFriend = async (name: string, remark: string) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[85]"
-            style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+            style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
           >
             <div className="h-full overflow-y-auto">
               <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
                 <button
                   onClick={() => setShowAboutOrbit(false)}
                   className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: '#000000' }}
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                 >
                   <FaChevronLeft className="text-base" />
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>关于 Orbit</h2>
+                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>关于 Orbit</h2>
               </div>
 
               <div className="px-4 pt-2">
-                <div className="rounded-3xl overflow-hidden" style={{ background: '#ffffff' }}>
-                  <div className="px-6 pt-12 pb-8 text-center" style={{ borderBottom: '0.5px solid #ececf1' }}>
+                <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                  <div className="px-6 pt-12 pb-8 text-center" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <img src="/icons/icon-384.png" alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
-                    <p className="mt-4 text-[15px]" style={{ color: '#000000' }}>v{appVersion}</p>
-                    <p className="mt-1 text-[13px]" style={{ color: '#9ca3af' }}>更新于 {appBuildLabel}</p>
+                    <p className="mt-4 text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>v{appVersion}</p>
+                    <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>更新于 {appBuildLabel}</p>
                   </div>
 
-                  <button onClick={() => alert('谢谢你的鼓励！')} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>鼓励一下</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                  <button onClick={() => setShowEncouragePopup(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>鼓励一下</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
-                  <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>社区公约</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                  <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>社区公约</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
-                  <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>服务条款</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                  <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>服务条款</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
-                  <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>隐私政策</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                  <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>隐私政策</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
-                  <button onClick={() => openDocument('隐私政策（简明版）', PRIVACY_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>隐私政策(简明版)</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>网络诊断</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
-                  <button onClick={() => { setShowAboutOrbit(false); setShowAccountDiagnostics(true); }} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>网络诊断</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
-                  </button>
-                  <button onClick={() => alert('证照信息整理中')} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: '0.5px solid #ececf1' }}>
-                    <span className="text-[16px]" style={{ color: '#000000' }}>证照信息</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: '#c4c4c8' }} />
+                  <button onClick={() => openDocument('证照信息', '证照信息页面（示例）\n\n这里是临时展示内容。\n后续会补充营业执照、备案号和相关资质信息。')} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>证照信息</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
                 </div>
               </div>
 
               <div className="px-4 pt-14 pb-8 text-center">
-                <p className="text-[12px] leading-6" style={{ color: '#c4c4c8' }}>
+                <p className="text-[12px] leading-6" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }}>
                   Orbit 版权所有<br />
                   Copyright©2013 - 2026 Orbit. All Rights Reserved<br />
                   官方热线: 9501 3888
@@ -4321,11 +4442,120 @@ const handleAddFriend = async (name: string, remark: string) => {
       </AnimatePresence>
 
       <AnimatePresence>
+        {showEncouragePopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-6"
+            onClick={() => setShowEncouragePopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 8 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+              className="w-full max-w-xs rounded-3xl p-6 text-center"
+              style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-[42px] leading-none">🥰🎉✨</div>
+              <p className="mt-3 text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}>感谢你的鼓励！</p>
+              <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}>Orbit 会继续努力 💫</p>
+              <button
+                onClick={() => setShowEncouragePopup(false)}
+                className="mt-4 px-4 py-2 rounded-full text-[13px]"
+                style={{ background: isDarkMode ? '#1e293b' : '#f3f4f6', color: isDarkMode ? '#e5e7eb' : '#111827' }}
+              >
+                好的
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMoreQuickMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90]"
+            style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+          >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              className="h-full w-full overflow-y-auto"
+            >
+              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
+                <button
+                  onClick={() => setShowMoreQuickMenu(false)}
+                  className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
+                >
+                  <FaChevronLeft className="text-base" />
+                </button>
+                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>更多</h2>
+              </div>
+
+              <div className="px-4 pt-2 pb-8">
+                <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                  <button
+                    className="w-full px-6 py-4 flex items-center justify-between text-left"
+                    style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                    onClick={() => {
+                      openDocument('检查更新', `当前版本：v${appVersion}\n构建时间：${appBuildLabel}\n\n已是最新版本。`);
+                    }}
+                  >
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>检查更新</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                  </button>
+                  <button
+                    className="w-full px-6 py-4 flex items-center justify-between text-left"
+                    style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                    onClick={async () => {
+                      await handleClearCache();
+                    }}
+                  >
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>清理缓存</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                  </button>
+                  <button
+                    className="w-full px-6 py-4 flex items-center justify-between text-left"
+                    style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                    onClick={() => {
+                      setShowHelpSupport(true);
+                    }}
+                  >
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>意见反馈</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                  </button>
+                  <button
+                    className="w-full px-6 py-4 flex items-center justify-between text-left"
+                    onClick={() => {
+                      openDocument('关于版本', `Orbit\n版本号：v${appVersion}\n构建时间：${appBuildLabel}`);
+                    }}
+                  >
+                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>关于版本</span>
+                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showCommunityGuidelines && (
           <CommunityGuidelinesPage
             isOpen={showCommunityGuidelines}
             onClose={() => setShowCommunityGuidelines(false)}
             content={COMMUNITY_TEXT}
+            isDarkMode={isDarkMode}
           />
         )}
       </AnimatePresence>
@@ -4336,6 +4566,7 @@ const handleAddFriend = async (name: string, remark: string) => {
             isOpen={showHelpSupport}
             onClose={() => setShowHelpSupport(false)}
             currentUser={currentUser}
+            isDarkMode={isDarkMode}
           />
         )}
       </AnimatePresence>
@@ -4737,6 +4968,7 @@ const handleAddFriend = async (name: string, remark: string) => {
             friendsCount={friends.length}
             memoriesCount={memories.length}
             ledgersCount={ledgers.length}
+            isDarkMode={isDarkMode}
           />
         )}
         <ChangeEmailModal
@@ -4766,6 +4998,7 @@ const handleAddFriend = async (name: string, remark: string) => {
           onClose={() => setDocModal({ ...docModal, isOpen: false })}
           title={docModal.title}
           content={docModal.content}
+          isDarkMode={isDarkMode}
         />
       </AnimatePresence>
     </div>
