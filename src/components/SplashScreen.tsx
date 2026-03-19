@@ -26,7 +26,7 @@ export const SplashScreen: React.FC = () => {
       >
         <div className="w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(0,255,179,0.25)] mb-6 bg-[#0b0d14]">
           <img
-            src="/icons/orbit-logo.svg"
+            src="/icons/icon-384.png"
             alt="Orbit 品牌标志"
             className="w-full h-full object-cover"
             loading="eager"

@@ -1331,3 +1331,33 @@ export const setOneSignalPlayerId = async (userId: string, playerId: string | nu
 
   if (res.error) throw res.error
 }
+
+// ==================== 帮助中心问题反馈 ====================
+
+export const submitHelpQuestionFeedback = async (input: {
+  question: string
+  category: 'hot' | 'account' | 'settings'
+  vote: 'useful' | 'not_useful'
+  userId?: string | null
+  username?: string | null
+  appVersion?: string | null
+  buildTime?: string | null
+}) => {
+  ensureOnlineForWrite('提交问题反馈')
+
+  const payload = {
+    question: input.question,
+    category: input.category,
+    vote: input.vote,
+    user_id: input.userId || null,
+    username: input.username || null,
+    app_version: input.appVersion || null,
+    build_time: input.buildTime || null,
+  }
+
+  const { error } = await (supabase as any)
+    .from('help_question_feedback')
+    .insert(payload)
+
+  if (error) throw error
+}

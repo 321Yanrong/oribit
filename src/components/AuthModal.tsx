@@ -227,7 +227,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
             className="mx-auto mb-4"
           >
-            <img src="/icons/orbit-logo.svg" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
+            <img src="/icons/icon-384.png" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
           </motion.div>
           <h1 className="text-3xl font-bold text-white mb-2">Orbit 轨迹</h1>
           <p className="text-white/50">记录与好友的每一个足迹 ✨</p>
