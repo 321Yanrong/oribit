@@ -186,13 +186,14 @@ const decodeMemoryContent = (content: string): { text: string; weather: string[]
 };
 
 // 按日期分组记忆
-const groupMemoriesByDate = (memories: any[]) => {
+const groupMemoriesByDate = (memories: any[], order: 'asc' | 'desc' = 'desc') => {
   const groups: { [key: string]: any[] } = {};
 
   const sortedMemories = [...memories].sort((a, b) => {
-    const dateA = new Date(a.memory_date || a.created_at);
-    const dateB = new Date(b.memory_date || b.created_at);
-    return dateB.getTime() - dateA.getTime();
+    const dateA = new Date(a.memory_date || a.created_at).getTime();
+    const dateB = new Date(b.memory_date || b.created_at).getTime();
+    if (Number.isNaN(dateA) || Number.isNaN(dateB)) return 0;
+    return order === 'desc' ? dateB - dateA : dateA - dateB;
   });
 
   sortedMemories.forEach(memory => {
@@ -1326,6 +1327,8 @@ export default function MemoryStreamPage() {
   const [replyTarget, setReplyTarget] = useState<Record<string, { commentId: string; authorId: string; authorName: string } | null>>({});
   const [albumFilterFriendIds, setAlbumFilterFriendIds] = useState<string[]>([]);
   const [albumDateRange, setAlbumDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  // Top-of-page sort order for memory list: newest first ('desc') or oldest first ('asc')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAlbumFilterDialog, setShowAlbumFilterDialog] = useState(false);
   const [commentAudios, setCommentAudios] = useState<Record<string, string[]>>({});
   const initialFilterClearedRef = useRef(false);
@@ -1682,14 +1685,19 @@ export default function MemoryStreamPage() {
       result = result.filter((m: any) => {
         const ts = new Date(m.memory_date || m.created_at).getTime();
         if (Number.isNaN(ts)) return false;
-        if (start && ts < start.getTime()) return false;
         if (end && ts > end.getTime()) return false;
         return true;
       });
     }
-
-    return result;
-  }, [filteredMemories, albumFilterFriendIds, albumDateRange]);
+    // Apply same sort order to album-filtered list
+    const sorted = [...result].sort((a: any, b: any) => {
+      const ta = new Date(a.memory_date || a.created_at).getTime();
+      const tb = new Date(b.memory_date || b.created_at).getTime();
+      if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
+      return sortOrder === 'desc' ? tb - ta : ta - tb;
+    });
+    return sorted;
+  }, [filteredMemories, albumFilterFriendIds, albumDateRange, sortOrder]);
 
   // 若筛选导致列表为空，自动清空筛选以恢复数据
   useEffect(() => {
@@ -1700,8 +1708,8 @@ export default function MemoryStreamPage() {
     }
   }, [filterFriendIds.length, filteredMemories.length, isLoading, setMemoryStreamFilterFriendIds]);
 
-  // 按日期分组
-  const groupedMemories = useMemo(() => groupMemoriesByDate(filteredMemories), [filteredMemories]);
+  // 按日期分组（尊重当前排序）
+  const groupedMemories = useMemo(() => groupMemoriesByDate(filteredMemories, sortOrder), [filteredMemories, sortOrder]);
   // 按城市分组
   const cityGroupedMemories = useMemo(() => groupMemoriesByCity(filteredMemories), [filteredMemories]);
 
@@ -2097,6 +2105,27 @@ export default function MemoryStreamPage() {
           >
             {groupBy === 'city' ? '🏙 按城市' : '📅 按日期'}
           </button>
+          {/* 顶部时间筛选 + 排序 */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setShowStoryEntry(true);
+                setShowAlbumFilterDialog(true);
+              }}
+              className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border"
+              style={{ backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
+            >
+              <FaCalendarAlt className="inline-block mr-2 text-sm" />按时间筛选
+            </button>
+            <button
+              onClick={() => setSortOrder((s) => (s === 'desc' ? 'asc' : 'desc'))}
+              className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border"
+              style={{ backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
+              title={sortOrder === 'desc' ? '按时间从新到旧' : '按时间从旧到新'}
+            >
+              时间 {sortOrder === 'desc' ? '↓' : '↑'}
+            </button>
+          </div>
         </div>
 
         {/* 好友筛选（支持多选，AND 逻辑：选中的好友必须同时出现） */}
@@ -2603,10 +2632,11 @@ export default function MemoryStreamPage() {
                 className="w-full max-w-3xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  className="mb-4 rounded-2xl border p-4"
-                  style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                >
+                <div className="px-4 mb-6">
+                  <div
+                    className="mb-4 rounded-2xl border p-4"
+                    style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                  >
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div>
                       <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>按时间范围筛选</p>
@@ -2662,6 +2692,7 @@ export default function MemoryStreamPage() {
                         style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                       >清空</button>
                     </div>
+                  </div>
                   </div>
                 </div>
 

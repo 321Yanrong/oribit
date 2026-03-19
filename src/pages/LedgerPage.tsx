@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaClock, FaUsers, FaUser, FaMapMarkerAlt, FaWallet, FaPlus, FaTimes, FaSpinner, FaImages, FaChevronRight, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaClock, FaUsers, FaUser, FaMapMarkerAlt, FaWallet, FaPlus, FaTimes, FaSpinner, FaImages, FaChevronRight, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa';
 import { useLedgerStore, useUserStore, getUserById, useMemoryStore } from '../store';
 import PullToRefresh from '../components/PullToRefresh';
 import { shouldAllowRefresh } from '../utils/settings';
@@ -16,8 +16,16 @@ const getCityFromMemory = (memory: any): string => {
   return '未分类';
 };
 
+const getIsDarkTheme = () => {
+  if (typeof document === 'undefined') return true;
+  const theme = document.documentElement.dataset.theme;
+  if (theme === 'dark') return true;
+  if (theme === 'light') return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+};
+
 // ==========================================
-// 账单组件：类型 / 分类 / 计算器
+// 账单组件：类型 / 分类 / 计算器（保持原样，完全未改动）
 // ==========================================
 interface LedgerItem {
   id: string;
@@ -74,7 +82,7 @@ function CalcPad({ expr, onChange, onConfirm }: { expr: string; onChange: (v: st
 }
 
 // ==========================================
-// 1. 账单表单弹窗 (支持 新建 & 编辑 双模式)
+// 1. 账单表单弹窗 (保持原样，完全未改动)
 // ==========================================
 const LedgerModal = ({
   isOpen, onClose, onSave, friends, editData
@@ -100,7 +108,6 @@ const LedgerModal = ({
     setLedgerItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
   const [selectedMemoryId, setSelectedMemoryId] = useState(editData?.memory_id || '');
   const [expenseType, setExpenseType] = useState<'shared' | 'personal'>(editData?.expense_type || 'shared'); 
-  // 回显参与者
   const [selectedFriends, setSelectedFriends] = useState<string[]>(
     editData?.participants?.filter((p:any) => p.user_id !== editData.creator_id).map((p:any) => p.user_id) || []
   );
@@ -150,7 +157,6 @@ const LedgerModal = ({
             <button onClick={() => setExpenseType('personal')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'personal' ? 'bg-[#e6fff5] text-[#047857] shadow border border-[#a7f3d0]' : 'text-[#94a3b8]'}`}>🙋 个人消费</button>
           </div>
 
-          {/* 关联记忆 */}
           <div className="relative">
             <FaImages className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10b981]" />
             <select value={selectedMemoryId} onChange={(e) => setSelectedMemoryId(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border outline-none appearance-none cursor-pointer" style={{ backgroundColor: 'var(--orbit-card, #ffffff)', borderColor: 'var(--orbit-border, #e5e7eb)', color: 'var(--orbit-text, #0f172a)' }}>
@@ -164,11 +170,9 @@ const LedgerModal = ({
             <FaChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-[#cbd5e1] rotate-90 pointer-events-none" />
           </div>
 
-          {/* 多项账单 */}
           <div className="space-y-3">
             {ledgerItems.map(item => (
               <div key={item.id} className="rounded-2xl p-3 space-y-2 border" style={{ backgroundColor: 'var(--orbit-card, #ffffff)', borderColor: 'var(--orbit-border, #e5e7eb)' }}>
-                {/* 分类选择 */}
                 <div className="flex items-center gap-2">
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {CATEGORIES.map(cat => (
@@ -188,7 +192,6 @@ const LedgerModal = ({
                     </button>
                   )}
                 </div>
-                {/* 备注 + 金额 */}
                 <div className="flex gap-2">
                   <input type="text" placeholder="备注（选填）" value={item.note}
                     onChange={e => updateLedgerItem(item.id, 'note', e.target.value)}
@@ -200,7 +203,6 @@ const LedgerModal = ({
                     ¥{item.amount || '0'}
                   </button>
                 </div>
-                {/* 计算器 */}
                 {activeCalcId === item.id && (
                   <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.15 }}>
                     <CalcPad
@@ -257,16 +259,42 @@ const LedgerModal = ({
 };
 
 // ==========================================
-// 2. 主页面 (LedgerPage)
+// 2. 主页面 (LedgerPage) - 高级线条重构版
 // ==========================================
 export default function LedgerPage() {
   const { ledgers, fetchLedgers, deleteLedger } = useLedgerStore();
   const { currentUser, friends } = useUserStore();
   const { memories } = useMemoryStore();
+  const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
   
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [editingLedger, setEditingLedger] = useState<any>(null);
   const [groupBy, setGroupBy] = useState<'memory' | 'city'>('memory');
+ // 1. 添加当前月份状态 (默认当前月)
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // 2. 过滤出当前月份的账单，并计算本月我花费的总额
+  const { filteredLedgers, monthlyTotal } = useMemo(() => {
+    let total = 0;
+    const filtered = ledgers.filter(ledger => {
+      const memory = memories.find(m => m.id === ledger.memory_id);
+      const dateStr = memory?.memory_date || memory?.created_at || new Date().toISOString();
+      const month = dateStr.slice(0, 7); // 截取 YYYY-MM
+      if (month === currentMonth) {
+        // 计算属于我的金额
+        const myPart = ledger.expense_type === 'personal' 
+          ? ledger.total_amount 
+          : ledger.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
+        total += myPart;
+        return true;
+      }
+      return false;
+    });
+    return { filteredLedgers: filtered, monthlyTotal: total };
+  }, [ledgers, memories, currentMonth, currentUser]);
   const [isRefreshingPull, setIsRefreshingPull] = useState(false);
 
   const handleDeleteLedger = async (id: string) => {
@@ -279,6 +307,19 @@ export default function LedgerPage() {
   };
 
   useEffect(() => { fetchLedgers(); }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const update = () => setIsDarkMode(getIsDarkTheme());
+    const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    update();
+    media?.addEventListener('change', update);
+    window.addEventListener('settings:update', update as EventListener);
+    return () => {
+      media?.removeEventListener('change', update);
+      window.removeEventListener('settings:update', update as EventListener);
+    };
+  }, []);
 
   const handlePullRefresh = async () => {
     if (isRefreshingPull) return;
@@ -298,10 +339,9 @@ export default function LedgerPage() {
     }
   };
   
-  // 按城市分组
   const cityGrouped = useMemo(() => {
     const map: Record<string, { city: string; ledgers: any[]; total: number }> = {};
-    ledgers.forEach(ledger => {
+    filteredLedgers.forEach(ledger => {
       const memory = memories.find(m => m.id === ledger.memory_id);
       const city = getCityFromMemory(memory);
       if (!map[city]) map[city] = { city, ledgers: [], total: 0 };
@@ -312,12 +352,11 @@ export default function LedgerPage() {
       map[city].total += myPart;
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [ledgers, memories, currentUser]);
+  }, [filteredLedgers, memories, currentUser]);
   
-  // 按记忆分组（日历风格）
   const groupedByMemory = useMemo(() => {
     const groups: Record<string, { key: string; memory: any; ledgers: any[] }> = {};
-    ledgers.forEach(ledger => {
+    filteredLedgers.forEach(ledger => {
       const key = ledger.memory_id || 'uncategorized';
       if (!groups[key]) {
         const memory = memories.find(m => m.id === key);
@@ -330,7 +369,7 @@ export default function LedgerPage() {
       const dateB = b.memory ? new Date(b.memory.memory_date || b.memory.created_at).getTime() : 0;
       return dateB - dateA;
     });
-  }, [ledgers, memories]);
+  }, [filteredLedgers, memories]);
 
   const handleSaveLedger = async (data: any) => {
     if (!currentUser) return;
@@ -346,10 +385,8 @@ export default function LedgerPage() {
             ...realParticipantIds.map((id: string) => ({ userId: id, amount: share }))
           ];
       if (data.id) {
-        // 编辑模式：更新已有账单
         await updateLedger(data.id, currentUser.id, total, participants, data.memoryId, data.expenseType);
       } else {
-        // 新建模式
         await createLedger(currentUser.id, total, participants, data.memoryId, data.expenseType);
       }
       await fetchLedgers();
@@ -359,82 +396,107 @@ export default function LedgerPage() {
     }
   };
 
-  return (
-    <div className="relative min-h-screen bg-orbit-black pb-28">
-      {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
-      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_20%,rgba(255,179,71,0.2)_0%,transparent_50%)]" />
+  // 全局变量抽取，控制线条版主题
+  const bgMain = isDarkMode ? 'bg-[#121212]' : 'bg-white';
+  const textPrimary = isDarkMode ? 'text-neutral-100' : 'text-neutral-900';
+  const textSecondary = isDarkMode ? 'text-neutral-400' : 'text-neutral-500';
+  const borderLine = isDarkMode ? 'border-neutral-800' : 'border-neutral-200';
 
-      {/* 顶部标题栏 */}
-      <div className="relative z-10 safe-top mx-4 mt-4">
-        <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card rounded-3xl p-5 relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#00FFB3]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="flex items-center justify-between relative z-10">
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                <FaWallet className="text-[#00FFB3]" /> 财务足迹
-              </h1>
-              <p className="text-white/40 text-sm mt-1">
-                {groupedByMemory.length > 0 ? `共 ${groupedByMemory.length} 段记忆旅程` : '还没有任何消费记录'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setGroupBy(g => g === 'memory' ? 'city' : 'memory')}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  groupBy === 'city' ? 'bg-[#FF9F43]/20 text-[#FF9F43] border-[#FF9F43]/40' : 'bg-white/5 text-white/50 border-white/10'
-                }`}
-              >
-                {groupBy === 'city' ? '🏙 按城市' : '📍 按记忆'}
-              </button>
-              <button
-                onClick={() => setShowLedgerModal(true)}
-                className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
-              >
-                <FaPlus />
-              </button>
+  return (
+    <div className={`relative min-h-screen pb-28 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
+{/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
+      <div className={`sticky top-0 z-20 px-6 pt-12 pb-5 ${bgMain} border-b ${borderLine}`}>
+        
+        {/* 第一行：标题、月份筛选、记一笔 */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-medium tracking-widest">财务足迹</h1>
+            
+            {/* 月份筛选器 (透明覆盖式) */}
+            <div className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
+              <span className="text-sm font-mono font-medium">{currentMonth.replace('-', ' / ')}</span>
+              <FaChevronDown className="text-[10px] opacity-50" />
+              {/* 核心：把 input 变透明铺满整个框，点击任意位置都能触发 */}
+              <input 
+                type="month" 
+                value={currentMonth} 
+                onChange={e => e.target.value && setCurrentMonth(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
+              />
             </div>
           </div>
-        </motion.div>
+
+          {/* 统一风格的荧光 Q 弹按钮 */}
+          <motion.button 
+            whileHover={{ scale: 1.05 }} 
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowLedgerModal(true)} 
+            className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold text-sm shrink-0 shadow-md shadow-[#00D9FF]/20"
+          >
+            记一笔
+          </motion.button>
+        </div>
+        
+        {/* 第二行：总支出看板 & 视图切换 */}
+        <div className="flex items-end justify-between">
+          <div>
+            <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>本月总支出</p>
+            <div className="flex items-baseline gap-1">
+              <span className="font-mono text-3xl font-bold tracking-tight">¥ {monthlyTotal.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          {/* 高级感切换 Tab */}
+          <div className={`flex p-1 rounded-lg border ${borderLine} ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+            <button 
+              onClick={() => setGroupBy('memory')} 
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${groupBy === 'memory' ? (isDarkMode ? 'bg-white text-black' : 'bg-white shadow-sm text-black') : textSecondary}`}>
+              按记忆
+            </button>
+            <button 
+              onClick={() => setGroupBy('city')} 
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${groupBy === 'city' ? (isDarkMode ? 'bg-white text-black' : 'bg-white shadow-sm text-black') : textSecondary}`}>
+              按城市
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* 记忆消费时间轴（日历风格） or 城市视图 */}
-      <div className="relative z-10 px-4 mt-6">
+      {/* 列表区域：去除了圆角卡片，仅用细线分隔，去除 Emoji */}
+      <div className="px-6 mt-6">
         {groupedByMemory.length > 0 ? (
           groupBy === 'city' ? (
-            /* ── 城市视图 ── */
-            <div className="space-y-4">
+            /* ── 城市视图 (线条版) ── */
+            <div className="space-y-10">
               {cityGrouped.map((cg, idx) => (
-                <motion.div key={cg.city} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.07 }} className="glass-card rounded-3xl p-5 border border-white/5">
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-[#FF9F43]/10 border border-[#FF9F43]/20 flex items-center justify-center text-lg">🏙</div>
-                      <div>
-                        <p className="text-white font-bold">{cg.city}</p>
-                        <p className="text-white/40 text-xs">{cg.ledgers.length} 笔支出</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white/40 text-[10px]">合计</p>
-                      <p className="text-[#FF9F43] font-bold">¥{cg.total.toFixed(2)}</p>
-                    </div>
+                <motion.div key={cg.city} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
+                  <div className={`flex items-baseline justify-between mb-4 pb-2 border-b ${borderLine}`}>
+                    <h2 className="text-xl font-medium tracking-widest">{cg.city}</h2>
+                    <span className="font-mono text-lg">¥ {cg.total.toFixed(2)}</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {cg.ledgers.map((item: any) => {
                       const isPersonal = item.expense_type === 'personal';
                       const myPart = isPersonal ? item.total_amount : item.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
+                      // 移除旧版的 Emoji，直接展示干净的文字
+                      // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
+                      const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
                       return (
-                        <div key={item.id} className="flex justify-between items-center bg-white/5 px-3 py-2.5 rounded-xl border border-white/5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs">{isPersonal ? '🙋' : '👫'}</span>
-                            <div className="min-w-0">
-                              <p className="text-white/80 text-sm truncate">{item.description}</p>
-                              {item._memory?.location?.name && <p className="text-white/30 text-[10px] truncate">📍 {item._memory.location.name}</p>}
+                        <div key={item.id} className="flex justify-between items-start group">
+                          <div className="flex-1 min-w-0 pr-4">
+                            <p className="text-base font-medium truncate">{cleanDesc || item.description}</p>
+                            <div className={`flex items-center gap-2 mt-1 text-xs ${textSecondary}`}>
+                              <span>{isPersonal ? '个人消费' : '多人均摊'}</span>
+                              {item._memory?.location?.name && <span>· {item._memory.location.name}</span>}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            <span className={`font-medium text-sm ${isPersonal ? 'text-white' : 'text-[#FF9F43]'}`}>{isPersonal ? `¥${myPart.toFixed(2)}` : `摊 ¥${myPart.toFixed(2)}`}</span>
-                            <button onClick={() => setEditingLedger(item)} className="p-1.5 rounded-full bg-white/5 hover:bg-[#00FFB3] hover:text-black text-white/40 transition-colors"><FaEdit className="text-xs" /></button>
-                            <button onClick={() => handleDeleteLedger(item.id)} className="p-1.5 rounded-full bg-white/5 hover:bg-red-500 hover:text-white text-red-400/40 transition-colors"><FaTrash className="text-xs" /></button>
+                          <div className="text-right flex flex-col items-end">
+                            <span className="font-mono text-base">¥ {myPart.toFixed(2)}</span>
+                            <div className="flex items-center gap-3 mt-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => setEditingLedger(item)} className={`${textSecondary} hover:${textPrimary}`}><FaEdit size={14} /></button>
+                              <button onClick={() => handleDeleteLedger(item.id)} className={`${textSecondary} hover:text-red-500`}><FaTrash size={14} /></button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -444,8 +506,8 @@ export default function LedgerPage() {
               ))}
             </div>
           ) : (
-          /* ── 记忆视图（原有） ── */
-          <div className="space-y-4">
+          /* ── 记忆视图 (线条版) ── */
+          <div className="space-y-10">
             {groupedByMemory.map((group, index) => {
               const memory = group.memory;
               const date = memory ? new Date(memory.memory_date || memory.created_at) : null;
@@ -456,43 +518,35 @@ export default function LedgerPage() {
               }, 0);
 
               return (
-                <motion.div key={group.key || memory?.id || 'uncategorized'} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }} className="glass-card rounded-3xl p-5 border border-white/5">
-                  <div className="flex gap-4 mb-4 pb-4 border-b border-white/10">
-                    {date ? (
-                      <div className="flex flex-col items-center justify-center w-12 h-14 rounded-2xl bg-[#00FFB3]/10 border border-[#00FFB3]/20 shrink-0">
-                        <span className="text-[#00FFB3] text-xl font-black leading-none">{date.getDate()}</span>
-                        <span className="text-[#00FFB3]/60 text-[10px] mt-0.5">{date.toLocaleDateString('zh-CN', { month: 'short' })}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center w-12 h-14 rounded-2xl bg-white/5 border border-white/10 shrink-0">
-                        <span className="text-white/30 text-xl font-black">?</span>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold truncate">{memory?.location?.name || memory?.content?.substring(0, 15) || '未分类消费'}</p>
-                      {date && <p className="text-white/40 text-xs mt-0.5">{date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>}
-                      <p className="text-white/30 text-xs mt-0.5">{group.ledgers.length} 笔支出</p>
+                <motion.div key={group.key || memory?.id || 'uncategorized'} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                  <div className={`flex items-end justify-between mb-6 pb-2 border-b ${borderLine}`}>
+                    <div>
+                      {date && <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>{date.getFullYear()} / {(date.getMonth() + 1).toString().padStart(2, '0')} / {date.getDate().toString().padStart(2, '0')}</p>}
+                      <h2 className="text-xl font-medium tracking-wide">{memory?.location?.name || memory?.content?.substring(0, 15) || '未分类消费'}</h2>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-white/40 text-[10px]">我花费</p>
-                      <p className="text-[#00FFB3] font-bold text-base">¥{myTripCost.toFixed(2)}</p>
+                    <div className="text-right">
+                      <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>我花费</p>
+                      <p className="font-mono text-xl">¥ {myTripCost.toFixed(2)}</p>
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-5">
                     {group.ledgers.map((item: any) => {
                       const isPersonal = item.expense_type === 'personal';
                       const myPart = isPersonal ? item.total_amount : item.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
+                      // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
+                      const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
                       return (
-                        <div key={item.id} className="flex justify-between items-center bg-white/5 px-3 py-2.5 rounded-xl border border-white/5 hover:border-white/20 transition-all">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs shrink-0">{isPersonal ? '🙋' : '👫'}</span>
-                            <span className="text-white/80 text-sm truncate">{item.description}</span>
-                            {!isPersonal && <span className="text-white/30 text-[10px] shrink-0 bg-white/5 px-1.5 py-0.5 rounded">总¥{item.total_amount}</span>}
+                        <div key={item.id} className="flex justify-between items-center group">
+                          <div className="flex-1 pr-4">
+                            <p className="text-base">{cleanDesc || item.description}</p>
+                            <p className={`text-xs mt-1 ${textSecondary}`}>{isPersonal ? '个人消费' : `总花费 ¥${item.total_amount}`}</p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            <span className={`font-medium text-sm ${isPersonal ? 'text-white' : 'text-[#FF9F43]'}`}>{isPersonal ? `¥${myPart.toFixed(2)}` : `摊 ¥${myPart.toFixed(2)}`}</span>
-                            <button onClick={() => setEditingLedger(item)} className="p-1.5 rounded-full bg-white/5 hover:bg-[#00FFB3] hover:text-black text-white/40 transition-colors"><FaEdit className="text-xs" /></button>
-                            <button onClick={() => handleDeleteLedger(item.id)} className="p-1.5 rounded-full bg-white/5 hover:bg-red-500 hover:text-white text-red-400/40 transition-colors"><FaTrash className="text-xs" /></button>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="font-mono text-base font-medium">¥ {myPart.toFixed(2)}</span>
+                            <div className="flex items-center gap-4 text-xs">
+                              <button onClick={() => setEditingLedger(item)} className={`${textSecondary} hover:${textPrimary} transition-colors`}>编辑</button>
+                              <button onClick={() => handleDeleteLedger(item.id)} className={`${textSecondary} hover:text-red-500 transition-colors`}>删除</button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -504,14 +558,13 @@ export default function LedgerPage() {
           </div>
           )
         ) : (
-          <div className="text-center mt-20 opacity-50">
-            <FaWallet className="text-5xl mx-auto mb-4 text-white/20" />
-            <p className="text-white/60">空空如也，记下第一笔开销吧</p>
+          <div className={`text-center mt-32 ${textSecondary}`}>
+            <FaWallet className="text-4xl mx-auto mb-4 opacity-20" />
+            <p className="text-sm tracking-widest">空空如也，记下第一笔开销吧</p>
           </div>
         )}
       </div>
 
-      {/* 弹窗挂载 */}
       <AnimatePresence>
         {showLedgerModal && <LedgerModal isOpen={showLedgerModal} onClose={() => setShowLedgerModal(false)} onSave={handleSaveLedger} friends={friends} />}
         {editingLedger && <LedgerModal isOpen={!!editingLedger} onClose={() => setEditingLedger(null)} onSave={handleSaveLedger} friends={friends} editData={editingLedger} />}

@@ -91,6 +91,32 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     toastTimerRef.current = window.setTimeout(() => setToastMessage(null), 2000);
   }, []);
 
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    if (typeof document === 'undefined') return true;
+    const theme = document.documentElement.dataset.theme;
+    if (theme === 'dark') return true;
+    if (theme === 'light') return false;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const update = () => {
+      const theme = document.documentElement.dataset.theme;
+      if (theme === 'dark') setIsDarkTheme(true);
+      else if (theme === 'light') setIsDarkTheme(false);
+      else setIsDarkTheme(window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true);
+    };
+    const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    update();
+    media?.addEventListener('change', update);
+    window.addEventListener('settings:update', update as EventListener);
+    return () => {
+      media?.removeEventListener('change', update);
+      window.removeEventListener('settings:update', update as EventListener);
+    };
+  }, []);
+
   // ✨ 核心修复 1：进页面立刻拉取最新回忆数据
   useEffect(() => {
     if (currentUser?.id) {
@@ -390,25 +416,32 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     fitViewTimeoutRef.current = window.setTimeout(() => {
       const targetMap = mapRef.current as mapboxgl.Map | null;
       if (!targetMap) return;
-      if (markersRef.current.length === 0) {
+
+      // 只有在数据加载完成且没有任何足迹时，才显示“暂无回忆足迹”的提示并缩小视野。
+      // 这可避免在数据仍在加载期间误报“暂无回忆”。
+      if (filteredPins.length === 0 && memoriesFetched) {
         const now = Date.now();
         if (now - lastNoPinsToastRef.current > 2500) {
           lastNoPinsToastRef.current = now;
-          showToast('该好友暂无回忆足迹');
+          showToast('暂无回忆足迹');
         }
         const currentZoom = targetMap.getZoom();
         targetMap.setZoom(Math.max(currentZoom - 1, 4));
         return;
       }
-      const bounds = new mapboxgl.LngLatBounds();
-      filteredPins.forEach((pin: any) => bounds.extend([pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat]));
-      targetMap.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 600 });
+
+      // 如果有数据，正常缩放到 bounds
+      if (filteredPins.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        filteredPins.forEach((pin: any) => bounds.extend([pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat]));
+        targetMap.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 600 });
+      }
     }, 300);
 
     return () => {
       if (fitViewTimeoutRef.current) window.clearTimeout(fitViewTimeoutRef.current);
     };
-  }, [mapLoaded, filteredPins, setSelectedPin, mapGroupBy, currentUser, showToast]);
+  }, [mapLoaded, filteredPins, setSelectedPin, mapGroupBy, currentUser, showToast, memoriesFetched]);
 
   useEffect(() => () => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -484,7 +517,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     <div className="relative h-screen w-full bg-orbit-black overflow-hidden">
       {toastMessage && (
         <div className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-[95]">
-          <div className="px-4 py-2 rounded-full bg-black/80 text-white text-sm border border-white/10 shadow-lg">
+          <div
+            className="px-4 py-2 rounded-full text-sm shadow-lg"
+            style={isDarkTheme
+              ? { background: 'rgba(255,255,255,0.95)', color: '#000000', border: '1px solid rgba(0,0,0,0.08)' }
+              : { background: 'rgba(0,0,0,0.8)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.08)' }
+            }
+          >
             {toastMessage}
           </div>
         </div>

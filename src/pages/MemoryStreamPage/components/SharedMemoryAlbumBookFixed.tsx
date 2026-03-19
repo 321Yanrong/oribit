@@ -205,7 +205,9 @@ const { weather, mood } = decodeMemoryContent(latestMemory?.content || '');
         if (active) onSelectFriend(selectedFriendIds.filter((id) => id !== f.id));
         else onSelectFriend([...selectedFriendIds, f.id]);
       }}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm whitespace-nowrap"
+      // className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm whitespace-nowrap"
+      // 👇 加上了 shrink-0，并且为了保险，也可以给里面的头像 img 也加上 shrink-0
+className="flex items-center shrink-0 gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm whitespace-nowrap"
       style={{
         backgroundColor: active ? '#0f9f6e' : 'color-mix(in srgb, var(--orbit-card) 82%, rgba(255,255,255,0.75))',
         color: active ? '#fff' : 'var(--orbit-text)',
@@ -250,6 +252,25 @@ isAllLast: mIdx === memories.length - 1 && pIdx === (m.photos?.length || 0) - 1,
 });
 return list;
 }, [memories]);
+
+  // 监听主题变化，保证分享完成弹窗在浅/深色下切换样式
+  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+    typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
+      ? 'light'
+      : 'dark'
+  );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handler = () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+      setTheme((prev) => (prev === next ? prev : next));
+    };
+    const observer = new MutationObserver(handler);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    handler();
+    return () => observer.disconnect();
+  }, []);
 
 const [activeIndex, setActiveIndex] = useState(0);
 const [progress, setProgress] = useState(0);
@@ -556,9 +577,16 @@ canvas.height = h;
 const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('no ctx');
 
+// Theme-aware background + text colors for poster
+const posterBgTop = theme === 'light' ? '#ffffff' : '#0b0f1c';
+const posterBgBottom = theme === 'light' ? '#f7fafc' : '#0a0716';
+const textPrimary = theme === 'light' ? '#0f172a' : 'rgba(255,255,255,0.96)';
+const textSecondary = theme === 'light' ? 'rgba(15,23,42,0.72)' : 'rgba(255,255,255,0.9)';
+const accentColor = theme === 'light' ? '#0f9f6e' : '#00FFB3';
+
 const gradient = ctx.createLinearGradient(0, 0, 0, h);
-gradient.addColorStop(0, '#0b0f1c');
-gradient.addColorStop(1, '#0a0716');
+gradient.addColorStop(0, posterBgTop);
+gradient.addColorStop(1, posterBgBottom);
 ctx.fillStyle = gradient;
 ctx.fillRect(0, 0, w, h);
 
@@ -599,19 +627,19 @@ ctx.shadowColor = 'rgba(0,0,0,0.5)';
 ctx.shadowBlur = 24;
 ctx.shadowOffsetY = 18;
 
-ctx.fillStyle = 'rgba(255,255,255,0.96)';
+ctx.fillStyle = textPrimary;
 ctx.font = 'bold 36px "Inter", "PingFang SC", "Helvetica"';
 const title = currentItem.memory?.title || '时光拾遗';
 ctx.fillText(title, 70, 900);
 
 if (weather || mood) {
-ctx.fillStyle = 'rgba(255,255,255,0.9)';
-ctx.font = '24px "Inter", "PingFang SC"';
-ctx.fillText([weather, mood].filter(Boolean).join(' · '), 70, 1020);
+  ctx.fillStyle = textSecondary;
+  ctx.font = '24px "Inter", "PingFang SC"';
+  ctx.fillText([weather, mood].filter(Boolean).join(' · '), 70, 1020);
 }
 
 // Memory/friend/location info
-ctx.fillStyle = 'rgba(255,255,255,0.9)';
+ctx.fillStyle = textSecondary;
 ctx.font = '20px "Inter", "PingFang SC"';
 const memCount = playlist.filter((p, idx) => idx <= activeIndex && p.memory.id === currentItem.memory.id).length;
 const friendCount = currentItem.memory.friends?.length || 0;
@@ -646,7 +674,7 @@ try {
   // 拼接时间范围：2026年3月2日 - 2026年3月17日
   const dateRangeStr = `${formatDate(minDate)} - ${formatDate(maxDate)}`;
   
-  ctx.fillStyle = 'rgba(255,255,255,0.96)';
+  ctx.fillStyle = textPrimary;
   ctx.font = 'bold 22px "Inter", "PingFang SC"';
   ctx.fillText(dateRangeStr, 70, infoY);
   infoY += 36;
@@ -660,7 +688,7 @@ try {
     countWithFriend = playlist.reduce((acc, p) => (p.memory.friends?.includes(firstFriendId) ? acc + 1 : acc), 0);
   }
   
-  ctx.fillStyle = 'rgba(255,255,255,0.94)';
+  ctx.fillStyle = textSecondary;
   ctx.font = '22px "Inter", "PingFang SC"';
   const friendPhrase = firstFriendId ? `，其中 ${countWithFriend} 次有你相伴` : '';
   ctx.fillText(`这段岁月藏着 ${totalMemoryCount} 个故事${friendPhrase}`, 70, infoY);
@@ -669,7 +697,7 @@ try {
   console.warn("计算日期范围失败:", err);
 }
 
-ctx.fillStyle = '#00FFB3';
+ctx.fillStyle = accentColor;
 ctx.font = 'bold 22px "Inter", "PingFang SC"';
 ctx.fillText('长按保存 · 微信分享', 70, infoY + 20);
 
@@ -904,11 +932,22 @@ photo-{activeIndex + idx + 1}
     className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto"
     onClick={() => setShowPosterPreview(false)}
   >
-    <div className="absolute inset-0 bg-black/10 rounded-3xl" />
+    <div
+      className="absolute inset-0 rounded-3xl"
+      style={{
+        backgroundColor: theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.10)',
+        pointerEvents: 'none',
+      }}
+    />
     <img
       src={posterDataUrl}
       alt="分享海报"
-      className="w-full h-full object-cover rounded-3xl shadow-2xl pointer-events-auto"
+      className="w-full h-full object-cover rounded-3xl shadow-2xl"
+      style={{
+        WebkitTouchCallout: 'default',
+        pointerEvents: 'auto',
+        WebkitUserSelect: 'none',
+      }}
       onClick={(e) => e.stopPropagation()}
     />
     <button
@@ -936,7 +975,15 @@ className="space-y-4"
 {mText && <p className="text-white text-base leading-relaxed drop-shadow-lg font-medium whitespace-pre-wrap">{mText}</p>}
 
 {currentItem.isAllLast && storyCompleted && (
-<div className="bg-black/45 backdrop-blur-xl rounded-3xl p-5 border border-white/20 w-full pointer-events-auto shadow-2xl">
+<div
+  className="rounded-3xl p-5 w-full pointer-events-auto shadow-2xl"
+  style={{
+    backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.98)' : 'rgba(0,0,0,0.55)',
+    color: theme === 'light' ? '#0f172a' : 'rgba(255,255,255,0.95)',
+    borderColor: theme === 'light' ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.12)',
+    backdropFilter: 'blur(8px)'
+  }}
+>
 <div className="flex justify-between items-end mb-5">
 <div>
 <p className="text-white/80 text-xs mb-1">本次串联回顾</p>
@@ -950,34 +997,43 @@ className="space-y-4"
 )}
 </div>
 <div className="flex gap-3 flex-col sm:flex-row">
-<button
-onClick={onClose}
-className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-sm border border-white/10"
->返回</button>
-<button
-onClick={() => {
-    if (posterLoading) return; // 避免重复触发生成
-if (onShare) {
-onShare(currentItem.memory);
-return;
-}
-// 内建兜底：生成海报并弹出预览，避免父组件未传 onShare 时按钮无反应
-if (!posterDataUrl) generatePoster();
-setShowPosterPreview(true);
-}}
-  disabled={posterLoading}
-  aria-busy={posterLoading}
-  className={`flex-[1.6] py-3.5 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-bold text-sm shadow-[0_0_20px_rgba(0,255,179,0.3)] transition-transform ${posterLoading ? 'opacity-80 cursor-wait' : 'hover:scale-[1.02]'}`}
->
-  {posterLoading ? (
-    <span className="flex items-center justify-center gap-2">
-      <span className="inline-block h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
-      正在生成...
-    </span>
-  ) : (
-    '去微信分享回忆'
-  )}
-</button>
+  <button
+    onClick={onClose}
+    className={`flex-1 py-3.5 rounded-2xl font-semibold text-sm border ${
+      theme === 'light'
+        ? 'bg-black/5 text-[#0f172a] border-black/6'
+        : 'bg-white/10 text-white border-white/10'
+    }`}
+  >
+    返回
+  </button>
+  <button
+    onClick={() => {
+      if (posterLoading) return; // 避免重复触发生成
+      if (onShare) {
+        onShare(currentItem.memory);
+        return;
+      }
+      // 内建兜底：生成海报并弹出预览，避免父组件未传 onShare 时按钮无反应
+      if (!posterDataUrl) generatePoster();
+      setShowPosterPreview(true);
+    }}
+    disabled={posterLoading}
+    aria-busy={posterLoading}
+    className={`flex-[1.6] py-3.5 rounded-2xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] font-bold text-sm shadow-[0_0_20px_rgba(0,255,179,0.3)] transition-transform ${
+      posterLoading ? 'opacity-80 cursor-wait' : 'hover:scale-[1.02]'
+    }`}
+    style={{ color: theme === 'light' ? '#0f172a' : '#000' }}
+  >
+    {posterLoading ? (
+      <span className="flex items-center justify-center gap-2">
+        <span className="inline-block h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+        正在生成...
+      </span>
+    ) : (
+      '去微信分享回忆'
+    )}
+  </button>
 </div>
 {(
 activeIndex === 0 ||

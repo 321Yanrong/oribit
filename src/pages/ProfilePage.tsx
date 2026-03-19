@@ -1839,6 +1839,8 @@ const InviteCodeModal = ({
 // 4. 随机回忆弹窗
 const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }: { memory: any; onClose: () => void; onShuffle?: () => void; friends: any[]; currentUser?: any }) => {
   const META_PREFIX = '[orbit_meta:';
+  const AUDIO_PREFIX = '[audio]';
+  const AUDIO_SPLIT = '||';
   const [commentCount, setCommentCount] = useState(0);
   const [showQuickComment, setShowQuickComment] = useState(false);
   const [quickCommentText, setQuickCommentText] = useState('');
@@ -1867,6 +1869,19 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
     ...(Array.isArray(memory?.photos) ? memory.photos : []),
     ...(Array.isArray(memory?.media_urls) ? memory.media_urls : []),
   ].filter(Boolean);
+
+  const decodeCommentContent = (content: string) => {
+    let rest = content || '';
+    let audioUrl: string | undefined;
+    if (rest.startsWith(AUDIO_PREFIX)) {
+      const idx = rest.indexOf(AUDIO_SPLIT);
+      if (idx !== -1) {
+        audioUrl = rest.slice(AUDIO_PREFIX.length, idx);
+        rest = rest.slice(idx + AUDIO_SPLIT.length);
+      }
+    }
+    return { text: rest, audioUrl };
+  };
   const getVisibleTags = () => getVisibleTaggedFriendIds(
     memory?.tagged_friends || [],
     memory?.user_id,
@@ -2166,31 +2181,39 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
                     {loadingComments ? (
                       <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>正在加载评论…</p>
                     ) : comments.length ? (
-                      comments.map((c) => (
-                        <div key={c.id || c.created_at} className="flex gap-2">
-                          <div className="w-9 h-9 rounded-full overflow-hidden bg-[color:var(--orbit-card)] border" style={{ borderColor: 'var(--orbit-border)' }}>
-                            {c.user_avatar ? <img src={c.user_avatar} alt={c.username || '用户'} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: 'var(--orbit-text-muted)' }}>{(c.username || '?')[0]}</div>}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>{c.username || '用户'}</span>
-                              <span className="text-[11px]" style={{ color: 'var(--orbit-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      comments.map((c) => {
+                        const { text: commentText, audioUrl } = decodeCommentContent(c.content || c.text || '');
+                        return (
+                          <div key={c.id || c.created_at} className="flex gap-2">
+                            <div className="w-9 h-9 rounded-full overflow-hidden bg-[color:var(--orbit-card)] border" style={{ borderColor: 'var(--orbit-border)' }}>
+                              {c.user_avatar ? <img src={c.user_avatar} alt={c.username || '用户'} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: 'var(--orbit-text-muted)' }}>{(c.username || '?')[0]}</div>}
                             </div>
-                            <p className="text-sm mt-0.5 whitespace-pre-wrap" style={{ color: 'var(--orbit-text)' }}>{c.content || c.text}</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReplyTo({ id: c.user_id || c.userId, name: c.username || '用户' });
-                                setQuickCommentText((prev) => `@${c.username || '用户'} ${prev}`.trim());
-                              }}
-                              className="text-xs mt-1"
-                              style={{ color: '#0f9f6e' }}
-                            >
-                              回复
-                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>{c.username || '用户'}</span>
+                                <span className="text-[11px]" style={{ color: 'var(--orbit-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                              </div>
+                              {commentText && (
+                                <p className="text-sm mt-0.5 whitespace-pre-wrap" style={{ color: 'var(--orbit-text)' }}>{commentText}</p>
+                              )}
+                              {audioUrl && (
+                                <audio controls className="mt-1 w-full" src={audioUrl} preload="metadata" />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReplyTo({ id: c.user_id || c.userId, name: c.username || '用户' });
+                                  setQuickCommentText((prev) => `@${c.username || '用户'} ${prev}`.trim());
+                                }}
+                                className="text-xs mt-1"
+                                style={{ color: '#0f9f6e' }}
+                              >
+                                回复
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>还没有评论，来抢沙发吧～</p>
                     )}
@@ -2278,6 +2301,14 @@ const MemoirMemoryModal = ({
   const touchStartXRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     setPhotoIndex(Math.max(0, Math.min(initialIndex, Math.max(photos.length - 1, 0))));
   }, [memory?.id, initialIndex, photos.length]);
 
@@ -2300,14 +2331,14 @@ const MemoirMemoryModal = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.97, y: 10 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.97, y: 10 }}
-        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-lg rounded-3xl border shadow-2xl"
         style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
