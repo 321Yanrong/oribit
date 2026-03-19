@@ -121,7 +121,7 @@ const handleFriendTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
 const latestMemory = storyMemories[0];
 const photosCount = storyMemories.reduce((sum, m) => sum + (m.photos?.length || 0), 0);
 const memoriesCount = storyMemories.length;
-const { weather, mood } = decodeMemoryContent(latestMemory.content || '');
+const { weather, mood } = decodeMemoryContent(latestMemory?.content || '');
 
   return (
     <div className="px-4 mb-6">
