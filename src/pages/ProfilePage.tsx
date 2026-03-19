@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt } from 'react-icons/fa';
+import { FaSignOutAlt, FaEdit, FaChevronRight, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaPlus, FaUserPlus, FaShareAlt, FaCopy, FaTrash, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt, FaComment, FaPaperPlane } from 'react-icons/fa';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
-import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount } from '../api/supabase';
+import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import PullToRefresh from '../components/PullToRefresh';
@@ -628,8 +628,13 @@ const InviteCodeModal = ({
 };
 
 // 4. 随机回忆弹窗
-const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: any; onClose: () => void; friends: any[]; currentUser?: any }) => {
+const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }: { memory: any; onClose: () => void; onShuffle?: () => void; friends: any[]; currentUser?: any }) => {
   const META_PREFIX = '[orbit_meta:';
+  const [commentCount, setCommentCount] = useState(0);
+  const [showQuickComment, setShowQuickComment] = useState(false);
+  const [quickCommentText, setQuickCommentText] = useState('');
+  const [sendingComment, setSendingComment] = useState(false);
+
   const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
     if (!content?.startsWith(META_PREFIX)) return { text: stripOrbitMetaText(content || ''), weather: '', mood: '', route: '' };
     const end = content.indexOf(']\n');
@@ -655,6 +660,44 @@ const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: 
     currentUser || null,
     friends
   );
+
+  useEffect(() => {
+    if (!memory?.id) {
+      setCommentCount(0);
+      return;
+    }
+    let cancelled = false;
+    getMemoryComments([memory.id])
+      .then((list: any[]) => {
+        if (cancelled) return;
+        setCommentCount(list.length || 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCommentCount(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [memory?.id]);
+
+  const handleSubmitQuickComment = async () => {
+    const text = quickCommentText.trim();
+    if (!text || !memory?.id || !currentUser?.id || sendingComment) return;
+    setSendingComment(true);
+    try {
+      await addMemoryComment(memory.id, currentUser.id, text);
+      setQuickCommentText('');
+      setCommentCount((c) => c + 1);
+      setShowQuickComment(false);
+    } catch (error: any) {
+      alert(error?.message || '评论发送失败');
+    } finally {
+      setSendingComment(false);
+    }
+  };
+
   if (!memory) return null;
   const date = new Date(memory.memory_date || memory.created_at);
   const { text, weather, mood, route } = decodeMemoryContent(memory.content || '');
@@ -679,13 +722,37 @@ const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: 
             </h2>
             {memory.location && <p className="text-sm mt-0.5 text-[color:var(--orbit-text-muted)]">📍 {memory.location.name}</p>}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full shadow-sm"
-            style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
-          >
-            <FaTimes />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onShuffle?.()}
+              className="p-2 rounded-full shadow-sm"
+              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+              title="换一条"
+              aria-label="换一条随机回忆"
+            >
+              <FaSyncAlt />
+            </button>
+            <button
+              onClick={() => setShowQuickComment((v) => !v)}
+              className="relative p-2 rounded-full shadow-sm"
+              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: '#0f9f6e' }}
+              aria-label="快速评论"
+            >
+              <FaComment />
+              {commentCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#0f9f6e] text-white text-[10px] leading-4 font-bold text-center">
+                  {commentCount > 99 ? '99+' : commentCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full shadow-sm"
+              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+            >
+              <FaTimes />
+            </button>
+          </div>
         </div>
         <div className="px-5 pb-5">
           {photos.length > 0 && (
@@ -703,6 +770,35 @@ const RandomMemoryModal = ({ memory, onClose, friends, currentUser }: { memory: 
                   {route && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>路线：{route}</span>}
                 </div>
               )}
+            </div>
+          )}
+          {showQuickComment && (
+            <div className="mb-4 pt-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+              <div className="flex items-center gap-2">
+                <input
+                  value={quickCommentText}
+                  onChange={(e) => setQuickCommentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleSubmitQuickComment();
+                    }
+                  }}
+                  placeholder="快速评论一下..."
+                  className="flex-1 rounded-xl px-3 py-2 text-sm border outline-none"
+                  style={{ background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSubmitQuickComment()}
+                  disabled={!quickCommentText.trim() || sendingComment}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40"
+                  style={{ background: 'rgba(15,159,110,0.16)', color: '#0f9f6e' }}
+                  aria-label="发送评论"
+                >
+                  <FaPaperPlane className="text-sm" />
+                </button>
+              </div>
             </div>
           )}
           {memory.tagged_friends?.length > 0 && (
@@ -1515,10 +1611,12 @@ const handleAddFriend = async (name: string, remark: string) => {
     }
   };
 
-  const handleRandomMemory = () => {
+  const handleRandomMemory = (excludeId?: string) => {
     if (memories.length === 0) return;
-    const idx = Math.floor(Math.random() * memories.length);
-    setRandomMemory(memories[idx]);
+    const source = excludeId ? memories.filter((m: any) => m?.id !== excludeId) : memories;
+    const pool = source.length > 0 ? source : memories;
+    const idx = Math.floor(Math.random() * pool.length);
+    setRandomMemory(pool[idx]);
   };
 
   const handleRandomAvatar = async (sex: 'male' | 'female') => {
@@ -1947,7 +2045,7 @@ const handleAddFriend = async (name: string, remark: string) => {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          onClick={handleRandomMemory}
+          onClick={() => handleRandomMemory()}
           disabled={memories.length === 0}
           className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 border border-white/5 disabled:opacity-30"
         >
@@ -2299,6 +2397,7 @@ const handleAddFriend = async (name: string, remark: string) => {
           <RandomMemoryModal
             key={`random-${randomMemory.id || randomMemory.created_at || 'mem'}`}
             memory={randomMemory}
+            onShuffle={() => handleRandomMemory(randomMemory?.id)}
             onClose={() => setRandomMemory(null)}
             friends={friends}
             currentUser={currentUser}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft, FaComment, FaPaperPlane, FaSyncAlt } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft, FaComment, FaPaperPlane } from 'react-icons/fa';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
@@ -65,11 +65,10 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   
   const [showMemoryDetail, setShowMemoryDetail] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null); // 单条记忆详情
-  const [randomMemory, setRandomMemory] = useState<any>(null);
-  const [randomCommentCount, setRandomCommentCount] = useState(0);
-  const [showQuickComment, setShowQuickComment] = useState(false);
-  const [quickCommentText, setQuickCommentText] = useState('');
-  const [quickCommentSending, setQuickCommentSending] = useState(false);
+  const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
+  const [detailComments, setDetailComments] = useState<any[]>([]);
+  const [detailCommentText, setDetailCommentText] = useState('');
+  const [detailCommentSending, setDetailCommentSending] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [memoriesFetched, setMemoriesFetched] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
@@ -84,6 +83,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const fitViewTimeoutRef = useRef<number | null>(null);
   const fallbackShowTimerRef = useRef<number | null>(null);
   const lastNoPinsToastRef = useRef<number>(0);
+  const photoTouchStartXRef = useRef<number | null>(null);
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -419,66 +419,65 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     setShowMemoryDetail(true);
   };
 
-  const pickRandomMemory = useCallback((excludeId?: string | null) => {
-    if (!memories?.length) {
-      setRandomMemory(null);
-      setRandomCommentCount(0);
-      setShowQuickComment(false);
-      setQuickCommentText('');
+  useEffect(() => {
+    if (!selectedMemory?.id) {
+      setDetailComments([]);
+      setDetailCommentText('');
+      setDetailPhotoIndex(0);
       return;
     }
 
-    const pool = excludeId ? memories.filter((m: any) => m?.id !== excludeId) : memories;
-    const source = pool.length > 0 ? pool : memories;
-    const idx = Math.floor(Math.random() * source.length);
-    const picked = source[idx] || null;
-    setRandomMemory(picked);
-    setShowQuickComment(false);
-    setQuickCommentText('');
-  }, [memories]);
-
-  // 首页随机回忆卡片
-  useEffect(() => {
-    pickRandomMemory();
-  }, [pickRandomMemory]);
-
-  useEffect(() => {
-    if (!randomMemory?.id) {
-      setRandomCommentCount(0);
-      return;
-    }
-
+    setDetailPhotoIndex(0);
+    setDetailCommentText('');
     let cancelled = false;
-    getMemoryComments([randomMemory.id])
+    getMemoryComments([selectedMemory.id])
       .then((comments: any[]) => {
         if (cancelled) return;
-        setRandomCommentCount(comments.length || 0);
+        setDetailComments(comments || []);
       })
       .catch(() => {
         if (cancelled) return;
-        setRandomCommentCount(0);
+        setDetailComments([]);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [randomMemory?.id]);
+  }, [selectedMemory?.id]);
 
-  const handleQuickCommentSubmit = async () => {
-    const text = quickCommentText.trim();
-    if (!text || !randomMemory?.id || !currentUser?.id || quickCommentSending) return;
-    setQuickCommentSending(true);
+  const goPrevPhoto = () => {
+    const len = selectedMemory?.photos?.length || 0;
+    if (len <= 1) return;
+    setDetailPhotoIndex((prev) => (prev - 1 + len) % len);
+  };
+
+  const goNextPhoto = () => {
+    const len = selectedMemory?.photos?.length || 0;
+    if (len <= 1) return;
+    setDetailPhotoIndex((prev) => (prev + 1) % len);
+  };
+
+  const handleDetailCommentSubmit = async () => {
+    const text = detailCommentText.trim();
+    if (!text || !selectedMemory?.id || !currentUser?.id || detailCommentSending) return;
+    setDetailCommentSending(true);
     try {
-      await addMemoryComment(randomMemory.id, currentUser.id, text);
-      setQuickCommentText('');
-      setRandomCommentCount((c) => c + 1);
+      const created = await addMemoryComment(selectedMemory.id, currentUser.id, text);
+      setDetailComments((prev) => [...prev, created]);
+      setDetailCommentText('');
       showToast('评论已发送');
-      setShowQuickComment(false);
     } catch (error: any) {
       showToast(error?.message || '评论发送失败');
     } finally {
-      setQuickCommentSending(false);
+      setDetailCommentSending(false);
     }
+  };
+
+  const getCommentAuthorName = (authorId: string) => {
+    if (!authorId) return '好友';
+    if (authorId === currentUser?.id) return currentUser?.username || '我';
+    const friend = friends.find((item: any) => item.friend?.id === authorId)?.friend;
+    return friend?.username || '共同好友';
   };
 
   return (
@@ -496,108 +495,6 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         className="absolute inset-0"
         style={{ opacity: mapLoaded ? 1 : 0.25, transition: 'opacity 0.8s', width: '100%', height: '100%' }}
       />
-
-      {/* 随机回忆卡片 */}
-      {randomMemory && (
-        <div className="absolute left-4 right-4 bottom-24 z-30 pointer-events-none">
-          <motion.div
-            initial={{ y: 18, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="pointer-events-auto rounded-2xl border p-3.5 shadow-xl"
-            style={{
-              borderColor: 'var(--orbit-border)',
-              background: 'color-mix(in srgb, var(--orbit-card) 82%, rgba(8,12,20,0.74))',
-              backdropFilter: 'blur(14px)',
-            }}
-            onClick={() => setSelectedMemory(randomMemory)}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] tracking-[0.16em] uppercase text-white/60">随机回忆</p>
-                <h3 className="text-white font-semibold mt-1 truncate">
-                  {randomMemory.location?.name || '那一天的回忆'}
-                </h3>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  className="relative shrink-0 w-9 h-9 rounded-full border flex items-center justify-center"
-                  style={{ borderColor: 'color-mix(in srgb, #00FFB3 35%, transparent)', color: '#00FFB3', background: 'rgba(0,255,179,0.08)' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    pickRandomMemory(randomMemory?.id);
-                  }}
-                  aria-label="换一条随机回忆"
-                  title="换一条"
-                >
-                  <FaSyncAlt className="text-sm" />
-                </button>
-
-                <button
-                  type="button"
-                  className="relative shrink-0 w-9 h-9 rounded-full border flex items-center justify-center"
-                  style={{ borderColor: 'color-mix(in srgb, #00FFB3 35%, transparent)', color: '#00FFB3', background: 'rgba(0,255,179,0.08)' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowQuickComment((v) => !v);
-                  }}
-                  aria-label="快速评论"
-                >
-                  <FaComment className="text-sm" />
-                  {randomCommentCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#00FFB3] text-black text-[10px] leading-4 font-bold text-center">
-                      {randomCommentCount > 99 ? '99+' : randomCommentCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-2.5 flex items-center gap-3">
-              {randomMemory.photos?.[0] ? (
-                <img src={randomMemory.photos[0]} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
-              ) : (
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-base shrink-0">📷</div>
-              )}
-              <p className="text-sm text-white/80 line-clamp-2 leading-relaxed">
-                {decodeMemoryContent(randomMemory.content || '').text || '轻点查看这段回忆详情'}
-              </p>
-            </div>
-
-            {showQuickComment && (
-              <div
-                className="mt-3 pt-3 border-t flex items-center gap-2"
-                style={{ borderColor: 'rgba(255,255,255,0.1)' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <input
-                  value={quickCommentText}
-                  onChange={(e) => setQuickCommentText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      void handleQuickCommentSubmit();
-                    }
-                  }}
-                  placeholder="快速评论一下..."
-                  className="flex-1 rounded-xl px-3 py-2 text-sm bg-white/10 text-white placeholder:text-white/45 border border-white/10 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleQuickCommentSubmit()}
-                  disabled={!quickCommentText.trim() || quickCommentSending}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40"
-                  style={{ background: 'rgba(0,255,179,0.16)', color: '#00FFB3' }}
-                  aria-label="发送评论"
-                >
-                  <FaPaperPlane className="text-sm" />
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
       
       {/* 顶部导航栏 (加了 pointer-events-none 防止挡住地图点击) */}
       <div className="absolute top-0 left-0 right-0 z-20 safe-top pointer-events-none">
@@ -780,15 +677,58 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               style={{ borderColor: 'var(--orbit-border)' }}
             >
               {/* 照片 */}
-              {selectedMemory.photos?.[0] && (
-                <div className="relative w-full mb-2 overflow-hidden rounded-3xl bg-black/30">
-                  <img src={selectedMemory.photos[0]} alt="" className="w-full object-cover max-h-80" />
+              {selectedMemory.photos?.length > 0 && (
+                <div
+                  className="relative w-full mb-2 overflow-hidden rounded-3xl bg-black/30"
+                  onTouchStart={(e) => {
+                    photoTouchStartXRef.current = e.touches[0]?.clientX ?? null;
+                  }}
+                  onTouchEnd={(e) => {
+                    const startX = photoTouchStartXRef.current;
+                    const endX = e.changedTouches[0]?.clientX;
+                    photoTouchStartXRef.current = null;
+                    if (typeof startX !== 'number' || typeof endX !== 'number') return;
+                    const diff = endX - startX;
+                    if (Math.abs(diff) < 36) return;
+                    if (diff > 0) goPrevPhoto();
+                    else goNextPhoto();
+                  }}
+                >
+                  <img
+                    src={selectedMemory.photos[Math.min(detailPhotoIndex, selectedMemory.photos.length - 1)]}
+                    alt=""
+                    className="w-full object-cover max-h-80"
+                  />
                   {selectedMemory.photos.length > 1 && (
-                    <div className="absolute bottom-3 right-3 flex gap-1">
-                      {selectedMemory.photos.slice(1, 4).map((p: string, i: number) => (
-                        <img key={i} src={p} alt="" className="w-10 h-10 rounded-lg object-cover ring-1 ring-white/20" />
-                      ))}
-                    </div>
+                    <>
+                      <button
+                        type="button"
+                        onClick={goPrevPhoto}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white flex items-center justify-center"
+                        aria-label="上一张"
+                      >
+                        <FaChevronLeft className="text-xs" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goNextPhoto}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white flex items-center justify-center"
+                        aria-label="下一张"
+                      >
+                        <FaChevronLeft className="text-xs rotate-180" />
+                      </button>
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                        {selectedMemory.photos.map((_: string, idx: number) => (
+                          <button
+                            key={`dot-${idx}`}
+                            type="button"
+                            onClick={() => setDetailPhotoIndex(idx)}
+                            className={`w-2 h-2 rounded-full ${idx === detailPhotoIndex ? 'bg-[#00FFB3]' : 'bg-white/50'}`}
+                            aria-label={`查看第${idx + 1}张`}
+                          />
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -818,6 +758,52 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                 <div className="flex items-center gap-2 mb-4 text-white/40 text-sm">
                   <FaCalendar className="text-xs" />
                   {new Date(selectedMemory.memory_date || selectedMemory.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+                </div>
+
+                <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-sm text-white/80">
+                      <FaComment className="text-[#00FFB3]" />
+                      <span>评论</span>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#00FFB3]/20 text-[#00FFB3]">
+                      {detailComments.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      value={detailCommentText}
+                      onChange={(e) => setDetailCommentText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handleDetailCommentSubmit();
+                        }
+                      }}
+                      placeholder="说点什么..."
+                      className="flex-1 rounded-xl px-3 py-2 text-sm bg-white/10 text-white placeholder:text-white/45 border border-white/10 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleDetailCommentSubmit()}
+                      disabled={!detailCommentText.trim() || detailCommentSending}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-40"
+                      style={{ background: 'rgba(0,255,179,0.16)', color: '#00FFB3' }}
+                      aria-label="发送评论"
+                    >
+                      <FaPaperPlane className="text-xs" />
+                    </button>
+                  </div>
+                  <div className="max-h-28 overflow-y-auto hide-scrollbar space-y-1.5">
+                    {detailComments.length === 0 ? (
+                      <p className="text-xs text-white/45">还没有评论，来抢沙发～</p>
+                    ) : detailComments.slice(-6).map((comment: any) => (
+                      <div key={comment.id} className="text-xs text-white/75 leading-relaxed">
+                        <span className="text-[#00FFB3] mr-1">{getCommentAuthorName(comment.author_id)}:</span>
+                        <span>{comment.content}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Content with meta decode */}
