@@ -925,6 +925,12 @@ function App() {
     }
   };
 
+  const contentPaddingTop = isDemoMode && showEarlyAccessBanner
+    ? 'calc(env(safe-area-inset-top) + 56px)'
+    : (isDemoMode || showEarlyAccessBanner
+      ? 'calc(env(safe-area-inset-top) + 28px)'
+      : '0px');
+
   return (
     <div
       className="min-h-screen overflow-hidden"
@@ -946,7 +952,10 @@ function App() {
         <>
           {/* 演示模式横幅 */}
           {isDemoMode && (
-            <div className="fixed top-0 left-0 right-0 z-[999] bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white text-xs font-medium py-1.5 text-center flex items-center justify-center gap-2">
+            <div
+              className="fixed left-0 right-0 z-[999] bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white text-xs font-medium py-1.5 text-center flex items-center justify-center gap-2"
+              style={{ paddingTop: 'calc(env(safe-area-inset-top) + 6px)' }}
+            >
               <span>✨ 演示模式 — 数据仅供展示，不会保存</span>
               <button
                 onClick={() => { setIsDemoMode(false); setCurrentUser(null); useMemoryStore.setState({ memories: [] }); useLedgerStore.setState({ ledgers: [] }); useUserStore.setState({ friends: [] }); setShowAuth(true); }}
@@ -955,7 +964,10 @@ function App() {
             </div>
           )}
           {showEarlyAccessBanner && (
-            <div className={`fixed left-0 right-0 ${isDemoMode ? 'top-7' : 'top-0'} z-[998] bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-[#06231c] text-xs font-semibold py-1.5 text-center flex items-center justify-center gap-2`}>
+            <div
+              className="fixed left-0 right-0 z-[998] bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-[#06231c] text-xs font-semibold py-1.5 text-center flex items-center justify-center gap-2"
+              style={{ top: isDemoMode ? 'calc(env(safe-area-inset-top) + 28px)' : '0', paddingTop: 'calc(env(safe-area-inset-top) + 6px)' }}
+            >
               <span>🎉 欢迎参与 Orbit 早期内测</span>
               <button
                 onClick={() => setShowEarlyAccessBanner(false)}
@@ -963,7 +975,7 @@ function App() {
               >知道了</button>
             </div>
           )}
-          <div className={isDemoMode && showEarlyAccessBanner ? 'pt-14' : (isDemoMode || showEarlyAccessBanner ? 'pt-7' : '')}>
+          <div style={{ paddingTop: contentPaddingTop }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPage}

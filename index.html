@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no,viewport-fit=cover" />
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#121212" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -28,8 +29,46 @@
       }, true);
     </script>
   </head>
-  <body>
+  <body style="background-color: var(--orbit-surface, #ffffff); color: var(--orbit-text, #0f172a);">
+    <!-- Cold start splash (visible in light mode: white bg, black text) -->
+    <div id="cold-start" aria-hidden="true">
+      <div class="cold-start-inner">
+        <div class="cold-start-title">Orbit</div>
+      </div>
+    </div>
     <div id="root"></div>
+
+    <style>
+      /* Cold start default: white background, black text for light mode */
+      #cold-start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#000000;z-index:9999}
+      .cold-start-inner{display:flex;flex-direction:column;align-items:center;gap:10px}
+      .cold-start-title{font-weight:600;font-size:18px}
+      /* Hide or let dark mode handle differently */
+      @media (prefers-color-scheme: dark){
+        #cold-start{display:none}
+      }
+    </style>
+
+    <script>
+      // Remove cold-start splash when React mounts into #root (first child appears), fallback after 5s
+      (function(){
+        try{
+          var root = document.getElementById('root');
+          var splash = document.getElementById('cold-start');
+          if(!root || !splash) return;
+          var obs = new MutationObserver(function(){
+            if(root.children.length>0){
+              splash.style.transition='opacity 200ms ease';
+              splash.style.opacity='0';
+              setTimeout(function(){ if(splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 220);
+              obs.disconnect();
+            }
+          });
+          obs.observe(root,{childList:true});
+          setTimeout(function(){ if(splash && splash.parentNode) splash.parentNode.removeChild(splash); },5000);
+        }catch(e){}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

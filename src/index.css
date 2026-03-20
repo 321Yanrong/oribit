@@ -256,6 +256,19 @@
   .safe-top {
     padding-top: env(safe-area-inset-top, 0);
   }
+
+  /* Ensure app root extends background into the device safe area */
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    background: var(--orbit-bg);
+    color: var(--orbit-text);
+  }
+
+  /* Optional helper to apply safe-area padding to top bars */
+  .top-safe {
+    padding-top: env(safe-area-inset-top, 0);
+  }
   
   /* 触摸反馈 */
   .tap-effect {
