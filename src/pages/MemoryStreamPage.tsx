@@ -2048,7 +2048,14 @@ export default function MemoryStreamPage() {
   };
   
   return (
-    <div className="memory-stream-page relative min-h-screen pb-28" style={{ backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}>
+    <div
+      className="memory-stream-page relative min-h-screen pb-28"
+      style={{
+        backgroundColor: 'var(--orbit-surface)',
+        color: 'var(--orbit-text)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)'
+      }}
+    >
       {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

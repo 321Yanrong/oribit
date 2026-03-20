@@ -3803,7 +3803,7 @@ const handleAddFriend = async (name: string, remark: string) => {
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       
       {/* 顶部个人卡片 */}
-      <div className="relative z-10 safe-top mx-4 -mt-2">
+      <div className="relative z-10 safe-top mx-6 -mt-2">
         <motion.div
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
