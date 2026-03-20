@@ -77,7 +77,7 @@ export default function BottomNav() {
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="pointer-events-auto px-2 py-2"
-        style={{ background: bgColor, borderTop: `1px solid ${borderColor}` }}
+        style={{ background: bgColor, borderTop: `1px solid ${borderColor}`, transform: 'translateY(6px)' }}
       >
         <div className="flex items-center justify-around">
           {navItems.map((item) => {
