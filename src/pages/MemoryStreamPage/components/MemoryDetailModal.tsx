@@ -82,6 +82,8 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const videos = memory.videos || [];
   const audios = memory.audios || [];
   const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
+  const displayWeather = Array.isArray(weather) ? (weather[0] || '') : (weather || '');
+  const displayMood = Array.isArray(mood) ? (mood[0] || '') : (mood || '');
 
   const getVisibleTags = () => getVisibleTaggedFriendIds(
     memory?.tagged_friends || [],
@@ -272,7 +274,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className="sticky top-0 z-10 flex items-center justify-between px-4 py-4"
-          style={{ background: 'linear-gradient(180deg, color-mix(in srgb, var(--orbit-surface) 96%, transparent) 0%, color-mix(in srgb, var(--orbit-surface) 80%, transparent) 60%, transparent 100%)' }}
+          style={{ top: 'env(safe-area-inset-top)', paddingTop: 'env(safe-area-inset-top)', background: 'linear-gradient(180deg, color-mix(in srgb, var(--orbit-surface) 96%, transparent) 0%, color-mix(in srgb, var(--orbit-surface) 80%, transparent) 60%, transparent 100%)' }}
         >
           <button
             onClick={onClose}
@@ -285,13 +287,13 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
             <div className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{formatDateGroup(memory.memory_date || memory.created_at)}</div>
             <div className="font-medium" style={{ color: 'var(--orbit-text)' }}>{formatTime(memory.memory_date || memory.created_at)}</div>
           </div>
-          <div className="flex items-center gap-1 text-xl">
-            {weather && <span title={weather}>{weather}</span>}
-            {mood && <span title={mood}>{mood}</span>}
+            <div className="flex items-center gap-1 text-xl">
+            {displayWeather && <span title={displayWeather}>{displayWeather}</span>}
+            {displayMood && <span title={displayMood}>{displayMood}</span>}
           </div>
         </motion.div>
 
-        <div className="px-4 pb-32">
+        <div className="px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 64px)' }}>
           {memory.location && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
@@ -321,13 +323,13 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                   {weather && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{weather}</span>
-                      <span className="text-[13px] text-[var(--orbit-text-muted,#9ca3af)]">{WEATHER_OPTIONS.find(w => w.emoji === weather)?.label || '天气'}</span>
+                      <span className="text-[13px] text-[var(--orbit-text-muted,#9ca3af)]">{WEATHER_OPTIONS.find(w => w.emoji === displayWeather)?.label || '天气'}</span>
                     </div>
                   )}
                   {mood && (
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{mood}</span>
-                      <span className="text-[13px] text-[var(--orbit-text-muted,#9ca3af)]">{MOOD_OPTIONS.find(m => m.emoji === mood)?.label || '心情'}</span>
+                      <span className="text-[13px] text-[var(--orbit-text-muted,#9ca3af)]">{MOOD_OPTIONS.find(m => m.emoji === displayMood)?.label || '心情'}</span>
                     </div>
                   )}
                 </div>

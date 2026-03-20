@@ -88,15 +88,26 @@ const useNativeStatusBar = () => {
 
 const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
   if (typeof document === 'undefined') return;
+
   const fontSize = settings.fontSize === 'small' ? '14px' : settings.fontSize === 'large' ? '18px' : '16px';
   document.documentElement.style.fontSize = fontSize;
 
-  const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isSystemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const mode = settings.themeMode || 'system';
+
+  let finalTheme: 'light' | 'dark' | string = 'dark';
   if (mode === 'system') {
-    document.documentElement.dataset.theme = isSystemDark ? 'dark' : 'light';
+    finalTheme = isSystemDark ? 'dark' : 'light';
   } else {
-    document.documentElement.dataset.theme = mode;
+    finalTheme = mode;
+  }
+
+  document.documentElement.dataset.theme = finalTheme;
+
+  if (Capacitor.isNativePlatform()) {
+    StatusBar.setStyle({ style: finalTheme === 'dark' ? Style.Light : Style.Dark }).catch((err) => {
+      console.warn('StatusBar setStyle failed:', err);
+    });
   }
 };
 
@@ -298,8 +309,10 @@ function App() {
     },
   ];
 
-  // 初始化主题，避免首屏落在深色
+  // 初始化主题，并感知系统深浅色切换
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const settings = readSettings();
     applyThemeFromSettings(settings);
 
@@ -307,8 +320,25 @@ function App() {
       const detail = (event as CustomEvent<ReturnType<typeof readSettings>>).detail;
       applyThemeFromSettings(detail || readSettings());
     };
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => applyThemeFromSettings(readSettings());
+
     window.addEventListener(SETTINGS_EVENT, onSettings as EventListener);
-    return () => window.removeEventListener(SETTINGS_EVENT, onSettings as EventListener);
+    if (mediaQuery?.addEventListener) {
+      mediaQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (mediaQuery?.addListener) {
+      mediaQuery.addListener(handleSystemThemeChange);
+    }
+
+    return () => {
+      window.removeEventListener(SETTINGS_EVENT, onSettings as EventListener);
+      if (mediaQuery?.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      } else if (mediaQuery?.removeListener) {
+        mediaQuery.removeListener(handleSystemThemeChange);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -372,21 +402,21 @@ function App() {
   }, [loading, isDemoMode, currentUser]);
 
   // 全局新手指引：冷启动登录后即弹，不依赖进入“我的”页
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (loading) return;
-    if (!currentUser?.id) {
-      setShowNewbieGuide(false);
-      return;
-    }
-    if (isDemoMode) return;
-    const key = `orbit_newbie_guide_seen:${currentUser.id}`;
-    const seen = window.localStorage.getItem(key);
-    if (!seen) {
-      setShowNewbieGuide(true);
-      window.localStorage.setItem(key, '1');
-    }
-  }, [currentUser?.id, isDemoMode, loading]);
+  // useEffect(() => {
+  //   if (typeof window === 'undefined') return;
+  //   if (loading) return;
+  //   if (!currentUser?.id) {
+  //     setShowNewbieGuide(false);
+  //     return;
+  //   }
+  //   if (isDemoMode) return;
+  //   const key = `orbit_newbie_guide_seen:${currentUser.id}`;
+  //   const seen = window.localStorage.getItem(key);
+  //   if (!seen) {
+  //     setShowNewbieGuide(true);
+  //     window.localStorage.setItem(key, '1');
+  //   }
+  // }, [currentUser?.id, isDemoMode, loading]);
 
   useEffect(() => {
     if (!showNewbieGuide) return;
@@ -948,15 +978,17 @@ function App() {
     }
   };
 
+  // Avoid applying a global safe-area padding to every page —
+  // individual top bars / sticky headers should handle the safe-area instead.
   const contentPaddingTop = isDemoMode && showEarlyAccessBanner
     ? 'calc(env(safe-area-inset-top) + 56px)'
     : (isDemoMode || showEarlyAccessBanner
       ? 'calc(env(safe-area-inset-top) + 28px)'
-      : 'env(safe-area-inset-top)');
+      : '0px');
 
   return (
     <div
-      className="min-h-screen overflow-hidden"
+      className="min-h-screen overflow-x-hidden"
       style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', color: 'var(--orbit-text, #0f172a)' }}
     >
       {loading ? (

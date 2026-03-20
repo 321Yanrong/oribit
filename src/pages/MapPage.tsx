@@ -11,6 +11,12 @@ import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVis
 
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+// Debug helper: print resolved token at runtime to help diagnose 401 issues.
+// Remove this after debugging to avoid logging tokens in production.
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line no-console
+  console.log('MAPBOX_TOKEN (runtime) =', MAPBOX_TOKEN);
+}
 
 const getCityFromMemory = (memory: any): string => {
   const addr = memory.location?.address || '';

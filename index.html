@@ -1,24 +1,44 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" style="background-color: #121212;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#121212" /> <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Orbit" />
-    <meta name="description" content="Orbit 轨迹 - 一款专为密友圈设计的情感地图手账 + 极简记账数字胶囊" />
     
-    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     
-    <title>Orbit 轨迹 - 记录与好友的每一个足迹</title>
-    <!-- Repair broken DiceBear avatar URLs cached by service worker -->
+    <title>Orbit 轨迹</title>
+
+    <style>
+      /* 关键 2：在 React 运行前，先把“底座”涂黑，防止白屏闪烁 */
+      :root {
+        --orbit-bg: #121212; /* 这里建议手动填入你 SplashScreen 的背景色 Hex 值 */
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--orbit-bg);
+        /* 彻底禁用整个页面的橡皮筋回弹，防止下拉露白 */
+        overscroll-behavior: none;
+        overflow: hidden;
+        /* 确保 Emoji 字体在最底层就准备好 */
+        font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", sans-serif;
+      }
+
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+
     <script>
       document.addEventListener('error', function(e) {
         var img = e.target;
@@ -29,62 +49,10 @@
       }, true);
     </script>
   </head>
-    <body style="background-color: var(--orbit-surface, #ffffff); color: var(--orbit-text, #0f172a);">
-    <!-- Cold start splash (visible in light mode: white bg, black text) -->
 
-    <div id="cold-start">
-      <div class="cold-start-inner">
-        <div class="cold-start-logo" aria-hidden="true"></div>
-        <div class="cold-start-title">Orbit</div>
-      </div>
-    </div>
-
+  <body>
     <div id="root"></div>
 
-    <style>
-      /* Cold start: visually match the React SplashScreen to avoid a flash/jump */
-      :root{--cs-bg:var(--orbit-surface,#ffffff);--cs-text:var(--orbit-text,#0f172a);}
-      #cold-start{
-        position:fixed;
-        inset:0;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        background:var(--cs-bg);
-        color:var(--cs-text);
-        z-index:9999;
-        padding-top:env(safe-area-inset-top);
-        -webkit-font-smoothing:antialiased;
-        transition:opacity 200ms ease;
-      }
-      .cold-start-inner{display:flex;flex-direction:column;align-items:center;gap:8px}
-      .cold-start-logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(90deg,#00FFB3,#00D9FF);box-shadow:0 8px 24px rgba(0,0,0,0.12)}
-      .cold-start-title{font-weight:700;font-size:16px}
-      @media (prefers-color-scheme: dark){
-        :root{--cs-bg:var(--orbit-surface,#0b1220);--cs-text:var(--orbit-text,#e6eef0)}
-      }
-    </style>
-
-    <script>
-      // Remove cold-start splash when React mounts into #root (first child appears), fallback after 5s
-      (function(){
-        try{
-          var root = document.getElementById('root');
-          var splash = document.getElementById('cold-start');
-          if(!root || !splash) return;
-          var obs = new MutationObserver(function(){
-            if(root.children.length>0){
-              splash.style.transition='opacity 200ms ease';
-              splash.style.opacity='0';
-              setTimeout(function(){ if(splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 220);
-              obs.disconnect();
-            }
-          });
-          obs.observe(root,{childList:true});
-          setTimeout(function(){ if(splash && splash.parentNode) splash.parentNode.removeChild(splash); },5000);
-        }catch(e){}
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

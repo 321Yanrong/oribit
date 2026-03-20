@@ -60,6 +60,8 @@
   
   body {
     @apply font-sans;
+    font-family: "Apple Color Emoji", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Inter, sans-serif;
+    font-variant-ligatures: no-common-ligatures;
     background-color: var(--orbit-bg);
     color: var(--orbit-text);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -271,11 +273,22 @@
   }
 
   /* Ensure app root extends background into the device safe area */
-  html, body, #root {
+  html, body {
     height: 100%;
     margin: 0;
     background: var(--app-root-bg);
     color: var(--orbit-text);
+    overscroll-behavior-y: none;
+    /* 关键：不要 overflow: hidden，否则 fixed 元素会被裁剪 */
+    /* overflow: hidden; */
+  }
+
+  #root {
+    height: 100%;
+    background: var(--app-root-bg);
+    color: var(--orbit-text);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Optional helper to apply safe-area padding to top bars */

@@ -15,6 +15,10 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		DF4FD8FF2F6D3A270048D8C2 /* playstore.png in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8FB2F6D3A270048D8C2 /* playstore.png */; };
+		DF4FD9002F6D3A270048D8C2 /* ic_launcher.png in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8F62F6D3A270048D8C2 /* ic_launcher.png */; };
+		DF4FD9012F6D3A270048D8C2 /* appstore.png in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8F92F6D3A270048D8C2 /* appstore.png */; };
+		DF4FD9032F6D3A270048D8C2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8FA2F6D3A270048D8C2 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +32,14 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		DF4FD8EE2F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
+		DF4FD8F02F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
+		DF4FD8F22F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
+		DF4FD8F42F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
+		DF4FD8F62F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
+		DF4FD8F92F6D3A270048D8C2 /* appstore.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = appstore.png; sourceTree = "<group>"; };
+		DF4FD8FA2F6D3A270048D8C2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DF4FD8FB2F6D3A270048D8C2 /* playstore.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = playstore.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,12 +78,76 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
+				DF4FD8FC2F6D3A270048D8C2 /* AppIcons */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		DF4FD8EF2F6D3A270048D8C2 /* mipmap-hdpi */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8EE2F6D3A270048D8C2 /* ic_launcher.png */,
+			);
+			path = "mipmap-hdpi";
+			sourceTree = "<group>";
+		};
+		DF4FD8F12F6D3A270048D8C2 /* mipmap-mdpi */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8F02F6D3A270048D8C2 /* ic_launcher.png */,
+			);
+			path = "mipmap-mdpi";
+			sourceTree = "<group>";
+		};
+		DF4FD8F32F6D3A270048D8C2 /* mipmap-xhdpi */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8F22F6D3A270048D8C2 /* ic_launcher.png */,
+			);
+			path = "mipmap-xhdpi";
+			sourceTree = "<group>";
+		};
+		DF4FD8F52F6D3A270048D8C2 /* mipmap-xxhdpi */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8F42F6D3A270048D8C2 /* ic_launcher.png */,
+			);
+			path = "mipmap-xxhdpi";
+			sourceTree = "<group>";
+		};
+		DF4FD8F72F6D3A270048D8C2 /* mipmap-xxxhdpi */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8F62F6D3A270048D8C2 /* ic_launcher.png */,
+			);
+			path = "mipmap-xxxhdpi";
+			sourceTree = "<group>";
+		};
+		DF4FD8F82F6D3A270048D8C2 /* android */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8EF2F6D3A270048D8C2 /* mipmap-hdpi */,
+				DF4FD8F12F6D3A270048D8C2 /* mipmap-mdpi */,
+				DF4FD8F32F6D3A270048D8C2 /* mipmap-xhdpi */,
+				DF4FD8F52F6D3A270048D8C2 /* mipmap-xxhdpi */,
+				DF4FD8F72F6D3A270048D8C2 /* mipmap-xxxhdpi */,
+			);
+			path = android;
+			sourceTree = "<group>";
+		};
+		DF4FD8FC2F6D3A270048D8C2 /* AppIcons */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FD8F82F6D3A270048D8C2 /* android */,
+				DF4FD8F92F6D3A270048D8C2 /* appstore.png */,
+				DF4FD8FA2F6D3A270048D8C2 /* Assets.xcassets */,
+				DF4FD8FB2F6D3A270048D8C2 /* playstore.png */,
+			);
+			path = AppIcons;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -145,6 +221,10 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				DF4FD8FF2F6D3A270048D8C2 /* playstore.png in Resources */,
+				DF4FD9002F6D3A270048D8C2 /* ic_launcher.png in Resources */,
+				DF4FD9012F6D3A270048D8C2 /* appstore.png in Resources */,
+				DF4FD9032F6D3A270048D8C2 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -2843,7 +2843,7 @@ export default function MemoryStreamPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              // className="fixed inset-0 z-[190] backdrop-blur-md flex items-center justify-center px-6 memory-overlay"
+              className="fixed inset-0 z-[190] backdrop-blur-md flex items-center justify-center px-6 memory-overlay"
               style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.65))' }}
               onClick={() => setShowAlbumFilterDialog(false)}
             >
@@ -2876,7 +2876,16 @@ export default function MemoryStreamPage() {
                     </div>
                   </label>
                   <div className="ml-auto flex items-center gap-2">
-                    <button type="button" onClick={() => { setCurrentMonth(''); setShowAlbumFilterDialog(false); }} className="px-3 py-1.5 rounded-lg text-xs font-semibold border" style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>清空</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentMonth('');
+                        setAlbumDateRange({ start: '', end: '' });
+                        setShowAlbumFilterDialog(false);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                      style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                    >清空</button>
                     <button type="button" onClick={() => setShowAlbumFilterDialog(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white">应用</button>
                   </div>
                 </div>

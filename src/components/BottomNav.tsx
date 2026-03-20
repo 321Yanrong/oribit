@@ -80,8 +80,8 @@ export default function BottomNav() {
         style={{
           background: bgColor,
           borderTop: `1px solid ${borderColor}`,
-          paddingTop:'8px',
-          transform: 'translateY(calc(env(safe-area-inset-bottom, 0px) + 12px))'
+          paddingTop: '8px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)'
         }}
       >
         <div className="flex items-center justify-around">
