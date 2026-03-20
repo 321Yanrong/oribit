@@ -314,26 +314,20 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.12 }}
-              className="mb-5 p-4 rounded-2xl border space-y-3"
-              style={{ background: 'color-mix(in srgb, var(--orbit-card) 92%, transparent)', borderColor: 'var(--orbit-border)' }}
+              className="mb-5"
             >
               {(weather || mood) && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--orbit-text)' }}>
                   {weather && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/20">
+                    <div className="flex items-center gap-2">
                       <span className="text-lg">{weather}</span>
-                      <span className="text-sky-300 text-sm">{WEATHER_OPTIONS.find(w => w.emoji === weather)?.label || '天气'}</span>
+                      <span className="text-[13px] text-[var(--orbit-text-muted,#9ca3af)]">{WEATHER_OPTIONS.find(w => w.emoji === weather)?.label || '天气'}</span>
                     </div>
                   )}
                   {mood && (
-                    <div
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border"
-                      style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                    >
+                    <div className="flex items-center gap-2">
                       <span className="text-lg">{mood}</span>
-                      <span className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
-                        {MOOD_OPTIONS.find(m => m.emoji === mood)?.label || '心情'}
-                      </span>
+                      <span className="text-[13px] text-[var(--orbit-text-muted,#9ca3af)]">{MOOD_OPTIONS.find(m => m.emoji === mood)?.label || '心情'}</span>
                     </div>
                   )}
                 </div>

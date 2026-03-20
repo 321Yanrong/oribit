@@ -283,7 +283,7 @@ export default function LedgerPage() {
       const memory = memories.find(m => m.id === ledger.memory_id);
       const dateStr = memory?.memory_date || memory?.created_at || new Date().toISOString();
       const month = dateStr.slice(0, 7); // 截取 YYYY-MM
-      if (month === currentMonth) {
+      if(!currentMonth || month === currentMonth) {
         // 计算属于我的金额
         const myPart = ledger.expense_type === 'personal' 
           ? ledger.total_amount 
@@ -420,7 +420,7 @@ export default function LedgerPage() {
               <input 
                 type="month" 
                 value={currentMonth} 
-                onChange={e => e.target.value && setCurrentMonth(e.target.value)}
+                onChange={e => setCurrentMonth(e.target.value)}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
               />
@@ -441,7 +441,7 @@ export default function LedgerPage() {
         {/* 第二行：总支出看板 & 视图切换 */}
         <div className="flex items-end justify-between">
           <div>
-            <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>本月总支出</p>
+            <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>{currentMonth ? '本月总支出' : '累计总支出'}</p>
             <div className="flex items-baseline gap-1">
               <span className="font-mono text-3xl font-bold tracking-tight">¥ {monthlyTotal.toFixed(2)}</span>
             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock } from 'react-icons/fa';
+import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
@@ -1327,11 +1328,19 @@ export default function MemoryStreamPage() {
   const [replyTarget, setReplyTarget] = useState<Record<string, { commentId: string; authorId: string; authorName: string } | null>>({});
   const [albumFilterFriendIds, setAlbumFilterFriendIds] = useState<string[]>([]);
   const [albumDateRange, setAlbumDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  // Top-of-page month filter (YYYY-MM) — keep UI consistent with LedgerPage
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
   // Top-of-page sort order for memory list: newest first ('desc') or oldest first ('asc')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAlbumFilterDialog, setShowAlbumFilterDialog] = useState(false);
   const [commentAudios, setCommentAudios] = useState<Record<string, string[]>>({});
   const initialFilterClearedRef = useRef(false);
+
+  // theme detection: true when the page theme is light
+  const isLightTheme = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
 
   const refreshSessionQuick = useCallback(async (label: string) => {
     if (!shouldAllowRefresh()) return true;
@@ -1640,24 +1649,43 @@ export default function MemoryStreamPage() {
 
   // 搜索 + 好友筛选
   const filteredMemories = useMemo(() => {
-    let result = memories;
+    // start from a copy to avoid mutating the original
+    let result = [...memories];
+
+    // 1) top month filter (currentMonth in YYYY-MM)
+    if (currentMonth) {
+      result = result.filter((m: any) => {
+        const dateStr = (m.memory_date || m.created_at || '').slice(0, 7);
+        return dateStr === currentMonth;
+      });
+    }
+
+    // 2) search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((m: any) =>
-        m.content?.toLowerCase().includes(q) ||
-        m.location?.name?.toLowerCase().includes(q)
+        (m.content || '').toLowerCase().includes(q) ||
+        (m.location?.name || '').toLowerCase().includes(q)
       );
     }
+
+    // 3) friend filters (top-level)
     if (filterFriendIds.length > 0) {
-      // AND 逻辑：所有选中的好友都出现在这条记忆里（包括发布者）
       result = result.filter((m: any) =>
-        filterFriendIds.every(id =>
-          m.tagged_friends?.includes(id) || m.user_id === id
-        )
+        filterFriendIds.every(id => m.tagged_friends?.includes(id) || m.user_id === id)
       );
     }
+
+    // 4) global sortOrder
+    result.sort((a: any, b: any) => {
+      const ta = new Date(a.memory_date || a.created_at).getTime();
+      const tb = new Date(b.memory_date || b.created_at).getTime();
+      if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
+      return sortOrder === 'desc' ? tb - ta : ta - tb;
+    });
+
     return result;
-  }, [memories, searchQuery, filterFriendIds]);
+  }, [memories, searchQuery, filterFriendIds, currentMonth, sortOrder]);
 
   // 首次进入时若存在历史好友筛选，自动清空避免进来就空白
   useEffect(() => {
@@ -2105,18 +2133,19 @@ export default function MemoryStreamPage() {
           >
             {groupBy === 'city' ? '🏙 按城市' : '📅 按日期'}
           </button>
-          {/* 顶部时间筛选 + 排序 */}
+          {/* 顶部月份筛选 + 排序（与财务页保持一致） */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setShowStoryEntry(true);
-                setShowAlbumFilterDialog(true);
-              }}
-              className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border"
-              style={{ backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
-            >
-              <FaCalendarAlt className="inline-block mr-2 text-sm" />按时间筛选
-            </button>
+            <div className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border`} style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
+              <span className="text-sm font-mono font-medium">{currentMonth ? currentMonth.replace('-', ' / ') : '全部'}</span>
+              <ChevronDownIcon className="text-[10px] opacity-50" />
+              <input
+                type="month"
+                value={currentMonth}
+                onChange={e => setCurrentMonth(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                style={{ colorScheme: 'light' }}
+              />
+            </div>
             <button
               onClick={() => setSortOrder((s) => (s === 'desc' ? 'asc' : 'desc'))}
               className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border"
@@ -2214,103 +2243,237 @@ export default function MemoryStreamPage() {
                   <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{cityGroup.memories.length} 条记忆</div>
                 </div>
               </div>
+
               <div className="space-y-4">
                 {cityGroup.memories.map((memory, index) => {
                   const photos = memory.photos || [];
                   const reaction = getReaction(memory.id);
                   const author = getMemoryAuthor(memory.user_id);
                   const { text: mText, weather: mWeather, mood: mMood } = decodeMemoryContent(memory.content || '');
+
                   return (
                     <motion.div
                       key={memory.id}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: cgIdx * 0.06 + index * 0.04 }}
-                      className="rounded-3xl border overflow-hidden"
-                      style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                      transition={{ delay: cgIdx * 0.08 + index * 0.04 }}
+                      className="mb-6 bg-transparent sm:bg-[var(--orbit-card)] sm:border sm:rounded-sm border-b pb-4"
+                      style={{ borderColor: 'var(--orbit-border)' }}
                     >
-                      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                      <div className="flex items-center justify-between px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover ring-2" style={{ boxShadow: '0 0 0 2px color-mix(in srgb, var(--orbit-border) 60%, transparent)' }} />
-                          <div>
-                            <p className="font-semibold text-sm" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
-                              {new Date(memory.memory_date || memory.created_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
-                              {memory.location && <span className="ml-1">· 📍 {memory.location.name}</span>}
-                              {(mWeather.length || mMood.length) && <span className="ml-1">{[...mWeather, ...mMood].join(' ')}</span>}
-                            </p>
+                          <img src={author.avatar} className="w-8 h-8 rounded-full object-cover border border-[var(--orbit-border)]" />
+                          <div className="flex flex-col justify-center">
+                            <p className="text-sm font-bold leading-tight" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
+                            {(memory.location || mWeather.length > 0 || mMood.length > 0) && (
+                              <p className="text-[11px] mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                                {memory.location?.name} {[...mWeather, ...mMood].join(' ')}
+                              </p>
+                            )}
                           </div>
                         </div>
                         {memory.user_id === currentUser?.id && (
-                          <div className="flex items-center gap-0.5">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }}
-                              disabled={deletingMemoryId === memory.id}
-                              className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
-                            ><FaTrash className="text-xs" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="p-2 rounded-full text-white/50 hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}><FaEdit className="text-xs" /></button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"><FaEdit className="text-sm" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }} disabled={deletingMemoryId === memory.id} className="text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-40"><FaTrash className="text-sm" /></button>
                           </div>
                         )}
                       </div>
-                      {mText && <p className="px-4 pb-3 text-sm leading-relaxed" style={{ color: 'var(--orbit-text)' }}>{mText}</p>}
+
                       {photos.length === 1 && (
-                        <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
-                          {/* ✨ 改为 object-cover 填满，并把最大高度稍微调高一点，避免竖图被裁得太多，同时去掉 bg-black/30 */}
-                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-cover max-h-[400px]" />
+                        <div className="w-full cursor-pointer" onClick={() => setSelectedMemory(memory)}>
+                          <img src={photos[0]} alt="" className="w-full max-h-[500px] object-cover sm:rounded-sm" />
                         </div>
                       )}
                       {photos.length >= 2 && (
-                        <div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
+                        <div className="w-full grid grid-cols-2 gap-0.5 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
                           {photos.slice(0, 4).map((p: string, i: number) => (
-                            // ✨ 删掉了 bg-black/30，改为 cover 填满
-                            <div key={i} className="relative rounded-xl overflow-hidden">
-                              <img src={p} alt="" className="w-full h-36 object-cover" />
+                            <div key={i} className="relative overflow-hidden aspect-square">
+                              <img src={p} alt="" className="w-full h-full object-cover" />
                               {i === 3 && photos.length > 4 && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                  <span className="text-white font-bold text-xl">+{photos.length - 4}</span>
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                  <span className="text-white font-medium text-2xl">+{photos.length - 4}</span>
                                 </div>
                               )}
                             </div>
                           ))}
                         </div>
                       )}
+
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
-                        <div className="px-4 pb-3 space-y-2">
-                          {memory.videos?.length > 0 && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-border) 25%, transparent)', color: 'var(--orbit-text-muted, #9ca3af)' }}>🎥 {memory.videos.length}个视频</span>}
+                        <div className="px-4 pt-2 space-y-2">
+                          {memory.videos?.length > 0 && <span className="text-xs text-[color:var(--orbit-text-muted,#9ca3af)]">▶ {memory.videos.length} 个视频</span>}
                           {memory.audios?.length > 0 && (
                             <div className="flex flex-col gap-1.5">
                               {memory.audios.map((url: string, idx: number) => (
-                                <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#00FFB3]/5 border border-[#00FFB3]/20">
-                                  <FaMicrophone className="text-[#00FFB3] text-xs shrink-0" />
-                                  <audio src={url} controls className="flex-1 h-7 accent-[#00FFB3]" style={{ minWidth: 0 }} />
-                                  <span className="text-[#00FFB3]/60 text-[10px] shrink-0">{idx + 1}</span>
+                                <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 border border-[var(--orbit-border)]">
+                                  <FaMicrophone className="text-[var(--orbit-text)] text-xs shrink-0" />
+                                  <audio src={url} controls className="flex-1 h-7" style={{ minWidth: 0 }} />
+                                  <span className="text-[var(--orbit-text-muted)] text-[10px] shrink-0">{idx + 1}</span>
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
                       )}
-                      {(memory.tagged_friends?.length > 0 || memory.has_ledger) && (
-                        <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-                          {getVisibleTagIds(memory).map((id: string, tidx: number) => {
-                            const n = getTagName(memory, id);
-                            return n ? <span key={`${memory.id}-${id}-${tidx}`} className="text-[#00FFB3] text-sm font-medium">@{n}</span> : null;
-                          })}
-                          {memory.has_ledger && <span className="px-2 py-0.5 rounded-full bg-[#FF9F43]/10 text-[#FF9F43] text-xs flex items-center gap-1"><FaDollarSign className="text-xs" /> 记账</span>}
+
+                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                        <div className="flex items-center gap-4">
+                          <button onClick={() => toggleLike(memory.id)} className={`transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                            <FaHeart className="text-[22px]" />
+                          </button>
+                          <button onClick={() => { const willOpen = !reaction.roastOpen; toggleRoastOpen(memory.id); if (willOpen) markCommentsAsRead(memory.id); }} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
+                            <FaComment className="text-[22px] scale-x-[-1]" />
+                            {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                          </button>
+                          <button onClick={() => handleShareMemory(memory)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors">
+                            <FaShareAlt className="text-[20px]" />
+                          </button>
+                        </div>
+                        {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5"/> 记账</span>}
+                      </div>
+
+                      {reaction.likes > 0 && (
+                        <div className="px-4 pb-1">
+                          <span className="text-sm font-bold" style={{ color: 'var(--orbit-text)' }}>{reaction.likes} 次赞</span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
-                        <div className="flex items-center gap-5" style={{ color: 'var(--orbit-text)' }}>
-                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1.5 text-sm transition-all ${reaction.liked ? 'text-red-400' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-red-300'}`}><FaHeart />{reaction.likes > 0 && <span className="text-xs">{reaction.likes}</span>}</button>
-                          <button onClick={() => {
-                            const willOpen = !reaction.roastOpen;
-                            toggleRoastOpen(memory.id);
-                            if (willOpen) markCommentsAsRead(memory.id);
-                          }} className={`relative flex items-center gap-1.5 text-sm ${reaction.roastOpen ? 'text-[#00B37A]' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00B37A]'}`}><FaComment />{settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#FF6B6B]" />}<span className="text-xs">{reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}</span></button>
-                          <button onClick={() => handleShareMemory(memory)} className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}><FaShareAlt /><span className="text-xs">分享微信</span></button>
-                        </div>
-                        <button onClick={() => setSelectedMemory(memory)} className="text-xs transition-colors" style={{ color: 'var(--orbit-text)' }}>查看全部 →</button>
+
+                      <div className="px-4 pb-1 text-sm leading-relaxed" style={{ color: 'var(--orbit-text)' }}>
+                        {mText && (
+                          <span>
+                            <span className="font-bold mr-2">{author.name}</span>
+                            <span>{mText}</span>
+                          </span>
+                        )}
+                        {!mText && memory.tagged_friends?.length > 0 && (
+                          <span className="font-bold mr-2">{author.name}</span>
+                        )}
+                        {memory.tagged_friends?.length > 0 && (
+                          <span className={mText ? 'ml-1' : ''}>
+                            {getVisibleTagIds(memory).map((id: string, tidx: number) => {
+                              const name = getTagName(memory, id);
+                              return name ? <span key={id} className="text-[#005c8a] dark:text-[#00D9FF] mr-1 font-medium">@{name}</span> : null;
+                            })}
+                          </span>
+                        )}
                       </div>
+
+                      <div className="px-4 pt-1 mb-2">
+                        <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                          {formatTime(memory.memory_date || memory.created_at)}
+                        </span>
+                      </div>
+
+                      <AnimatePresence>
+                        {reaction.roastOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden border-t"
+                            style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 60%, transparent)', borderColor: 'var(--orbit-border)' }}
+                          >
+                            <div className="p-4 space-y-3">
+                              {reaction.roasts.map((r: MemoryCommentItem) => {
+                                const commentAuthor = getCommentAuthor(memory, r.author_id);
+                                const canDeleteComment = currentUser?.id === r.author_id || currentUser?.id === memory.user_id;
+                                const decoded = decodeCommentContent(r.content);
+                                const replyTo = decoded.replyTo;
+                                const handleReply = () => {
+                                  setReplyTarget(prev => ({
+                                    ...prev,
+                                    [memory.id]: {
+                                      commentId: r.id,
+                                      authorId: replyTo?.authorId || r.author_id,
+                                      authorName: replyTo?.authorName || commentAuthor.name,
+                                    },
+                                  }));
+                                };
+
+                                return (
+                                  <div key={r.id} className="flex items-start gap-2">
+                                    <img src={commentAuthor.avatar} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                                    <div className="flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--orbit-card)' }}>
+                                      <div className="flex items-start justify-between gap-3 mb-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-[#00FFB3] text-xs font-medium">{commentAuthor.name}</p>
+                                          {replyTo && (
+                                            <span className="text-[11px] text-[color:var(--orbit-text-muted,#9ca3af)]">回复 {replyTo.authorName}</span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={handleReply}
+                                            className="text-[11px] text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"
+                                          >回复</button>
+                                          {canDeleteComment && (
+                                            <button
+                                              type="button"
+                                              onClick={() => void deleteRoast(memory.id, r.id)}
+                                              className="text-[11px] hover:text-red-500 transition-colors shrink-0"
+                                              style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
+                                            >撤回</button>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {decoded.audioUrl && (
+                                          <audio src={decoded.audioUrl} controls className="w-full h-8" />
+                                        )}
+                                        {(decoded.text || !decoded.audioUrl) && (
+                                          <p className="text-sm" style={{ color: 'var(--orbit-text)' }}>{decoded.text}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {replyTarget[memory.id] && (
+                                <div className="flex items-center gap-2 px-1 text-xs" style={{ color: 'var(--orbit-text-muted,#9ca3af)' }}>
+                                  <span>回复 {replyTarget[memory.id]?.authorName}</span>
+                                  <button
+                                    type="button"
+                                    className="hover:text-[#00FFB3]"
+                                    onClick={() => setReplyTarget(prev => ({ ...prev, [memory.id]: null }))}
+                                  >取消</button>
+                                </div>
+                              )}
+                              <div className="flex items-start gap-2">
+                                <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                  <div
+                                    className="flex items-center gap-2 rounded-2xl px-3 py-2 border"
+                                    style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                                  >
+                                    <input
+                                      type="text"
+                                      placeholder="文字 + 表情 或 留空配语音"
+                                      value={roastInput[memory.id] || ''}
+                                      onChange={(e) => setRoastInput(prev => ({ ...prev, [memory.id]: e.target.value }))}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') void addRoast(memory.id); }}
+                                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"
+                                      style={{ color: 'var(--orbit-text)' }}
+                                    />
+                                    <button
+                                      onClick={() => void addRoast(memory.id)}
+                                      disabled={!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)}
+                                      className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
+                                    >发</button>
+                                  </div>
+                                  <VoiceRecorder
+                                    userId={currentUser?.id || ''}
+                                    audios={commentAudios[memory.id] || []}
+                                    onAudiosChange={(urls) => setCommentAudios(prev => ({ ...prev, [memory.id]: urls }))}
+                                    compact
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   );
                 })}
@@ -2319,14 +2482,7 @@ export default function MemoryStreamPage() {
           ))
         ) : (
           groupedMemories.map((group, groupIndex) => (
-            <motion.div
-              key={group.date}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: groupIndex * 0.1 }}
-              className="mb-8"
-            >
-              {/* 日期标题 */}
+            <motion.div key={group.date} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: groupIndex * 0.1 }} className="mb-8">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00FFB3]/20 to-[#00D9FF]/20 flex items-center justify-center">
                   <FaCalendarAlt className="text-[#00FFB3]" />
@@ -2336,8 +2492,7 @@ export default function MemoryStreamPage() {
                   <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{group.memories.length} 条记忆</div>
                 </div>
               </div>
-              
-              {/* 记忆列表 - 朋友圈大卡片风格 */}
+
               <div className="space-y-4">
                 {group.memories.map((memory, index) => {
                   const photos = memory.photos || [];
@@ -2351,59 +2506,42 @@ export default function MemoryStreamPage() {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: groupIndex * 0.08 + index * 0.04 }}
-                      className="rounded-3xl border overflow-hidden"
-                      style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                      className="mb-6 bg-transparent sm:bg-[var(--orbit-card)] sm:border sm:rounded-sm border-b pb-4"
+                      style={{ borderColor: 'var(--orbit-border)' }}
                     >
-                      {/* ── 头部：头像 + 昵称 + 地点 + 操作 ── */}
-                      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                      <div className="flex items-center justify-between px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover ring-2 ring-black/5" />
-                          <div>
-                            <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
-                              {formatTime(memory.memory_date || memory.created_at)}
-                              {memory.location && <span className="ml-1">· 📍 {memory.location.name}</span>}
-                              {(mWeather.length || mMood.length) && <span className="ml-2">{[...mWeather, ...mMood].join(' ')}</span>}
-                            </p>
+                          <img src={author.avatar} className="w-8 h-8 rounded-full object-cover border border-[var(--orbit-border)]" />
+                          <div className="flex flex-col justify-center">
+                            <p className="text-sm font-bold leading-tight" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
+                            {(memory.location || mWeather.length > 0 || mMood.length > 0) && (
+                              <p className="text-[11px] mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                                {memory.location?.name} {[...mWeather, ...mMood].join(' ')}
+                              </p>
+                            )}
                           </div>
                         </div>
                         {memory.user_id === currentUser?.id && (
-                          <div className="flex items-center gap-0.5">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }}
-                              disabled={deletingMemoryId === memory.id}
-                              className="p-2 rounded-full text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
-                            ><FaTrash className="text-xs" /></button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }}
-                              className="p-2 rounded-full hover:text-[#00FFB3] hover:bg-[#00FFB3]/10 transition-colors"
-                              style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
-                            ><FaEdit className="text-xs" /></button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"><FaEdit className="text-sm" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }} disabled={deletingMemoryId === memory.id} className="text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-40"><FaTrash className="text-sm" /></button>
                           </div>
                         )}
                       </div>
 
-                      {/* ── 正文 ── */}
-                      {mText && (
-                        <p className="px-4 pb-3 text-sm leading-relaxed" style={{ color: 'var(--orbit-text)' }}>{mText}</p>
-                      )}
-
-                      {/* ── 图片区（1张全宽，2-4张2列，5+张3列） ── */}
                       {photos.length === 1 && (
-                        <div className="px-4 pb-3 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
-                          {/* ✨ 改为 object-cover 填满，并把最大高度稍微调高一点，避免竖图被裁得太多，同时去掉 bg-black/30 */}
-                          <img src={photos[0]} alt="" className="w-full rounded-2xl object-cover max-h-[400px]" />
+                        <div className="w-full cursor-pointer" onClick={() => setSelectedMemory(memory)}>
+                          <img src={photos[0]} alt="" className="w-full max-h-[500px] object-cover sm:rounded-sm" />
                         </div>
                       )}
                       {photos.length >= 2 && (
-                        <div className="px-4 pb-3 grid grid-cols-2 gap-1 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
+                        <div className="w-full grid grid-cols-2 gap-0.5 cursor-pointer" onClick={() => setSelectedMemory(memory)}>
                           {photos.slice(0, 4).map((p: string, i: number) => (
-                            // ✨ 删掉了 bg-black/30，改为 cover 填满
-                            <div key={i} className="relative rounded-xl overflow-hidden">
-                              <img src={p} alt="" className="w-full h-36 object-cover" />
+                            <div key={i} className="relative overflow-hidden aspect-square">
+                              <img src={p} alt="" className="w-full h-full object-cover" />
                               {i === 3 && photos.length > 4 && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                  <span className="text-white font-bold text-xl">+{photos.length - 4}</span>
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                  <span className="text-white font-medium text-2xl">+{photos.length - 4}</span>
                                 </div>
                               )}
                             </div>
@@ -2411,24 +2549,16 @@ export default function MemoryStreamPage() {
                         </div>
                       )}
 
-                      {/* ── 视频/语音 ── */}
                       {(memory.videos?.length > 0 || memory.audios?.length > 0) && (
-                        <div className="px-4 pb-3 space-y-2">
-                          {memory.videos?.length > 0 && (
-                            <span
-                              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
-                              style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 80%, transparent)', color: 'var(--orbit-text-muted, #9ca3af)' }}
-                            >
-                              🎥 {memory.videos.length}个视频
-                            </span>
-                          )}
+                        <div className="px-4 pt-2 space-y-2">
+                          {memory.videos?.length > 0 && <span className="text-xs text-[color:var(--orbit-text-muted,#9ca3af)]">▶ {memory.videos.length} 个视频</span>}
                           {memory.audios?.length > 0 && (
                             <div className="flex flex-col gap-1.5">
                               {memory.audios.map((url: string, idx: number) => (
-                                <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#00FFB3]/5 border border-[#00FFB3]/20">
-                                  <FaMicrophone className="text-[#00FFB3] text-xs shrink-0" />
-                                  <audio src={url} controls className="flex-1 h-7 accent-[#00FFB3]" style={{ minWidth: 0 }} />
-                                  <span className="text-[#00FFB3]/60 text-[10px] shrink-0">{idx + 1}</span>
+                                <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 border border-[var(--orbit-border)]">
+                                  <FaMicrophone className="text-[var(--orbit-text)] text-xs shrink-0" />
+                                  <audio src={url} controls className="flex-1 h-7" style={{ minWidth: 0 }} />
+                                  <span className="text-[var(--orbit-text-muted)] text-[10px] shrink-0">{idx + 1}</span>
                                 </div>
                               ))}
                             </div>
@@ -2436,66 +2566,54 @@ export default function MemoryStreamPage() {
                         </div>
                       )}
 
-                      {/* ── @好友 + 记账标签 ── */}
-                      {(memory.tagged_friends?.length > 0 || memory.has_ledger) && (
-                        <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-                          {getVisibleTagIds(memory).map((id: string, tidx: number) => {
-                            const name = getTagName(memory, id);
-                            if (!name) return null;
-                            return <span key={`${memory.id}-${id}-${tidx}`} className="text-[#00FFB3] text-sm font-medium">@{name}</span>;
-                          })}
-                          {memory.has_ledger && (
-                            <span className="px-2 py-0.5 rounded-full bg-[#FF9F43]/10 text-[#FF9F43] text-xs flex items-center gap-1">
-                              <FaDollarSign className="text-xs" /> 记账
-                            </span>
-                          )}
+                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                        <div className="flex items-center gap-4">
+                          <button onClick={() => toggleLike(memory.id)} className={`transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                            <FaHeart className="text-[22px]" />
+                          </button>
+                          <button onClick={() => { const willOpen = !reaction.roastOpen; toggleRoastOpen(memory.id); if (willOpen) markCommentsAsRead(memory.id); }} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
+                            <FaComment className="text-[22px] scale-x-[-1]" />
+                            {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                          </button>
+                          <button onClick={() => handleShareMemory(memory)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors">
+                            <FaShareAlt className="text-[20px]" />
+                          </button>
+                        </div>
+                        {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5"/> 记账</span>}
+                      </div>
+
+                      {reaction.likes > 0 && (
+                        <div className="px-4 pb-1">
+                          <span className="text-sm font-bold" style={{ color: 'var(--orbit-text)' }}>{reaction.likes} 次赞</span>
                         </div>
                       )}
 
-                      {/* ── 互动栏 ── */}
-                      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
-                        <div className="flex items-center gap-5">
-                          <button
-                            onClick={() => toggleLike(memory.id)}
-                            className={`flex items-center gap-1.5 text-sm transition-all active:scale-125 ${
-                              reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-red-400'
-                            }`}
-                          >
-                            <FaHeart />
-                            {reaction.likes > 0 && <span className="text-xs tabular-nums">{reaction.likes}</span>}
-                          </button>
-                          <button
-                            onClick={() => {
-                              const willOpen = !reaction.roastOpen;
-                              toggleRoastOpen(memory.id);
-                              if (willOpen) markCommentsAsRead(memory.id);
-                            }}
-                            className={`flex items-center gap-1.5 text-sm transition-colors ${
-                              reaction.roastOpen ? 'text-[#00B37A]' : 'text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00B37A]'
-                            }`}
-                          >
-                            <FaComment />
-                            {settings.notifyComment && hasUnreadComments(memory) && <span className="w-2 h-2 rounded-full bg-[#FF6B6B]" />}
-                            <span className="text-xs">
-                              {reaction.roasts.length > 0 ? `${reaction.roasts.length} 条吐槽` : '吐槽'}
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => handleShareMemory(memory)}
-                            className="flex items-center gap-1.5 text-sm text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#1f8dd6] transition-colors"
-                          >
-                            <FaShareAlt />
-                            <span className="text-xs">分享微信</span>
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => setSelectedMemory(memory)}
-                          className="text-xs transition-colors"
-                          style={{ color: 'var(--orbit-text)' }}
-                        >查看全部 →</button>
+                      <div className="px-4 pb-1 text-sm leading-relaxed" style={{ color: 'var(--orbit-text)' }}>
+                        {mText && (
+                          <span>
+                            <span className="font-bold mr-2">{author.name}</span>
+                            <span>{mText}</span>
+                          </span>
+                        )}
+                        {!mText && memory.tagged_friends?.length > 0 && (
+                          <span className="font-bold mr-2">{author.name}</span>
+                        )}
+                        {memory.tagged_friends?.length > 0 && (
+                          <span className={mText ? 'ml-1' : ''}>
+                            {getVisibleTagIds(memory).map((id: string) => {
+                              const name = getTagName(memory, id);
+                              return name ? <span key={id} className="text-[#005c8a] dark:text-[#00D9FF] mr-1 font-medium">@{name}</span> : null;
+                            })}
+                          </span>
+                        )}
                       </div>
 
-                      {/* ── 吐槽展开区 ── */}
+                      <div className="px-4 pt-1 mb-2">
+                        <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                          {formatTime(memory.memory_date || memory.created_at)}
+                        </span>
+                      </div>
+
                       <AnimatePresence>
                         {reaction.roastOpen && (
                           <motion.div
@@ -2628,7 +2746,7 @@ export default function MemoryStreamPage() {
                 initial={{ scale: 0.96, y: 10, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.96, y: 10, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                transition={{ type: 'spring', stiffness: 240, damping: 22 }}
                 className="w-full max-w-3xl"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -2687,7 +2805,7 @@ export default function MemoryStreamPage() {
                       </label>
                       <button
                         type="button"
-                        onClick={() => setAlbumDateRange({ start: '', end: '' })}
+                        onClick={() => { setAlbumDateRange({ start: '', end: '' }); setCurrentMonth(''); }}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
                         style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                       >清空</button>
@@ -2712,7 +2830,7 @@ export default function MemoryStreamPage() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {showStoryEntry && showAlbumFilterDialog && (
+          {showAlbumFilterDialog && (
             <motion.div
               key="album-filter-dialog"
               initial={{ opacity: 0 }}
@@ -2731,11 +2849,31 @@ export default function MemoryStreamPage() {
                 style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                 onClick={(e) => e.stopPropagation()}
               >
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>按时间范围筛选</p>
+                    <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>仅筛选回忆流，不会打开相册播放</p>
+                  </div>
+                  <button onClick={() => setShowAlbumFilterDialog(false)} className="text-xs text-[color:var(--orbit-text-muted,#9ca3af)]">关闭</button>
+                </div>
 
+                <div className="flex items-center gap-2 flex-wrap mb-4">
+                  <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
+                    <span>月份</span>
+                    <div className="relative">
+                      <div className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border`} style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)' }}>
+                        <span className="text-sm font-mono">{currentMonth ? currentMonth.replace('-', ' / ') : '全部'}</span>
+                        <ChevronDownIcon className="text-[10px] opacity-50" />
+                        <input type="month" value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                      </div>
+                    </div>
+                  </label>
+                  <div className="ml-auto flex items-center gap-2">
+                    <button type="button" onClick={() => { setCurrentMonth(''); setShowAlbumFilterDialog(false); }} className="px-3 py-1.5 rounded-lg text-xs font-semibold border" style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>清空</button>
+                    <button type="button" onClick={() => setShowAlbumFilterDialog(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white">应用</button>
+                  </div>
+                </div>
 
-              
-
-            
               </motion.div>
             </motion.div>
           )}
