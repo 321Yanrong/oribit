@@ -537,8 +537,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
       
       {/* 顶部导航栏 (加了 pointer-events-none 防止挡住地图点击) */}
       <div className="absolute top-0 left-0 right-0 z-20 safe-top pointer-events-none">
-        <div className="mx-4 mt-2 pointer-events-auto">
-          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card rounded-3xl p-5 shadow-xl">
+        <div className="mx-4 pointer-events-auto">
+          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card rounded-3xl p-3.5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                 <span className="text-3xl">🗺️</span> 友情地图

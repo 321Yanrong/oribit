@@ -72,14 +72,15 @@ export default function BottomNav() {
   const activeBg = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 safe-bottom pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
       <motion.div
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="pointer-events-auto px-2 py-2"
+        className="pointer-events-auto px-2"
         style={{
           background: bgColor,
           borderTop: `1px solid ${borderColor}`,
+          paddingTop:'8px',
           transform: 'translateY(calc(env(safe-area-inset-bottom, 0px) + 12px))'
         }}
       >
@@ -104,7 +105,7 @@ export default function BottomNav() {
                 }}
                 whileHover={{ scale: 1.06, y: -2 }}
                 whileTap={{ scale: 0.95 }}
-                className="relative flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all"
+                className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-2xl transition-all"
               >
                 <AnimatePresence>
                   {isActive && (
