@@ -18,6 +18,8 @@ import ProfilePage from './pages/ProfilePage';
 import GamesPage from './pages/GamesPage';
 import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
 import { Analytics } from '@vercel/analytics/react';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -62,6 +64,26 @@ const useAegisMonitor = () => {
       aegis.setConfig({ uin: currentUser.id });
     }
   }, [currentUser?.id]);
+};
+
+// 1. 新增这个沉浸式状态栏的 Hook
+const useNativeStatusBar = () => {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const initStatusBar = async () => {
+        try {
+          // 开启沉浸式（网页内容顶到刘海下面）
+          await StatusBar.setOverlaysWebView({ overlay: true });
+          // 设置状态栏文字颜色（Style.Dark 是暗色文字，适合浅色主题）
+          // 如果你的 App 是自适应深浅色的，这里甚至可以根据 isSystemDark 动态切换！
+          await StatusBar.setStyle({ style: Style.Dark });
+        } catch (e) {
+          console.warn('沉浸式状态栏初始化失败:', e);
+        }
+      };
+      initStatusBar();
+    }
+  }, []);
 };
 
 const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
@@ -180,6 +202,7 @@ function App() {
   usePWAKeeper(triggerResume);
   useAegisMonitor();
   usePushSetup();
+  useNativeStatusBar();
 
   // 注册 Service Worker 并监听更新
   useEffect(() => {

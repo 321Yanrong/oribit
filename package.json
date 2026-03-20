@@ -15,9 +15,9 @@
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
     "@capacitor/android": "^8.2.0",
-    "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
+    "@capacitor/status-bar": "^8.0.1",
     "@headlessui/react": "^1.7.18",
     "@supabase/supabase-js": "^2.98.0",
     "@vercel/analytics": "^2.0.1",
@@ -48,6 +48,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
     "@types/matter-js": "^0.20.0",
     "@types/node": "^24.0.14",
     "@types/react": "^18.3.1",
