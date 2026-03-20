@@ -929,7 +929,7 @@ function App() {
     ? 'calc(env(safe-area-inset-top) + 56px)'
     : (isDemoMode || showEarlyAccessBanner
       ? 'calc(env(safe-area-inset-top) + 28px)'
-      : '0px');
+      : 'env(safe-area-inset-top)');
 
   return (
     <div
