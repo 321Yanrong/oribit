@@ -31,21 +31,30 @@
   </head>
   <body style="background-color: var(--orbit-surface, #ffffff); color: var(--orbit-text, #0f172a);">
     <!-- Cold start splash (visible in light mode: white bg, black text) -->
-    <div id="cold-start" aria-hidden="true">
-      <div class="cold-start-inner">
-        <div class="cold-start-title">Orbit</div>
-      </div>
-    </div>
+
     <div id="root"></div>
 
     <style>
-      /* Cold start default: white background, black text for light mode */
-      #cold-start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#000000;z-index:9999}
-      .cold-start-inner{display:flex;flex-direction:column;align-items:center;gap:10px}
-      .cold-start-title{font-weight:600;font-size:18px}
-      /* Hide or let dark mode handle differently */
+      /* Cold start: visually match the React SplashScreen to avoid a flash/jump */
+      :root{--cs-bg:var(--orbit-surface,#ffffff);--cs-text:var(--orbit-text,#0f172a);}
+      #cold-start{
+        position:fixed;
+        inset:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:var(--cs-bg);
+        color:var(--cs-text);
+        z-index:9999;
+        padding-top:env(safe-area-inset-top);
+        -webkit-font-smoothing:antialiased;
+        transition:opacity 200ms ease;
+      }
+      .cold-start-inner{display:flex;flex-direction:column;align-items:center;gap:8px}
+      .cold-start-logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(90deg,#00FFB3,#00D9FF);box-shadow:0 8px 24px rgba(0,0,0,0.12)}
+      .cold-start-title{font-weight:700;font-size:16px}
       @media (prefers-color-scheme: dark){
-        #cold-start{display:none}
+        :root{--cs-bg:var(--orbit-surface,#0b1220);--cs-text:var(--orbit-text,#e6eef0)}
       }
     </style>
 

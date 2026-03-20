@@ -28,6 +28,14 @@ const renderApp = () => {
 		throw new Error("Root container #root not found");
 	}
 
+	// Remove the static cold-start placeholder immediately to avoid a double-splash
+	try {
+		const cold = document.getElementById('cold-start');
+		if (cold && cold.parentNode) cold.parentNode.removeChild(cold);
+	} catch (e) {
+		// ignore
+	}
+
 	// 🚧 Important: Avoid React.StrictMode here because Supabase's auth client uses
 	// the Web Locks API internally. StrictMode's intentional double-mount pattern
 	// was causing locks to be "stolen" mid-flight, which surfaced as

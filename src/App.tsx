@@ -975,7 +975,7 @@ function App() {
               >知道了</button>
             </div>
           )}
-          <div style={{ paddingTop: contentPaddingTop }}>
+          <div style={{ paddingTop: contentPaddingTop, position: 'relative' }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPage}
