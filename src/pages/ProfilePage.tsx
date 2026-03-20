@@ -4817,7 +4817,7 @@ const handleAddFriend = async (name: string, remark: string) => {
               style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', fontFamily: '"PingFang SC", "-apple-system", "SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 p-4 border-b flex items-center justify-between" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec', background: isDarkMode ? '#0b0f1a' : '#ffffff', zIndex: 5 }}>
+              <div className="sticky top-0 safe-top p-4 border-b flex items-center justify-between" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec', background: isDarkMode ? '#0b0f1a' : '#ffffff', zIndex: 5 }}>
                 <button onClick={() => setShowAllFriends(false)} className="p-2 rounded-full hover:bg-black/5" style={{ color: isDarkMode ? '#f9fafb' : '#000000' }}><FaTimes className="text-inherit" /></button>
                 <div className="text-center">
                   <h2 className="text-lg font-semibold" style={{ color: isDarkMode ? '#f9fafb' : '#000000' }}>好友</h2>
@@ -4826,7 +4826,7 @@ const handleAddFriend = async (name: string, remark: string) => {
                 <div className="w-10" />
               </div>
 
-              <div className="px-4 pt-3 flex gap-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 68, zIndex: 4 }}>
+              <div className="px-4 pt-3 flex gap-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 68px)', zIndex: 4 }}>
                 {[
                   { key: 'all', label: '全部' },
                   { key: 'real', label: '真实' },
@@ -4848,7 +4848,7 @@ const handleAddFriend = async (name: string, remark: string) => {
               </div>
 
               {friends.length >= 4 && (
-                <div className="p-4 pb-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 116, zIndex: 3 }}>
+                <div className="p-4 pb-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 116px)', zIndex: 3 }}>
                   <div className="relative">
                     <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af] text-xs pointer-events-none" />
                     <input
