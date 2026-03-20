@@ -2210,7 +2210,7 @@ export default function MemoryStreamPage() {
       </div>
       
       {/* 记忆列表 */}
-      <div className="relative px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 140px)' }}>
+      <div className="relative px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 134px)' }}>
         <div ref={albumSectionRef} className="scroll-mt-20" />
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">

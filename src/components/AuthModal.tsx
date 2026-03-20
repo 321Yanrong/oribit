@@ -29,6 +29,10 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
+  const isLightMode = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light';
+  const textPrimary = isLightMode ? 'text-neutral-900' : 'text-white';
+  const textMuted = isLightMode ? 'text-neutral-600' : 'text-white/60';
+  const iconColor = isLightMode ? 'text-neutral-400' : 'text-white/30';
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -198,7 +202,8 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-orbit-black p-4"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isLightMode ? 'bg-white/60' : 'bg-orbit-black'}`}
+      style={isLightMode ? { backdropFilter: 'blur(6px)' } : undefined}
     >
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden">
@@ -217,7 +222,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="relative w-full max-w-md glass-card rounded-3xl p-8"
+        className={`relative w-full max-w-md glass-card rounded-3xl p-8 ${isLightMode ? 'bg-white border border-neutral-200 text-neutral-900' : ''}`}
       >
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
@@ -229,8 +234,8 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           >
             <img src="/icons/icon-384.png" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-white mb-2">Orbit 轨迹</h1>
-          <p className="text-white/50">记录与好友的每一个足迹 ✨</p>
+          <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Orbit 轨迹</h1>
+          <p className={`${textMuted}`}>记录与好友的每一个足迹 ✨</p>
         </div>
         
         {/* 表单 */}
@@ -238,9 +243,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           {isRecoveryMode ? (
             <>
               <div>
-                <label className="block text-white/60 text-sm mb-2">新密码</label>
+                <label className={`block ${textMuted} text-sm mb-2`}>新密码</label>
                 <div className="relative">
-                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
                   <input
                     type="password"
                     value={newPassword}
@@ -254,9 +259,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
               </div>
 
               <div>
-                <label className="block text-white/60 text-sm mb-2">确认新密码</label>
+                <label className={`block ${textMuted} text-sm mb-2`}>确认新密码</label>
                 <div className="relative">
-                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
                   <input
                     type="password"
                     value={confirmPassword}
@@ -277,9 +282,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
             >
-              <label className="block text-white/60 text-sm mb-2">用户名</label>
+              <label className={`block ${textMuted} text-sm mb-2`}>用户名</label>
               <div className="relative">
-                <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                <FaUser className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
                 <input
                   type="text"
                   value={username}
@@ -288,9 +293,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
                   placeholder="你的昵称"
                 />
               </div>
-              <label className="block text-white/60 text-sm mb-2 mt-4">邀请码 / 口令</label>
+              <label className={`block ${textMuted} text-sm mb-2 mt-4`}>邀请码 / 口令</label>
               <div className="relative">
-                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
                 <input
                   type="text"
                   value={inviteCode}
@@ -304,9 +309,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           )}
           
           <div>
-            <label className="block text-white/60 text-sm mb-2">邮箱</label>
+            <label className={`block ${textMuted} text-sm mb-2`}>邮箱</label>
             <div className="relative">
-              <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+              <FaEnvelope className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
               <input
                 type="email"
                 value={email}
@@ -321,9 +326,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           )}
           
           <div>
-            <label className="block text-white/60 text-sm mb-2">密码</label>
+            <label className={`block ${textMuted} text-sm mb-2`}>密码</label>
             <div className="relative">
-              <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+              <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
               <input
                 type="password"
                 value={password}
@@ -379,7 +384,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
               setIsLogin(!isLogin);
               setError(null);
             }}
-            className="text-white/50 hover:text-pink-400 transition-colors"
+            className={`${textMuted} hover:text-pink-400 transition-colors`}
           >
             {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
           </button>
@@ -389,7 +394,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
                 type="button"
                 onClick={handleResetPassword}
                 disabled={resetting}
-                className="text-white/40 hover:text-white/70 disabled:opacity-50"
+                className={`${textMuted} hover:opacity-80 disabled:opacity-50`}
               >
                 {resetting ? '发送中…' : '忘记密码？发送重置邮件'}
               </button>
@@ -402,7 +407,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
         <div className="mt-6 pt-6 border-t border-white/10">
           <button
             onClick={onDemo}
-            className="w-full py-3 text-white/40 hover:text-white/60 text-sm transition-colors"
+            className={`${textMuted} w-full py-3 hover:opacity-80 text-sm transition-colors`}
           >
             暂不登录，先看看演示 ✨
           </button>
