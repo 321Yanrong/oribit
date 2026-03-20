@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Orbit 轨迹</string>
-    <string name="title_activity_main">Orbit 轨迹</string>
-    <string name="package_name">com.wehihi.orbit</string>
-    <string name="custom_url_scheme">com.wehihi.orbit</string>
-</resources>

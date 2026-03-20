@@ -3794,28 +3794,21 @@ const handleAddFriend = async (name: string, remark: string) => {
   };
 
   return (
-    
     <div
       className="relative min-h-screen pb-28"
       style={{ background: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}
     >
-    
       {/* <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} /> */}
       <div className="absolute inset-0 opacity-70" style={{ background: `radial-gradient(circle at 50% -10%, rgba(0, 0, 0, 0.04) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(0, 0, 0, 0.03) 0%, transparent 35%)` }} />
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       
       {/* 顶部个人卡片 */}
-      {/* <div className="relative z-10 mx-4"> */}
+      <div className="relative top-0 z-10 mx-6 -mt-2">
         <motion.div
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 border-b"
-        style={{ 
-          background: 'var(--orbit-surface)',   // 👈 用你页面全局的背景变量
-          borderColor: 'var(--orbit-border)',   // 👈 用你页面全局的边框变量
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' 
-        }}
-      >
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="p-2 relative"
+        >
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
