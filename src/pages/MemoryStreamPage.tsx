@@ -2048,7 +2048,7 @@ export default function MemoryStreamPage() {
   };
   
   return (
-    <div className="memory-stream-page relative min-h-screen pt-[180px]" style={{ backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}>
+    <div className="memory-stream-page relative min-h-screen pb-28" style={{ backgroundColor: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}>
       {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -2058,7 +2058,7 @@ export default function MemoryStreamPage() {
       
       {/* 顶部标题 + 搜索筛选 */}
       <div
-        className="fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b"
+        className="fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b safe-top"
         style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, transparent)', borderColor: 'var(--orbit-border)' }}
       >
         <div className="px-4 pt-4 pb-2 flex items-center gap-3">
