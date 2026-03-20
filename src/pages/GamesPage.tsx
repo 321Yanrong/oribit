@@ -1453,7 +1453,7 @@ export default function GamesPage() {
       />
 
       {/* 顶部标题 */}
-      <div className="relative z-10 safe-top px-4 pt-4 pb-2">
+      <div className="relative top-0 z-10 safe-top px-4 pb-2">
         <motion.div initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <FaGamepad className="text-[#a29bfe]" /> 小游戏

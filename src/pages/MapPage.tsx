@@ -117,6 +117,23 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     };
   }, []);
 
+  // When MapPage mounts, make the app root background transparent so the map can extend into the
+  // system safe area / status bar. Restore previous value on unmount.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    try {
+      const rootStyle = document.documentElement.style;
+      const prev = rootStyle.getPropertyValue('--app-root-bg');
+      rootStyle.setProperty('--app-root-bg', 'transparent');
+      return () => {
+        if (prev) rootStyle.setProperty('--app-root-bg', prev);
+        else rootStyle.removeProperty('--app-root-bg');
+      };
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   // ✨ 核心修复 1：进页面立刻拉取最新回忆数据
   useEffect(() => {
     if (currentUser?.id) {

@@ -3,7 +3,7 @@
   "short_name": "Orbit",
   "description": "一款专为密友圈设计的情感地图手账 + 极简记账数字胶囊",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#121212",
   "theme_color": "#00FFB3",
   "orientation": "portrait-primary",
