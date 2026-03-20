@@ -18,9 +18,10 @@
 :root {
   /* 默认深色主题变量 */
   --orbit-bg: #121212;
-  --app-root-bg: var(--orbit-bg);
   --orbit-surface: #1b1b1b;
-  --orbit-card: rgba(255, 255, 255, 0.08);
+  --app-root-bg: var(--orbit-bg);
+  /* 卡片默认深色改为中性灰，避免偏蓝 */
+  --orbit-card: #1f1f23;
   --orbit-border: rgba(255, 255, 255, 0.12);
   --orbit-text: #ffffff;
   --orbit-text-muted: #cbd5e1;
@@ -97,6 +98,16 @@
     border: 1px solid var(--orbit-border);
     border-radius: 1rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  }
+
+  /* 深色模式：把常见的白色半透明卡片替换为中性灰，避免出现偏蓝视觉 */
+  :root:not([data-theme='light']) .glass,
+  :root:not([data-theme='light']) .glass-card,
+  :root:not([data-theme='light']) .bg-white\/5,
+  :root:not([data-theme='light']) .bg-white\/8,
+  :root:not([data-theme='light']) .bg-white\/10 {
+    background-color: var(--orbit-card) !important;
+    border-color: var(--orbit-border) !important;
   }
   
   /* 发光效果 */

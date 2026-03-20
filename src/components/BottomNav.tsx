@@ -72,7 +72,7 @@ export default function BottomNav() {
   const activeBg = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
   return (
-    <nav className="fixed bottom-1 left-0 right-0 z-20 pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
       <motion.div
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
