@@ -964,7 +964,7 @@ const HelpSupportPage = ({
               </div>
 
               <div className="px-4 pt-6 pb-10">
-                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>通过以下任一方式定位到您需要找回的账号</p>
+                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3ba' }}>通过以下任一方式定位到您需要找回的账号</p>
                 <div className="rounded-2xl overflow-hidden mb-7" style={{ background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   <button className="w-full px-4 py-5 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>通过绑定的手机号确认</span>
@@ -977,7 +977,7 @@ const HelpSupportPage = ({
                   
                 </div>
 
-                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>此设备最近 7 天登录过的账户</p>
+                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3ba' }}>此设备最近 7 天登录过的账户</p>
                 <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   {recentDeviceAccounts.length > 0 ? (
                     recentDeviceAccounts.map((account, index) => (
@@ -997,8 +997,8 @@ const HelpSupportPage = ({
                         <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#b6b8bd' }} />
                       </button>
                     ))
-                  : (
-                    <div className="px-4 py-6 text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>暂无近 7 天登录记录</div>
+                  ) : (
+                    <div className="px-4 py-6 text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3ba' }}>暂无近 7 天登录记录</div>
                   )}
                 </div>
               </div>
@@ -1385,7 +1385,7 @@ const AddFriendModal = ({
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return ()
+    return () => {
       document.body.style.overflow = prevOverflow;
     };
   }, [isOpen]);
