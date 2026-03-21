@@ -668,7 +668,7 @@ const HelpSupportPage = ({
               </div>
 
               <div className="px-4 pt-5 pb-10">
-                <p className="text-[15px] mb-3" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>请选择问题发生的场景</p>
+                <p className="text-[15px] mb-3" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>请选择问题发生的场景</p>
 
                 <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   {feedbackScenes.map((scene, idx) => (
@@ -685,7 +685,7 @@ const HelpSupportPage = ({
                     >
                       <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>{scene.title}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>{scene.desc}</span>
+                        <span className="text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>{scene.desc}</span>
                         <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }} />
                       </div>
                     </button>
@@ -799,15 +799,15 @@ const HelpSupportPage = ({
                 </AnimatePresence>
 
                 <div className="mt-8">
-                  <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>联系我们</p>
+                  <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>联系我们</p>
                   <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <button className="w-full px-4 py-4 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }} onClick={() => setShowContactModal(true)}>
                       <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>客服邮箱</span>
-                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>3482407231@qq.com</span>
+                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>3482407231@qq.com</span>
                     </button>
                     <div className="px-4 py-4 flex items-center justify-between">
                       <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>紧急联系</span>
-                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>110</span>
+                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>110</span>
                     </div>
                   </div>
                 </div>
@@ -964,7 +964,7 @@ const HelpSupportPage = ({
               </div>
 
               <div className="px-4 pt-6 pb-10">
-                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通过以下任一方式定位到您需要找回的账号</p>
+                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>通过以下任一方式定位到您需要找回的账号</p>
                 <div className="rounded-2xl overflow-hidden mb-7" style={{ background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   <button className="w-full px-4 py-5 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>通过绑定的手机号确认</span>
@@ -977,7 +977,7 @@ const HelpSupportPage = ({
                   
                 </div>
 
-                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>此设备最近 7 天登录过的账户</p>
+                <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>此设备最近 7 天登录过的账户</p>
                 <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#fff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   {recentDeviceAccounts.length > 0 ? (
                     recentDeviceAccounts.map((account, index) => (
@@ -997,8 +997,8 @@ const HelpSupportPage = ({
                         <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#b6b8bd' }} />
                       </button>
                     ))
-                  ) : (
-                    <div className="px-4 py-6 text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>暂无近 7 天登录记录</div>
+                  : (
+                    <div className="px-4 py-6 text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>暂无近 7 天登录记录</div>
                   )}
                 </div>
               </div>
@@ -1053,7 +1053,7 @@ const HelpSupportPage = ({
                     />
                   </div>
 
-                  <h3 className="mt-6 text-[32px] font-bold" style={{ color: isDarkMode ? '#f8fafc' : '#111' }}>
+                  <h3 className="mt-6 text-[36px] font-bold text-center" style={{ color: isDarkMode ? '#f8fafc' : '#111' }}>
                     {isCheckingAccount ? '账号检测中…' : (currentUser?.username || '我的账号')}
                   </h3>
                   <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#222' }}>
@@ -1095,7 +1095,7 @@ const HelpSupportPage = ({
                           ) : isCurrent ? (
                             <span className="w-6 h-6 rounded-full animate-spin" style={{ border: '2px solid #60a5fa', borderTopColor: 'transparent' }} />
                           ) : (
-                            <span className="text-[14px]" style={{ color: isDarkMode ? '#64748b' : '#9ca3af' }}>待检测</span>
+                            <span className="text-[14px]" style={{ color: isDarkMode ? '#64748b' : '#9ca3baf' }}>待检测</span>
                           )}
                         </div>
                       );
@@ -1346,7 +1346,7 @@ const DarkModePage = ({
                 <motion.div animate={{ x: followSystem ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDark ? '#0b1324' : '#ffffff' }} />
               </button>
             </div>
-            <p className="mt-1 text-[11px]" style={{ color: isDark ? '#94a3b8' : '#9ca3af' }}>开启后根据系统设置同步切换深/浅模式</p>
+            <p className="mt-1 text-[11px]" style={{ color: isDark ? '#94a3b8' : '#9ca3baf' }}>开启后根据系统设置同步切换深/浅模式</p>
           </div>
         </div>
       </motion.div>
@@ -1385,7 +1385,7 @@ const AddFriendModal = ({
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
+    return ()
       document.body.style.overflow = prevOverflow;
     };
   }, [isOpen]);

@@ -978,13 +978,14 @@ function App() {
     }
   };
 
-  // Avoid applying a global safe-area padding to every page —
-  // individual top bars / sticky headers should handle the safe-area instead.
+  // 全局内容区域顶部内边距：
+  // - 默认：预留状态栏安全区 + 8px 额外间距，让页面文字不顶在最上方
+  // - 演示横幅 / 内测横幅：在安全区基础上叠加各自高度
   const contentPaddingTop = isDemoMode && showEarlyAccessBanner
-    ? 'calc(env(safe-area-inset-top) + 56px)'
+    ? 'calc(env(safe-area-inset-top, 0px) + 56px)'
     : (isDemoMode || showEarlyAccessBanner
-      ? 'calc(env(safe-area-inset-top) + 28px)'
-      : '0px');
+      ? 'calc(env(safe-area-inset-top, 0px) + 28px)'
+      : 'calc(env(safe-area-inset-top, 0px) + 8px)');
 
   return (
     <div

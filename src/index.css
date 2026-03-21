@@ -18,10 +18,9 @@
 :root {
   /* 默认深色主题变量 */
   --orbit-bg: #121212;
-  --orbit-surface: #1b1b1b;
   --app-root-bg: var(--orbit-bg);
-  /* 卡片默认深色改为中性灰，避免偏蓝 */
-  --orbit-card: #1f1f23;
+  --orbit-surface: #1b1b1b;
+  --orbit-card: rgba(255, 255, 255, 0.08);
   --orbit-border: rgba(255, 255, 255, 0.12);
   --orbit-text: #ffffff;
   --orbit-text-muted: #cbd5e1;
@@ -56,16 +55,34 @@
   html {
     @apply antialiased;
     -webkit-tap-highlight-color: transparent;
+    /* 锁定 html，作为不动的大框架 */
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; 
+    background-color: var(--app-root-bg); /* 关键：html 背景色必须对齐 */
   }
   
   body {
     @apply font-sans;
-    font-family: "Apple Color Emoji", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Inter, sans-serif;
-    font-variant-ligatures: no-common-ligatures;
     background-color: var(--orbit-bg);
     color: var(--orbit-text);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     overscroll-behavior-y: none;
+    /* 让 body 成为真正的滚动承载者 */
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    
+    /* 恢复滚动并开启 iOS 丝滑效果 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; 
+    
+    /* 核心：禁止 Webview 整体回弹，只允许内容滚动 */
+    overscroll-behavior-y: none; 
+    
+    background-color: var(--app-root-bg);
+    color: var(--orbit-text);
   }
   
   /* 隐藏滚动条但保持滚动功能 */
@@ -100,16 +117,6 @@
     border: 1px solid var(--orbit-border);
     border-radius: 1rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  }
-
-  /* 深色模式：把常见的白色半透明卡片替换为中性灰，避免出现偏蓝视觉 */
-  :root:not([data-theme='light']) .glass,
-  :root:not([data-theme='light']) .glass-card,
-  :root:not([data-theme='light']) .bg-white\/5,
-  :root:not([data-theme='light']) .bg-white\/8,
-  :root:not([data-theme='light']) .bg-white\/10 {
-    background-color: var(--orbit-card) !important;
-    border-color: var(--orbit-border) !important;
   }
   
   /* 发光效果 */
@@ -273,32 +280,39 @@
   }
 
   /* Ensure app root extends background into the device safe area */
-  html, body {
+  html {
     height: 100%;
     margin: 0;
     background: var(--app-root-bg);
     color: var(--orbit-text);
     overscroll-behavior-y: none;
-    /* 关键：不要 overflow: hidden，否则 fixed 元素会被裁剪 */
-    /* overflow: hidden; */
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    background: var(--app-root-bg);
+    color: var(--orbit-text);
+    overscroll-behavior-y: none; /* 告诉 iOS：允许滚动，但不回弹 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* 触摸反馈 */
+    .tap-effect {
+      @apply transition-transform duration-150 active:scale-95;
+    }
   }
 
   #root {
-    height: 100%;
+    min-height: 100%;
     background: var(--app-root-bg);
     color: var(--orbit-text);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
   }
 
   /* Optional helper to apply safe-area padding to top bars */
   .top-safe {
     padding-top: env(safe-area-inset-top, 0);
-  }
-  
-  /* 触摸反馈 */
-  .tap-effect {
-    @apply transition-transform duration-150 active:scale-95;
+    background-color: var(--orbit-surface); /* 确保背景色延伸上去 */
   }
   
   /* 渐变背景 */

@@ -293,7 +293,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           </div>
         </motion.div>
 
-        <div className="px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 64px)' }}>
+        <div className="px-4 pb-32 w-full max-w-3xl mx-auto" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
           {memory.location && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
@@ -456,14 +456,22 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                   )}
                   <button
                     onClick={() => setIsLightboxOpen(false)}
-                    className="absolute top-6 right-6 p-3 rounded-full transition"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}
+                    className="absolute p-3 rounded-full transition"
+                    style={{
+                      top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+                      right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+                      backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)',
+                    }}
                   >
                     <FaTimes className="text-white text-lg" />
                   </button>
                   <div
-                    className="absolute top-6 left-6 px-3 py-1.5 rounded-full text-white text-sm"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}
+                    className="absolute px-3 py-1.5 rounded-full text-white text-sm"
+                    style={{
+                      top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+                      left: 'calc(env(safe-area-inset-left, 0px) + 12px)',
+                      backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)',
+                    }}
                   >
                     {currentPhotoIndex + 1} / {photos.length}
                   </div>
