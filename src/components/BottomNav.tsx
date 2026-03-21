@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IconType } from 'react-icons';
-import { FiMap, FiImage, FiCreditCard, FiUser } from 'react-icons/fi';
+import { FiMap, FiImage, FiCreditCard, FiUser, FiCamera } from 'react-icons/fi';
 import { useNavStore, useUserStore } from '../store';
 import { useUIStore } from '../store/ui';
 import { PageType } from '../types';
 import { SETTINGS_EVENT } from '../utils/settings';
-const navItems: { id: PageType; icon: IconType; label: string }[] = [
+
+type NavItem = { id: PageType | 'capture'; icon?: IconType; label?: string; special?: boolean };
+
+const navItems: NavItem[] = [
   { id: 'map', icon: FiMap, label: '地图' },
   { id: 'memory', icon: FiImage, label: '记忆' },
+  { id: 'capture', special: true },
   { id: 'ledger', icon: FiCreditCard, label: '账单' },
   { id: 'profile', icon: FiUser, label: '我的' },
 ];
@@ -24,7 +28,10 @@ const getIsDarkTheme = () => {
 export default function BottomNav() {
   const { currentPage, setCurrentPage } = useNavStore();
   const pendingCount = useUserStore((s) => s.pendingRequests.length);
-  const unreadCommentCount = useUIStore((s) => s.memoryCommentUnreadCount);
+  const { memoryCommentUnreadCount: unreadCommentCount, triggerMemoryComposerRequest } = useUIStore((s) => ({
+    memoryCommentUnreadCount: s.memoryCommentUnreadCount,
+    triggerMemoryComposerRequest: s.triggerMemoryComposerRequest,
+  }));
   const longPressTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
   const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
@@ -69,6 +76,17 @@ export default function BottomNav() {
   const inactiveColor = isDarkMode ? '#9ca3af' : '#6b7280';
   const activeColor = isDarkMode ? '#f5f5f5' : '#111827';
   const activeBg = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+  const handleCaptureClick = () => {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    if (currentPage !== 'memory') {
+      setCurrentPage('memory');
+    }
+    triggerMemoryComposerRequest();
+  };
   
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
@@ -89,6 +107,38 @@ export default function BottomNav() {
           {navItems.map((item) => {
             const isActive = currentPage === item.id;
             const Icon = item.icon;
+
+            if (item.special) {
+              return (
+                <motion.button
+                  key="capture"
+                  aria-label="发布记忆"
+                  onClick={handleCaptureClick}
+                  whileHover={{ scale: 1.08, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative flex flex-col items-center justify-center px-3"
+                >
+                  <div
+                    className="relative w-14 h-14 rounded-3xl flex items-center justify-center"
+                    style={{
+                      background: '#FDE047',
+                      boxShadow: '0 18px 32px rgba(253, 224, 71, 0.4)',
+                      border: '1px solid rgba(120, 53, 15, 0.15)'
+                    }}
+                  >
+                    <div
+                      className="absolute inset-1 rounded-[22px]"
+                      style={{ border: '2px solid rgba(255, 255, 255, 0.35)' }}
+                    />
+                    <FiCamera
+                      className="relative w-7 h-7"
+                      strokeWidth={2.6}
+                      style={{ color: '#78350f' }}
+                    />
+                  </div>
+                </motion.button>
+              );
+            }
             
             return (
               <motion.button

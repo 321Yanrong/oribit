@@ -1299,6 +1299,7 @@ export default function MemoryStreamPage() {
     scrollPositions,
     memoryCommentReadMarkers,
     memoryCommentUnreadCount,
+    memoryComposerRequestId,
     setMemoryStreamSearchQuery,
     setMemoryStreamFilterFriendIds,
     setMemoryStreamGroupBy,
@@ -1307,6 +1308,7 @@ export default function MemoryStreamPage() {
     setScrollPosition,
     markMemoryCommentsRead,
     setMemoryCommentUnreadCount,
+    clearMemoryComposerRequest,
   } = useUIStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
@@ -1329,10 +1331,7 @@ export default function MemoryStreamPage() {
   const [albumFilterFriendIds, setAlbumFilterFriendIds] = useState<string[]>([]);
   const [albumDateRange, setAlbumDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   // Top-of-page month filter (YYYY-MM) — keep UI consistent with LedgerPage
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [currentMonth, setCurrentMonth] = useState('');
   // Top-of-page sort order for memory list: newest first ('desc') or oldest first ('asc')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAlbumFilterDialog, setShowAlbumFilterDialog] = useState(false);
@@ -1959,6 +1958,12 @@ export default function MemoryStreamPage() {
   }, []);
 
   useEffect(() => {
+    if (!memoryComposerRequestId) return;
+    setIsCreateOpen(true);
+    clearMemoryComposerRequest();
+  }, [memoryComposerRequestId, clearMemoryComposerRequest]);
+
+  useEffect(() => {
     if (isLoading || scrollRestoredRef.current) return;
     const savedY = scrollPositions['memory-stream'] || 0;
     scrollRestoredRef.current = true;
@@ -2165,28 +2170,27 @@ export default function MemoryStreamPage() {
               {currentMonth && (
                 <button
                   type="button"
-                  // 在手指刚碰到的瞬间就清空数据并阻止默认行为，不给 iOS 唤起键盘的机会
+                  aria-label="清空月份筛选"
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setCurrentMonth('');
                   }}
-                  // 保留 onClick 兼容 PC 端调试
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setCurrentMonth('');
                   }}
-                  // 把 absolute 去掉，让它变成正常的 flex 排列，或者用负 margin 调整位置
-                  className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] shrink-0 translate-x-1"
-                  style={{ 
-                    backgroundColor: 'var(--orbit-surface)', 
-                    borderColor: 'var(--orbit-border)', 
-                    color: 'var(--orbit-text-muted, #9ca3af)', 
-                    zIndex: 10 
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium shrink-0"
+                  style={{
+                    backgroundColor: 'var(--orbit-surface)',
+                    borderColor: 'var(--orbit-border)',
+                    color: 'var(--orbit-text-muted, #9ca3af)',
+                    zIndex: 10,
                   }}
                 >
                   ✕
+                  <span>清空</span>
                 </button>
               )}
             </div>

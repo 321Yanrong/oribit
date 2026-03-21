@@ -270,11 +270,7 @@ export default function LedgerPage() {
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [editingLedger, setEditingLedger] = useState<any>(null);
   const [groupBy, setGroupBy] = useState<'memory' | 'city'>('memory');
- // 1. 添加当前月份状态 (默认当前月)
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [currentMonth, setCurrentMonth] = useState('');
 
   // 2. 过滤出当前月份的账单，并计算本月我花费的总额
   const { filteredLedgers, monthlyTotal } = useMemo(() => {
@@ -338,6 +334,7 @@ export default function LedgerPage() {
       setIsRefreshingPull(false);
     }
   };
+  const currentMonthLabel = currentMonth ? currentMonth.replace('-', ' / ') : '全部';
   
   const cityGrouped = useMemo(() => {
     const map: Record<string, { city: string; ledgers: any[]; total: number }> = {};
@@ -417,7 +414,7 @@ export default function LedgerPage() {
             
             {/* 月份筛选器 (透明覆盖式) */}
             <div className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
-              <span className="text-sm font-mono font-medium">{currentMonth.replace('-', ' / ')}</span>
+              <span className="text-sm font-mono font-medium">{currentMonthLabel}</span>
               <FaChevronDown className="text-[10px] opacity-50" />
               {/* 核心：把 input 变透明铺满整个框，点击任意位置都能触发 */}
               <input 

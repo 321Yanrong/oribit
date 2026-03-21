@@ -33,6 +33,7 @@ interface UIState {
   scrollPositions: Record<string, number>;
   memoryCommentReadMarkers: Record<string, string>;
   memoryCommentUnreadCount: number;
+  memoryComposerRequestId: number;
 
   setMemoryStreamSearchQuery: (value: string) => void;
   setMemoryStreamFilterFriendIds: (value: string[]) => void;
@@ -42,6 +43,8 @@ interface UIState {
   setScrollPosition: (pageKey: string, y: number) => void;
   markMemoryCommentsRead: (memoryId: string, lastSeenAt: string) => void;
   setMemoryCommentUnreadCount: (value: number) => void;
+  triggerMemoryComposerRequest: () => void;
+  clearMemoryComposerRequest: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -54,6 +57,7 @@ export const useUIStore = create<UIState>()(
       scrollPositions: {},
       memoryCommentReadMarkers: {},
       memoryCommentUnreadCount: 0,
+      memoryComposerRequestId: 0,
 
       setMemoryStreamSearchQuery: (value) => set({ memoryStreamSearchQuery: value }),
       setMemoryStreamFilterFriendIds: (value) => set({ memoryStreamFilterFriendIds: value }),
@@ -75,6 +79,8 @@ export const useUIStore = create<UIState>()(
           },
         })),
       setMemoryCommentUnreadCount: (value) => set({ memoryCommentUnreadCount: value }),
+      triggerMemoryComposerRequest: () => set({ memoryComposerRequestId: Date.now() }),
+      clearMemoryComposerRequest: () => set({ memoryComposerRequestId: 0 }),
     }),
     {
       name: 'orbit-ui-state-v2',

@@ -1162,11 +1162,13 @@ const FontSizePage = ({
   onClose,
   currentFontSize,
   onSave,
+  isDarkMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
   currentFontSize: 'small' | 'normal' | 'large';
   onSave: (size: 'small' | 'normal' | 'large') => void;
+  isDarkMode: boolean;
 }) => {
   const [draftFontSize, setDraftFontSize] = useState<'small' | 'normal' | 'large'>(currentFontSize);
   const [followSystem, setFollowSystem] = useState(false);
@@ -1199,13 +1201,22 @@ const FontSizePage = ({
         ? '46px'
         : '40px';
 
+  const overlayBg = isDarkMode ? '#0b1324' : '#f5f5f7';
+  const headingColor = isDarkMode ? '#e5e7eb' : '#000000';
+  const bodyColor = isDarkMode ? '#d5d9e5' : '#303133';
+  const subtleTextColor = isDarkMode ? '#94a3b8' : '#9ca3af';
+  const optionLabelColor = isDarkMode ? '#64748b' : '#b0b3b8';
+  const cardBg = isDarkMode ? '#0f172a' : '#ffffff';
+  const cardBorder = isDarkMode ? '#1f2937' : 'transparent';
+  const sliderAccent = isDarkMode ? '#475569' : '#c8cdd3';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[107]"
-      style={{ background: '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      style={{ background: overlayBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -1218,11 +1229,11 @@ const FontSizePage = ({
           <button
             onClick={onClose}
             className="absolute left-4 text-[16px]"
-            style={{ color: '#6b7280' }}
+            style={{ color: subtleTextColor }}
           >
             取消
           </button>
-          <h2 className="text-[18px] font-semibold" style={{ color: '#000000' }}>字体大小</h2>
+          <h2 className="text-[18px] font-semibold" style={{ color: headingColor }}>字体大小</h2>
           <button
             onClick={() => {
               onSave(followSystem ? 'normal' : draftFontSize);
@@ -1236,28 +1247,36 @@ const FontSizePage = ({
         </div>
 
         <div className="px-6 pt-10 text-center">
-          <p style={{ color: '#303133', fontSize: previewFontSize, lineHeight: previewLineHeight }}>
+          <p style={{ color: bodyColor, fontSize: previewFontSize, lineHeight: previewLineHeight }}>
             拖动下面的滑块，可设置 Orbit App 的字体大小。选择
             合适的档位后，点击右上角保存即可应用。
           </p>
         </div>
 
-        <div className="fixed left-4 right-4 bottom-[max(16px,env(safe-area-inset-bottom))] rounded-3xl p-5" style={{ background: '#ffffff' }}>
+        <div
+          className="fixed left-4 right-4 bottom-[max(16px,env(safe-area-inset-bottom))] rounded-3xl p-5"
+          style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[20px] font-semibold" style={{ color: '#000000' }}>跟随系统设置</span>
+            <span className="text-[20px] font-semibold" style={{ color: headingColor }}>跟随系统设置</span>
             <button
               onClick={() => setFollowSystem((prev) => !prev)}
-              className={`w-14 h-8 rounded-full transition-colors ${followSystem ? 'bg-[#ff2442]' : 'bg-[#d1d5db]'}`}
+              className="w-14 h-8 rounded-full transition-colors flex items-center"
+              style={{ background: followSystem ? '#ff2442' : (isDarkMode ? '#1f2937' : '#d1d5db') }}
             >
-              <motion.div animate={{ x: followSystem ? 30 : 2 }} className="w-7 h-7 rounded-full bg-white shadow" />
+              <motion.div
+                animate={{ x: followSystem ? 30 : 2 }}
+                className="w-7 h-7 rounded-full shadow"
+                style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }}
+              />
             </button>
           </div>
-          <p className="mt-2 text-[13px]" style={{ color: '#9ca3af' }}>开启后 Orbit App 的字体大小将跟随系统设置</p>
+          <p className="mt-2 text-[13px]" style={{ color: subtleTextColor }}>开启后 Orbit App 的字体大小将跟随系统设置</p>
 
           <div className="mt-4">
             <div className="flex items-center justify-between px-1 mb-4">
               {options.map((item) => (
-                <span key={item.key} className="text-[12px]" style={{ color: '#b0b3b8' }}>{item.label}</span>
+                <span key={item.key} className="text-[12px]" style={{ color: optionLabelColor }}>{item.label}</span>
               ))}
             </div>
 
@@ -1269,7 +1288,8 @@ const FontSizePage = ({
               value={currentIndex < 0 ? 1 : currentIndex}
               disabled={followSystem}
               onChange={(e) => setDraftFontSize(options[Number(e.target.value)]?.key || 'normal')}
-              className="w-full accent-[#c8cdd3]"
+              className="w-full"
+              style={{ accentColor: sliderAccent }}
             />
           </div>
         </div>
@@ -4421,6 +4441,7 @@ const handleAddFriend = async (name: string, remark: string) => {
             onClose={() => setShowFontSizePage(false)}
             currentFontSize={settings.fontSize}
             onSave={(size) => updateSettings({ fontSize: size })}
+            isDarkMode={isDarkMode}
           />
         )}
       </AnimatePresence>
