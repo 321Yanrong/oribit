@@ -293,7 +293,10 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           </div>
         </motion.div>
 
-        <div className="px-4 pb-32 w-full max-w-3xl mx-auto" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
+        <div
+          className="px-4 pb-32 w-full max-w-3xl mx-auto"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+        >
           {memory.location && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}

@@ -92,4 +92,4 @@ export interface MapPin {
 }
 
 // 导航页面类型
-export type PageType = 'map' | 'memory' | 'ledger' | 'profile' | 'games';
+export type PageType = 'map' | 'memory' | 'ledger' | 'profile';

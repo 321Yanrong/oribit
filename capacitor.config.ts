@@ -11,7 +11,9 @@ const config: CapacitorConfig = {
     contentInset: 'always',
     // 关键：原生底层的背景色。当网页还没加载出来，或者你下拉回弹时，显示的颜色
     // 请确保这里的颜色和你 index.html 里的 #121212 完全一致
-    backgroundColor: '#121212', 
+    backgroundColor: '#121212',
+    // 禁用原生 WebView 的橡皮筋回弹
+    scrollEnabled: true,
   },
 
   plugins: {
@@ -36,6 +38,10 @@ const config: CapacitorConfig = {
       iosSpinnerStyle: "small",
       splashFullScreen: true,
       splashImmersive: true,
+    },
+
+    Keyboard: {
+      resize: 'body',
     },
   },
 };

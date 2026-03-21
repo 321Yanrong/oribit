@@ -3646,6 +3646,19 @@ const handleAddFriend = async (name: string, remark: string) => {
   const sortedMemories = [...memories].sort(
     (a: any, b: any) => new Date(b?.memory_date || b?.created_at || 0).getTime() - new Date(a?.memory_date || a?.created_at || 0).getTime()
   );
+  const getCityFromMemory = (memory: any): string => {
+    if (!memory) return '';
+    const addr = memory?.location?.address || '';
+    const name = memory?.location?.name || '';
+    const cityField = memory?.location?.city || memory?.location?.district || '';
+    const cityMatch = addr.match(/([\u4e00-\u9fa5]{2,8}(?:市|州))/);
+    if (cityMatch) return cityMatch[1];
+    const provinceMatch = addr.match(/([\u4e00-\u9fa5]{2,8}省)/);
+    if (provinceMatch) return provinceMatch[1];
+    if (cityField) return cityField;
+    if (name) return `${name.slice(0, 4)}附近`;
+    return '';
+  };
   const getMemoryCover = (memory: any) => {
     if (!memory) return '';
     const firstPhoto = Array.isArray(memory.photos) ? memory.photos[0] : '';
@@ -3666,6 +3679,7 @@ const handleAddFriend = async (name: string, remark: string) => {
       sortedMemories[0]?.memory_date || sortedMemories[0]?.created_at
     )
     : null;
+  const latestActivePlace = memories.length ? getCityFromMemory(sortedMemories[0]) : '';
 
   const currentYear = new Date().getFullYear();
   const memoriesThisYear = memories.filter((m: any) => {
@@ -3795,16 +3809,32 @@ const handleAddFriend = async (name: string, remark: string) => {
 
   return (
     <div
-      className="relative min-h-screen pb-28"
-      style={{ background: 'var(--orbit-surface)', color: 'var(--orbit-text)' }}
+      className="relative min-h-screen pb-28 hide-scrollbar"
+      style={{
+        background: 'var(--orbit-surface)',
+        color: 'var(--orbit-text)',
+        minHeight: 'calc(100vh + 1px)',
+        overscrollBehaviorY: 'none',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)'
+      }}
     >
       {/* <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} /> */}
-      <div className="absolute inset-0 opacity-70" style={{ background: `radial-gradient(circle at 50% -10%, rgba(0, 0, 0, 0.04) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(0, 0, 0, 0.03) 0%, transparent 35%)` }} />
+      <div
+      
+        className="fixed inset-0 opacity-70 pointer-events-none"
+        style={{ background: `radial-gradient(circle at 50% -10%, rgba(0, 0, 0, 0.04) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(0, 0, 0, 0.03) 0%, transparent 35%)` }}
+      />
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       
       {/* 顶部个人卡片 */}
       
-      <div className="relative top-0 z-10 mx-4">
+      {/* 顶部内容保留安全区内边距，避免被灵动岛遮挡 */}
+      <div
+        className="relative top-0 z-10 mx-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+      >
         <motion.div
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -4030,7 +4060,7 @@ const handleAddFriend = async (name: string, remark: string) => {
               </div>
               <p className="text-sm mt-2" style={{ color: 'var(--orbit-text)' }}>记录生活碎片 ✨</p>
               <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted)' }}>
-                上海 · 最近活跃 {latestActiveAt ? latestActiveAt.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '今天'}
+                {(latestActivePlace || '最近位置未知')} · 最近活跃 {latestActiveAt ? latestActiveAt.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '今天'}
               </p>
             </div>
           </div>
@@ -4278,7 +4308,8 @@ const handleAddFriend = async (name: string, remark: string) => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-              className="h-full w-[72%] max-w-[300px] px-3 pt-4 pb-4 flex flex-col"
+              className="h-full w-[72%] max-w-[300px] px-3 pb-4 flex flex-col pt-[calc(env(safe-area-inset-top)+16px)]"
+              // className="h-full w-[72%] max-w-[300px] px-3 pt-4 pb-4 flex flex-col"
               style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
               onClick={(e) => e.stopPropagation()}
             >

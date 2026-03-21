@@ -405,7 +405,10 @@ export default function LedgerPage() {
   return (
     <div className={`relative min-h-screen pb-28 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
 {/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
-      <div className={`sticky top-0 z-20 px-6 pb-5 ${bgMain} border-b ${borderLine}`} style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
+      <div
+        className={`sticky top-0 z-20 px-6 pb-5 ${bgMain} border-b ${borderLine}`}
+        style={{ top: 0, paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)' }}
+      >
         
         {/* 第一行：标题、月份筛选、记一笔 */}
         <div className="flex items-center justify-between mb-4">

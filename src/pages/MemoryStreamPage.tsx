@@ -2142,26 +2142,65 @@ export default function MemoryStreamPage() {
           </button>
           {/* 顶部月份筛选 + 排序（与财务页保持一致） */}
           <div className="flex items-center gap-2">
-            <div className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border`} style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
-              <span className="text-sm font-mono font-medium">{currentMonth ? currentMonth.replace('-', ' / ') : '全部'}</span>
-              <ChevronDownIcon className="text-[10px] opacity-50" />
-              <input
-                type="month"
-                value={currentMonth}
-                onChange={e => setCurrentMonth(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                style={{ colorScheme: 'light' }}
-              />
+          {/* 外层容器：只负责背景色和边框，注意去掉了 relative */}
+            <div 
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border relative" 
+              style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+            >
+            
+              {/* 🌟 1. 隔离区：只让 input 盖住文字和箭头，绝不越界 */}
+              <div className="relative flex items-center gap-1.5">
+                <span className="text-sm font-mono font-medium">{currentMonth ? currentMonth.replace('-', ' / ') : '全部'}</span>
+                <ChevronDownIcon className="text-[10px] opacity-50" />
+                <input
+                  type="month"
+                  value={currentMonth}
+                  onChange={e => setCurrentMonth(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  style={{ colorScheme: 'light', zIndex: 1 }}
+                />
+              </div>
+
+              {/* 🌟 2. 杀手锏：使用 onPointerDown 提前击杀系统事件 */}
+              {currentMonth && (
+                <button
+                  type="button"
+                  // 在手指刚碰到的瞬间就清空数据并阻止默认行为，不给 iOS 唤起键盘的机会
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentMonth('');
+                  }}
+                  // 保留 onClick 兼容 PC 端调试
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentMonth('');
+                  }}
+                  // 把 absolute 去掉，让它变成正常的 flex 排列，或者用负 margin 调整位置
+                  className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] shrink-0 translate-x-1"
+                  style={{ 
+                    backgroundColor: 'var(--orbit-surface)', 
+                    borderColor: 'var(--orbit-border)', 
+                    color: 'var(--orbit-text-muted, #9ca3af)', 
+                    zIndex: 10 
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
+            
+            {/* 时间排序按钮保持不变 */}
             <button
               onClick={() => setSortOrder((s) => (s === 'desc' ? 'asc' : 'desc'))}
               className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border"
               style={{ backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
-              title={sortOrder === 'desc' ? '按时间从新到旧' : '按时间从旧到新'}
             >
               时间 {sortOrder === 'desc' ? '↓' : '↑'}
             </button>
           </div>
+
         </div>
 
         {/* 好友筛选（支持多选，AND 逻辑：选中的好友必须同时出现） */}

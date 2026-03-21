@@ -15,7 +15,6 @@ import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
 import ProfilePage from './pages/ProfilePage';
-import GamesPage from './pages/GamesPage';
 import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
 import { Analytics } from '@vercel/analytics/react';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -969,8 +968,6 @@ function App() {
         return <MemoryStreamPage />;
       case 'ledger':
         return <LedgerPage />;
-      case 'games':
-        return <GamesPage />;
       case 'profile':
         return <ProfilePage />;
       default:
@@ -986,6 +983,8 @@ function App() {
     : (isDemoMode || showEarlyAccessBanner
       ? 'calc(env(safe-area-inset-top, 0px) + 28px)'
       : 'calc(env(safe-area-inset-top, 0px) + 8px)');
+
+  const shouldOffsetContent = currentPage !== 'map' && (isDemoMode || showEarlyAccessBanner);
 
   return (
     <div
@@ -1031,7 +1030,8 @@ function App() {
               >知道了</button>
             </div>
           )}
-          <div style={{ paddingTop: contentPaddingTop, position: 'relative' }}>
+          {/* <div style={{ paddingTop: contentPaddingTop, position: 'relative' }}> */}
+         <div style={{ position: 'relative' }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPage}
@@ -1039,6 +1039,12 @@ function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
+                style={{
+                  height: 'auto',
+                  minHeight: '100%',
+                  touchAction: currentPage === 'map' ? 'none' : 'pan-y',
+                  paddingTop: shouldOffsetContent ? contentPaddingTop : '0px',
+                }}
               >
                 {renderPage()}
               </motion.div>
