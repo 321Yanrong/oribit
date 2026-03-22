@@ -4,16 +4,16 @@ const config: CapacitorConfig = {
   appId: 'com.wehihi.orbit',
   appName: 'Orbit 轨迹',
   webDir: 'dist',
-  
-  // iOS 平台专属配置
+
+  // // iOS 平台专属配置
   ios: {
-    // 允许内容铺满，包括刘海区域
-    contentInset: 'always',
+    // 由前端自行处理 safe-area，允许页面真正贴到底部
+    contentInset: 'never',
     // 关键：原生底层的背景色。当网页还没加载出来，或者你下拉回弹时，显示的颜色
     // 请确保这里的颜色和你 index.html 里的 #121212 完全一致
-    backgroundColor: '#121212',
+    backgroundColor: '#000000',
     // 禁用原生 WebView 的橡皮筋回弹
-    scrollEnabled: true,
+    scrollEnabled: false,
   },
 
   plugins: {
@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
       overlaysWebView: true,
       // 如果你的 App 是深色背景，建议把状态栏文字设为白色 (LIGHT)
       // 如果是浅色背景，设为 DARK
-      style: 'LIGHT', 
+      // style: 'LIGHT',
     },
 
     // 原生启动图配置：这是系统级别的“接力棒”
@@ -41,7 +41,7 @@ const config: CapacitorConfig = {
     },
 
     Keyboard: {
-      resize: 'body',
+      resize: 'none',
     },
   },
 };

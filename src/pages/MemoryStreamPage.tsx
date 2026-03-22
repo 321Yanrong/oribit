@@ -882,6 +882,7 @@ const CreateMemoryModal = ({
   const addLedgerItem = () => setLedgerItems(prev => [...prev, { id: Date.now().toString(), category: '💊 其他', note: '', amount: '' }]);
   const removeLedgerItem = (id: string) => setLedgerItems(prev => prev.length > 1 ? prev.filter(i => i.id !== id) : prev);
   const updateLedgerItem = (id: string, field: keyof LedgerItem, value: string) => setLedgerItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
+  const modalTopOffset = 'clamp(48px, calc(env(safe-area-inset-top, 0px) + 72px), 160px)';
 
   // 2. 逻辑处理
   const toggleFriend = (friendId: string) => {
@@ -1049,8 +1050,13 @@ const CreateMemoryModal = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto rounded-t-3xl pb-24 shadow-2xl"
-        style={{ background: 'var(--orbit-surface)', color: 'var(--orbit-text)', borderTop: '1px solid var(--orbit-border)' }}
+        className="absolute bottom-0 left-0 right-0 overflow-y-auto rounded-t-3xl pb-24 shadow-2xl"
+        style={{
+          background: 'var(--orbit-surface)',
+          color: 'var(--orbit-text)',
+          borderTop: '1px solid var(--orbit-border)',
+          top: modalTopOffset,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 标题栏 */}

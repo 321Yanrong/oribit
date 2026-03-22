@@ -17,6 +17,7 @@
     "@capacitor/android": "^8.2.0",
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
+    "@capacitor/keyboard": "^8.0.1",
     "@capacitor/status-bar": "^8.0.1",
     "@headlessui/react": "^1.7.18",
     "@supabase/supabase-js": "^2.98.0",

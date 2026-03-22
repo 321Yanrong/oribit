@@ -68,7 +68,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const { selectedPin, setSelectedPin } = useMapStore();
   const { memories, fetchMemories, selectedFriendIds, setSelectedFriendIds } = useMemoryStore();
   const { friends, currentUser } = useUserStore();
-  
+
   const [showMemoryDetail, setShowMemoryDetail] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null); // 单条记忆详情
   const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
@@ -80,7 +80,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [mapGroupBy, setMapGroupBy] = useState<'location' | 'city'>('location');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  
+
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]); // 存储 Mapbox 的 Marker 实例，方便后续清理
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,7 +144,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   useEffect(() => {
     if (currentUser?.id) {
       fetchMemories()
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => setMemoriesFetched(true));
     } else {
       setMemoriesFetched(false);
@@ -537,7 +537,15 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   };
 
   return (
-    <div className="relative h-screen w-full overflow-hidden" style={{ background: 'transparent' }}>
+    <div
+      className="relative w-full overflow-hidden"
+      style={{
+        background: 'transparent',
+        minHeight: '100dvh',
+        height: '100dvh',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {toastMessage && (
         <div className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-[95]">
           <div
@@ -552,12 +560,12 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         </div>
       )}
       {/* Mapbox 地图容器 */}
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         className="absolute inset-0"
         style={{ opacity: mapLoaded ? 1 : 0.25, transition: 'opacity 0.8s', width: '100%', height: '100%' }}
       />
-      
+
       {/* 顶部导航栏 (加了 pointer-events-none 防止挡住地图点击) */}
       <div className="absolute top-0 left-0 right-0 z-20 safe-top pointer-events-none">
         <div className="mx-4 pointer-events-auto">
@@ -590,7 +598,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                 </div>
               </div>
             </div>
-            
+
             {/* 好友头像筛选器 */}
             <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1">
               <motion.button
@@ -602,7 +610,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                   <span className={`text-sm font-bold ${selectedFriendIds.length === 0 ? 'text-black' : 'text-white'}`}>全部</span>
                 </div>
               </motion.button>
-              
+
               {friends.map((friendship: any) => {
                 const friend = friendship.friend;
                 const isSelected = selectedFriendIds.includes(friend.id);
@@ -630,7 +638,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
           </motion.div>
         </div>
       </div>
-      
+
       {/* 记忆列表底部弹窗 */}
       <AnimatePresence>
         {showMemoryDetail && selectedPin && !selectedMemory && (
@@ -676,7 +684,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                     currentUser?.id,
                     friends
                   ).map((id: string) => getTaggedDisplayName(id, memory.user_id, currentUser, friends))
-                   .filter(Boolean);
+                    .filter(Boolean);
 
                   return (
                     <motion.div

@@ -38,8 +38,8 @@ export default defineConfig({
               plugins: [
                 {
                   handlerDidError: async () => {
-                    const cached = await caches.match('/offline.html');
-                    return cached || Response.error();
+                    const cached = await (globalThis as any).caches.match('/offline.html'); // Added type assertion to fix TypeScript error
+                    return cached;
                   },
                 },
               ],

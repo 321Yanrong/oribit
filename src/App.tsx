@@ -7,7 +7,7 @@ import { useAppStore } from './store/app';
 import { usePushSetup } from './hooks/useOneSignal';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
-import BottomNav from './components/BottomNav';
+import BottomNav, { BOTTOM_NAV_CONTENT_GAP } from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import PWABanners from './components/PWABanners';
 import SplashScreen from './components/SplashScreen';
@@ -18,6 +18,7 @@ import ProfilePage from './pages/ProfilePage';
 import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
 import { Analytics } from '@vercel/analytics/react';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
@@ -71,10 +72,7 @@ const useNativeStatusBar = () => {
     if (Capacitor.isNativePlatform()) {
       const initStatusBar = async () => {
         try {
-          // 开启沉浸式（网页内容顶到刘海下面）
           await StatusBar.setOverlaysWebView({ overlay: true });
-          // 设置状态栏文字颜色（Style.Dark 是暗色文字，适合浅色主题）
-          // 如果你的 App 是自适应深浅色的，这里甚至可以根据 isSystemDark 动态切换！
           await StatusBar.setStyle({ style: Style.Dark });
         } catch (e) {
           console.warn('沉浸式状态栏初始化失败:', e);
@@ -82,6 +80,20 @@ const useNativeStatusBar = () => {
       };
       initStatusBar();
     }
+  }, []);
+};
+
+const useNativeKeyboardGuard = () => {
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const configureKeyboard = async () => {
+      try {
+        await Keyboard.setResizeMode({ mode: KeyboardResize.None });
+      } catch (err) {
+        console.warn('Keyboard resize guard failed:', err);
+      }
+    };
+    configureKeyboard();
   }, []);
 };
 
@@ -117,7 +129,6 @@ const usePWAKeeper = (onResume: () => void) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 缩短唤醒硬刷新阈值，移动端 30s 即触发，避免长后台假连接
     const HARD_RELOAD_THRESHOLD_MS = 30 * 1000;
     const SESSION_TIMEOUT_MS = 5000;
 
@@ -213,6 +224,15 @@ function App() {
   useAegisMonitor();
   usePushSetup();
   useNativeStatusBar();
+  useNativeKeyboardGuard();
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const pageFlag = showSplash ? 'splash' : currentPage;
+    document.body.dataset.page = pageFlag;
+    const root = document.getElementById('root');
+    if (root) root.setAttribute('data-page', pageFlag);
+  }, [currentPage, showSplash]);
 
   // 注册 Service Worker 并监听更新
   useEffect(() => {
@@ -728,7 +748,7 @@ function App() {
     if (params.get('demo') === '1') {
       handleDemo();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, isDemoMode]);
 
   useEffect(() => {
@@ -805,7 +825,7 @@ function App() {
         }
 
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
+
         // 过滤掉原生的获取用户时的 AbortError
         if (authError?.message?.includes('AbortError')) return;
         if (authError && isLikelyInvalidSession(authError.message)) {
@@ -821,7 +841,7 @@ function App() {
               if (isMounted) setCurrentUser({ ...profile, avatar_url: cleanUrl });
               // Silently patch the DB if the stored URL was the old broken format
               if (cleanUrl !== profile.avatar_url) {
-                supabase.from('profiles').update({ avatar_url: cleanUrl }).eq('id', user.id).then(() => {});
+                supabase.from('profiles').update({ avatar_url: cleanUrl }).eq('id', user.id).then(() => { });
               }
               // Fetch all data for this user
               useMemoryStore.getState().fetchMemories();
@@ -846,13 +866,13 @@ function App() {
           } catch (profileError: any) {
             // 🚨 核心拦截：如果是因为严格模式抢锁导致的报错，直接无视，不往下走！
             if (profileError.message?.includes('AbortError') || profileError.name === 'AbortError') {
-              return; 
+              return;
             }
             if (isLikelyInvalidSession(profileError.message)) {
               await handleInvalidSession('profile fetch invalid');
               return;
             }
-            
+
             if (isMounted) {
               // Profile不存在，创建临时用户数据
               console.log('Profile not found, using temp data');
@@ -874,7 +894,7 @@ function App() {
           await handleInvalidSession('checkAuth outer invalid');
           return;
         }
-        
+
         if (isMounted) {
           console.error('Auth check failed:', error);
           setShowAuth(true);
@@ -888,7 +908,7 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         // 避免和初始化的 checkAuth 撞车
-        if (event === 'INITIAL_SESSION') return; 
+        if (event === 'INITIAL_SESSION') return;
 
         if (event === 'SIGNED_IN' && session?.user) {
           // Clear previous user's data immediately
@@ -925,7 +945,7 @@ function App() {
             saveInviteCode(session.user.id, generateInviteCode(session.user.id));
           } catch (profileError: any) {
             if (profileError.message?.includes('AbortError') || profileError.name === 'AbortError') return;
-            
+
             if (isMounted) {
               console.log('Profile not found on sign in');
               setCurrentUser({
@@ -978,23 +998,28 @@ function App() {
   // 全局内容区域顶部内边距：
   // - 默认：预留状态栏安全区 + 8px 额外间距，让页面文字不顶在最上方
   // - 演示横幅 / 内测横幅：在安全区基础上叠加各自高度
+  const isMapPage = currentPage === 'map';
+
   const contentPaddingTop = isDemoMode && showEarlyAccessBanner
     ? 'calc(env(safe-area-inset-top, 0px) + 56px)'
     : (isDemoMode || showEarlyAccessBanner
       ? 'calc(env(safe-area-inset-top, 0px) + 28px)'
       : 'calc(env(safe-area-inset-top, 0px) + 8px)');
 
-  const shouldOffsetContent = currentPage !== 'map' && (isDemoMode || showEarlyAccessBanner);
+  const shouldOffsetContent = !isMapPage && (isDemoMode || showEarlyAccessBanner);
+  const baseContentPaddingTop = '0px'; // 非地图页在没有横幅时内容直接顶在顶部，地图页始终不预留顶部内边距
+  const effectiveContentPaddingTop = isMapPage ? '0px' : (shouldOffsetContent ? contentPaddingTop : baseContentPaddingTop);
+  const effectiveContentPaddingBottom = isMapPage ? '0px' : BOTTOM_NAV_CONTENT_GAP;
 
   return (
     <div
-      className="min-h-screen overflow-x-hidden"
-      style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', color: 'var(--orbit-text, #0f172a)' }}
+      className="min-h-[100dvh] flex flex-col overflow-x-hidden"
+      style={{ backgroundColor: 'var(--app-root-bg)', color: 'var(--orbit-text)' }}
     >
       {loading ? (
         <div
-          className="min-h-screen flex items-center justify-center"
-          style={{ backgroundColor: 'var(--orbit-surface, #ffffff)' }}
+          className="h-[150dvh] flex items-center justify-center"
+          style={{ backgroundColor: 'var(--app-root-bg)' }}
         >
           <motion.div
             animate={{ rotate: 360 }}
@@ -1030,8 +1055,17 @@ function App() {
               >知道了</button>
             </div>
           )}
-          {/* <div style={{ paddingTop: contentPaddingTop, position: 'relative' }}> */}
-         <div style={{ position: 'relative' }}>
+          <main
+            className="flex-1 relative"
+            style={{
+              paddingTop: effectiveContentPaddingTop,
+              paddingBottom: effectiveContentPaddingBottom,
+              minHeight: isMapPage ? '100dvh' : undefined,
+              backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)',
+              overflowX: 'hidden',
+              overflowY: isMapPage ? 'hidden' : 'auto',
+            }}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPage}
@@ -1039,68 +1073,73 @@ function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
+                className="h-full w-full"
                 style={{
-                  height: 'auto',
-                  minHeight: '100%',
-                  touchAction: currentPage === 'map' ? 'none' : 'pan-y',
-                  paddingTop: shouldOffsetContent ? contentPaddingTop : '0px',
+                  minHeight: isMapPage ? '100dvh' : '100%',
+                  height: isMapPage ? '100dvh' : undefined,
+                  touchAction: isMapPage ? 'none' : 'pan-y',
+                  backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)',
                 }}
               >
                 {renderPage()}
               </motion.div>
             </AnimatePresence>
-            
-            {!isSettingsOpen && <BottomNav />}
+
             <PWABanners />
-            {swUpdateReady && (
-              <div className="fixed bottom-24 left-4 right-4 z-[9999] rounded-2xl border shadow-lg px-4 py-3 flex items-center justify-between gap-3"
-                style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-              >
-                <div className="text-sm font-semibold">发现新版本，点击刷新立即使用</div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSwUpdateReady(false)}
-                    className="text-xs px-3 py-1 rounded-full border"
-                    style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #9ca3af)' }}
-                  >稍后</button>
-                  <button
-                    onClick={activateSwUpdate}
-                    className="text-xs px-3 py-1 rounded-full font-semibold"
-                    style={{ background: 'linear-gradient(90deg, #00FFB3, #00D9FF)', color: '#0f172a' }}
-                  >刷新</button>
-                </div>
-              </div>
-            )}
-            {sessionInvalid && (
-              <div className="fixed bottom-16 left-4 right-4 z-[9999] bg-red-600 text-white rounded-2xl shadow-lg p-3 flex items-center justify-between gap-3">
-                <div className="text-sm font-medium">登录状态已失效，请重新连接</div>
+          </main>
+
+          {!isSettingsOpen && <BottomNav />}
+
+          {swUpdateReady && (
+            // <div className="fixed bottom-24 left-4 right-4 z-[9999] rounded-2xl border shadow-lg px-4 py-3 flex items-center justify-between gap-3"
+            <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+85px)] left-4 right-4 z-[9999] rounded-2xl border shadow-lg px-4 py-3 flex items-center justify-between gap-3"
+              style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+            >
+              <div className="text-sm font-semibold">发现新版本，点击刷新立即使用</div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={attemptReconnect}
-                  className="bg-white text-red-600 font-semibold px-3 py-1 rounded-full text-sm shadow-sm"
-                >重新连接</button>
+                  onClick={() => setSwUpdateReady(false)}
+                  className="text-xs px-3 py-1 rounded-full border"
+                  style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #9ca3af)' }}
+                >稍后</button>
+                <button
+                  onClick={activateSwUpdate}
+                  className="text-xs px-3 py-1 rounded-full font-semibold"
+                  style={{ background: 'linear-gradient(90deg, #00FFB3, #00D9FF)', color: '#0f172a' }}
+                >刷新</button>
               </div>
+            </div>
+          )}
+          {sessionInvalid && (
+            <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+85px)] left-4 right-4 z-[9999] bg-red-600 text-white rounded-2xl shadow-lg p-3 flex items-center justify-between gap-3">
+              <div className="text-sm font-medium">登录状态已失效，请重新连接</div>
+              <button
+                onClick={attemptReconnect}
+                className="bg-white text-red-600 font-semibold px-3 py-1 rounded-full text-sm shadow-sm"
+              >重新连接</button>
+            </div>
+          )}
+
+          <Joyride
+            steps={onboardingSteps}
+            run={guideRun}
+            stepIndex={guideStepIndex}
+            continuous
+            showSkipButton
+            showProgress
+            scrollToFirstStep
+            disableScrolling
+            spotlightClicks
+            callback={handleJoyrideCallback}
+            styles={{ options: { zIndex: 9999 } }}
+          />
+
+          {/* 认证模态框 */}
+          <AnimatePresence>
+            {allowAuthModal && (!currentUser || showAuth) && (
+              <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
             )}
-            <Joyride
-              steps={onboardingSteps}
-              run={guideRun}
-              stepIndex={guideStepIndex}
-              continuous
-              showSkipButton
-              showProgress
-              scrollToFirstStep
-              disableScrolling
-              spotlightClicks
-              callback={handleJoyrideCallback}
-              styles={{ options: { zIndex: 9999 } }}
-            />
-            
-            {/* 认证模态框 */}
-            <AnimatePresence>
-              {allowAuthModal && (!currentUser || showAuth) && (
-                <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
-              )}
-            </AnimatePresence>
-          </div>
+          </AnimatePresence>
         </>
       )}
 

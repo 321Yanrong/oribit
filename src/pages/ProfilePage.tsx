@@ -8,6 +8,7 @@ import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteC
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import PullToRefresh from '../components/PullToRefresh';
+import { BOTTOM_NAV_CONTENT_GAP } from '../components/BottomNav';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -974,7 +975,7 @@ const HelpSupportPage = ({
                     <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>通过邮箱认证信息确认</span>
                     <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#b6b8bd' }} />
                   </button>
-                  
+
                 </div>
 
                 <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3ba' }}>此设备最近 7 天登录过的账户</p>
@@ -1596,11 +1597,10 @@ const AddFriendModal = ({
           <button
             onClick={handleAdd}
             disabled={loading || (tab === 'virtual' ? !name.trim() : realStep === 'input' ? code.length < 11 : false)}
-            className={`flex-1 py-3 rounded-xl font-semibold disabled:opacity-30 flex items-center justify-center gap-2 ${
-              tab === 'virtual'
-                ? 'bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black'
-                : 'bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white'
-            }`}
+            className={`flex-1 py-3 rounded-xl font-semibold disabled:opacity-30 flex items-center justify-center gap-2 ${tab === 'virtual'
+              ? 'bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black'
+              : 'bg-gradient-to-r from-[#FF9F43] to-[#FF6B6B] text-white'
+              }`}
           >
             {loading && <FaSpinner className="animate-spin" />}
             {tab === 'virtual' ? '添加临时好友' : realStep === 'input' ? '查找' : bindTarget === 'new' ? '确认添加' : '确认绑定'}
@@ -1738,14 +1738,14 @@ const BindFriendModal = ({
   if (!isOpen) return null;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" 
+      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl" 
+        className="w-full max-w-sm rounded-3xl p-6 shadow-2xl"
         style={{ background: 'var(--orbit-surface)', border: `1px solid var(--orbit-border)`, color: 'var(--orbit-text)' }}
         onClick={e => e.stopPropagation()}
       >
@@ -1755,11 +1755,11 @@ const BindFriendModal = ({
             <FaTimes className="text-gray-500" />
           </button>
         </div>
-        
+
         <p className="text-sm mb-6 text-gray-600">
           【<span className="text-emerald-600">{friend.real_username || friend.username}</span>】目前是临时好友。当他/她注册后，输入他/她的邀请码，即可将过去的回忆和账单无缝同步过去！
         </p>
-        
+
         <input
           type="text"
           placeholder="请输入对方的 6 位邀请码"
@@ -1768,7 +1768,7 @@ const BindFriendModal = ({
           className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-orbit-mint/40 mb-6 font-mono tracking-widest text-center text-lg"
           style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
         />
-        
+
         <button
           onClick={() => { onBind(friend.id, code); }}
           disabled={code.length < 6}
@@ -1833,7 +1833,7 @@ const InviteCodeModal = ({
             <FaTimes className="text-gray-500" />
           </button>
         </div>
-        
+
         <div className="text-center mb-6">
           <p className="text-sm mb-4 text-gray-600">
             分享给你的临时好友，让他们在列表里点击你，并输入此邀请码进行绑定。
@@ -1843,7 +1843,7 @@ const InviteCodeModal = ({
             <p className="text-3xl font-bold tracking-wider" style={{ color: 'var(--orbit-text)' }}>{inviteCode}</p>
           </div>
         </div>
-        
+
         <button
           onClick={handleCopy}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-black font-semibold flex items-center justify-center gap-2"
@@ -2035,7 +2035,7 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
   const stopSpeech = () => {
     try {
       speechRef.current?.stop?.();
-    } catch (_) {}
+    } catch (_) { }
     setListening(false);
   };
 
@@ -2778,11 +2778,37 @@ export default function ProfilePage() {
     ? new Date(appBuildTime).toLocaleString('zh-CN', { hour12: false })
     : '未知';
   const isSystemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  useEffect(() => {
+    if (!showAllFriends) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const root = document.getElementById('root');
+    const prevRootOverflow = root?.style.overflow;
+    document.body.style.overflow = 'hidden';
+    if (root) root.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      if (root) root.style.overflow = prevRootOverflow ?? '';
+    };
+  }, [showAllFriends]);
   const isDarkMode = settings.themeMode === 'dark' || (settings.themeMode === 'system' && isSystemDark);
   const modalSurfaceColor = isDarkMode ? '#0b0b0b' : '#ffffff';
   const modalPrimaryTextColor = isDarkMode ? '#f9fafb' : '#111';
   const modalSecondaryTextColor = isDarkMode ? '#9ca3af' : '#374151';
   const modalBorderColor = isDarkMode ? '#1f2937' : '#f3f4f6';
+  const resetNicknameScroll = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    document.body.style.overflow = 'hidden'; // 禁用滚动
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  }, []);
+  const cancelNameEditing = useCallback(() => {
+    setIsEditingName(false);
+    setNewName(currentUser?.username || '');
+    document.body.style.overflow = ''; // 恢复滚动
+    resetNicknameScroll();
+  }, [currentUser?.username, resetNicknameScroll]);
 
   const handleClearCache = async () => {
     if (typeof window === 'undefined') return;
@@ -3097,7 +3123,7 @@ Orbit平台按"现状"提供服务。对因网络故障、系统错误或不可�
 Orbit有权根据需要修改本协议，并将提前通知用户。
 
 最终解释权归Orbit团队所有。`;
-  
+
   const PRIVACY_TEXT = `Orbit 用户隐私政策
 
 Orbit 用户隐私政策-简明版
@@ -3167,6 +3193,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
   const handleSaveName = async () => {
     if (!newName.trim() || newName === currentUser?.username) {
       setIsEditingName(false);
+      resetNicknameScroll();
       return;
     }
     if (!currentUser?.id) return;
@@ -3179,6 +3206,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
       } as any);
       setIsEditingName(false);
       setNewName(refreshedProfile?.username || newName.trim());
+      resetNicknameScroll();
     } catch (e: any) {
       alert(e?.message || '昵称保存失败，请重试');
     }
@@ -3212,18 +3240,18 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
       setSelectedFriend(friend);
     }
   };
-// 添加马甲好友（支持备注）
-const handleAddFriend = async (name: string, remark: string) => {
-  if (!currentUser) return;
-  const friendshipData: Record<string, any> = {
-    user_id: currentUser.id,
-    friend_name: name,
-    remark: remark || null,
-    status: 'virtual',
+  // 添加马甲好友（支持备注）
+  const handleAddFriend = async (name: string, remark: string) => {
+    if (!currentUser) return;
+    const friendshipData: Record<string, any> = {
+      user_id: currentUser.id,
+      friend_name: name,
+      remark: remark || null,
+      status: 'virtual',
+    };
+    await addFriend(friendshipData);
+    setShowAddFriend(false);
   };
-  await addFriend(friendshipData);
-  setShowAddFriend(false);
-};
 
   // 通过邀请码发送好友申请
   const handleAddRealFriend = async (inviteCode: string) => {
@@ -3624,8 +3652,8 @@ const handleAddFriend = async (name: string, remark: string) => {
     setUploadingAvatar(true);
     try {
       const seed = Math.random().toString(36).slice(2, 10);
-      const maleHairs = ['short01','short02','short03','short04','short05','short06','short07','short08','short09','short10','short11','short12','short13','short14','short15','short16','short17','short18','short19'];
-      const femaleHairs = ['long01','long02','long03','long04','long05','long06','long07','long08','long09','long10','long11','long12','long13','long14','long15','long16','long17','long18','long19','long20','long21','long22','long23','long24','long25','long26'];
+      const maleHairs = ['short01', 'short02', 'short03', 'short04', 'short05', 'short06', 'short07', 'short08', 'short09', 'short10', 'short11', 'short12', 'short13', 'short14', 'short15', 'short16', 'short17', 'short18', 'short19'];
+      const femaleHairs = ['long01', 'long02', 'long03', 'long04', 'long05', 'long06', 'long07', 'long08', 'long09', 'long10', 'long11', 'long12', 'long13', 'long14', 'long15', 'long16', 'long17', 'long18', 'long19', 'long20', 'long21', 'long22', 'long23', 'long24', 'long25', 'long26'];
       const hairList = sex === 'male' ? maleHairs : femaleHairs;
       const hair = hairList[Math.floor(Math.random() * hairList.length)];
       const earringsProbability = sex === 'male' ? 0 : 40;
@@ -3829,34 +3857,35 @@ const handleAddFriend = async (name: string, remark: string) => {
 
   return (
     <div
-      className="relative min-h-screen pb-28 hide-scrollbar"
+      className="relative min-h-screen hide-scrollbar flex flex-col overflow-y-auto"
       style={{
-        background: 'var(--orbit-surface)',
+        background: 'var(--app-root-bg)',
         color: 'var(--orbit-text)',
-        minHeight: 'calc(100vh + 1px)',
-        overscrollBehaviorY: 'none',
-        touchAction: 'pan-y',
-        WebkitOverflowScrolling: 'touch',
+        // minHeight: '100dvh',
+        // width: '100%',
+        // paddingBottom: BOTTOM_NAV_CONTENT_GAP,
+        // overscrollBehaviorY: 'none',
+        // touchAction: 'pan-y',
+        // WebkitOverflowScrolling: 'touch',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)'
       }}
     >
       {/* <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} /> */}
       <div
-      
-        className="fixed inset-0 opacity-70 pointer-events-none"
+        className="absolute inset-0 overflow-hidden pointer-events-none"
         style={{ background: `radial-gradient(circle at 50% -10%, rgba(0, 0, 0, 0.04) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(0, 0, 0, 0.03) 0%, transparent 35%)` }}
       />
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-      
+
       {/* 顶部个人卡片 */}
-      
+
       {/* 顶部内容保留安全区内边距，避免被灵动岛遮挡 */}
       <div
         className="relative top-0 z-10 mx-4"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+        style={{ paddingTop: 'env(safe-area-inset-top, -2px)' }}
       >
         <motion.div
-          initial={{ y: -50, opacity: 0 }}
+          initial={{ y: 0, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className="p-2 relative"
         >
@@ -3879,8 +3908,12 @@ const handleAddFriend = async (name: string, remark: string) => {
                     onChange={(e) => setNewName(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') void handleSaveName();
-                      if (e.key === 'Escape') { setIsEditingName(false); setNewName(currentUser?.username || ''); }
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelNameEditing();
+                      }
                     }}
+                    onBlur={resetNicknameScroll}
                     className="flex-1 h-8 px-2 rounded-lg text-sm border outline-none"
                     style={{ borderColor: '#e5e7eb', color: 'var(--orbit-text)', background: '#ffffff' }}
                     placeholder="输入昵称"
@@ -3910,7 +3943,7 @@ const handleAddFriend = async (name: string, remark: string) => {
             </div>
             <button
               type="button"
-              onClick={() => { setIsEditingName(false); setNewName(currentUser?.username || ''); }}
+              onClick={cancelNameEditing}
               className="w-9 h-9 flex items-center justify-center"
               style={{ color: isEditingName ? 'var(--orbit-text-muted)' : 'transparent' }}
               title="取消编辑"
@@ -4170,7 +4203,7 @@ const handleAddFriend = async (name: string, remark: string) => {
           </div>
         </div>
       </div>
-      
+
       {/* 好友申请通知 */}
       {settings.notifyFriendRequest && pendingRequests.length > 0 && (
         <div className="relative z-10 px-4 mt-6">
@@ -4202,14 +4235,6 @@ const handleAddFriend = async (name: string, remark: string) => {
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button
-                      onClick={() => handleRejectRequest(req)}
-                      className="px-3 h-8 rounded-lg text-xs font-medium"
-                      style={{ color: '#fca5a5', background: isDarkMode ? 'rgba(248,113,113,0.12)' : '#fef2f2', border: `1px solid ${isDarkMode ? '#4b5563' : 'transparent'}` }}
-                      title="拒绝"
-                    >
-                      拒绝
-                    </button>
-                    <button
                       disabled={processingRequests[req.id]}
                       onClick={() => handleAcceptRequest(req)}
                       className="px-3 h-8 rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -4217,6 +4242,14 @@ const handleAddFriend = async (name: string, remark: string) => {
                       title="接受"
                     >
                       {processingRequests[req.id] ? <FaSpinner className="text-xs animate-spin" /> : '接受'}
+                    </button>
+                    <button
+                      onClick={() => handleRejectRequest(req)}
+                      className="px-3 h-8 rounded-lg text-xs font-medium"
+                      style={{ color: '#fca5a5', background: isDarkMode ? 'rgba(248,113,113,0.12)' : '#fef2f2', border: `1px solid ${isDarkMode ? '#4b5563' : 'transparent'}` }}
+                      title="拒绝"
+                    >
+                      拒绝
                     </button>
                   </div>
                 </div>
@@ -4277,7 +4310,7 @@ const handleAddFriend = async (name: string, remark: string) => {
         <div style={{ height: '0.5px', background: isDarkMode ? '#1f2937' : '#f2f2f7' }} />
       </div>
 
-      
+
       {/* 退出按钮 */}
       <div className="relative z-10 px-4 mt-6 pb-20 space-y-3">
         <button
@@ -4724,11 +4757,10 @@ const handleAddFriend = async (name: string, remark: string) => {
                           <button
                             key={mode}
                             onClick={() => updateSettings({ themeMode: mode })}
-                            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                              isActive
-                                ? 'bg-[#00FFB3] text-black border-transparent font-semibold'
-                                : 'bg-black/5 text-[color:var(--orbit-text-muted)] border-[color:var(--orbit-border)] hover:text-[color:var(--orbit-text)] hover:border-[color:var(--orbit-border)] dark:bg-white/5 dark:text-white/60 dark:border-white/15 dark:hover:text-white dark:hover:border-white/30'
-                            }`}
+                            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${isActive
+                              ? 'bg-[#00FFB3] text-black border-transparent font-semibold'
+                              : 'bg-black/5 text-[color:var(--orbit-text-muted)] border-[color:var(--orbit-border)] hover:text-[color:var(--orbit-text)] hover:border-[color:var(--orbit-border)] dark:bg-white/5 dark:text-white/60 dark:border-white/15 dark:hover:text-white dark:hover:border-white/30'
+                              }`}
                           >
                             {labels[mode]}
                           </button>
@@ -4777,7 +4809,7 @@ const handleAddFriend = async (name: string, remark: string) => {
                       <motion.div animate={{ x: settings.notifyFriendRequest ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
                     </button>
                   </div>
-                  
+
                 </div>
 
                 {/* 4. 隐私设置 */}
@@ -4849,7 +4881,7 @@ const handleAddFriend = async (name: string, remark: string) => {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* 弹窗挂载区 */}
       <AnimatePresence>
         {showAllFriends && (
@@ -4866,7 +4898,8 @@ const handleAddFriend = async (name: string, remark: string) => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-              className="min-h-screen max-h-screen w-full flex flex-col"
+              // className="min-h-screen max-h-screen w-full flex flex-col"
+              className="h-[100dvh] w-full flex flex-col overflow-hidden"
               style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', fontFamily: '"PingFang SC", "-apple-system", "SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -4901,7 +4934,7 @@ const handleAddFriend = async (name: string, remark: string) => {
               </div>
 
               {friends.length >= 4 && (
-                <div className="p-4 pb-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 116px)', zIndex: 3 }}>
+                <div className="p-4 pb-2 shrink-0" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', top: 'calc(env(safe-area-inset-top, 0px) + 116px)', zIndex: 3 }}>
                   <div className="relative">
                     <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af] text-xs pointer-events-none" />
                     <input
@@ -4916,7 +4949,10 @@ const handleAddFriend = async (name: string, remark: string) => {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff' }}>
+              <div
+                className="flex-1 overflow-y-auto"
+                style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', WebkitOverflowScrolling: 'touch' }}
+              >
                 <div className="p-4 pt-2 pb-24">
                   <div className="rounded-2xl overflow-hidden border" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec', background: isDarkMode ? '#0d1626' : '#fff' }}>
                     {filteredFriends.length > 0 ? (

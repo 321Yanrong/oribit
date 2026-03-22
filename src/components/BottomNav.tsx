@@ -8,6 +8,7 @@ import { PageType } from '../types';
 import { SETTINGS_EVENT } from '../utils/settings';
 
 type NavItem = { id: PageType | 'capture'; icon?: IconType; label?: string; special?: boolean };
+export const BOTTOM_NAV_CONTENT_GAP = 'calc(env(safe-area-inset-bottom, 0px) + 92px)';
 
 const navItems: NavItem[] = [
   { id: 'map', icon: FiMap, label: '地图' },
@@ -71,7 +72,7 @@ export default function BottomNav() {
     }, 900);
   };
 
-  const bgColor = isDarkMode ? '#000000' : '#ffffff';
+  const bgColor = isDarkMode ? '#000000' : '#f5f5f5ff';
   const borderColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
   const inactiveColor = isDarkMode ? '#9ca3af' : '#6b7280';
   const activeColor = isDarkMode ? '#f5f5f5' : '#111827';
@@ -87,23 +88,27 @@ export default function BottomNav() {
     }
     triggerMemoryComposerRequest();
   };
-  
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-[120] pointer-events-auto">
       <motion.div
-        initial={{ y: 80, opacity: 0 }}
+        initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="pointer-events-auto px-2"
+        // className="pointer-events-auto pb-[env(safe-area-inset-bottom)] rounded-t-3xl"
+        className="pointer-events-auto rounded-t-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)]"
         style={{
           background: bgColor,
           borderTop: `1px solid ${borderColor}`,
-          // 🌟 1. 增加底部的留白高度，原本是 +10px，现在改成 +18px（或者更大）
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
-          // 🌟 2. 增加顶部的内边距，让整体变高
-          paddingTop: '12px' 
+          paddingTop: '6px',
+          // 动态贴合不同机型底部安全区，视觉到底、按钮不被系统手势区吞掉
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          zIndex: 50, // 确保导航栏在内容之上
+          marginBottom: '-1px',
+          touchAction: 'manipulation',
         }}
       >
-        <div className="flex items-center justify-around gap-2">
+        {/* <div className="flex items-center justify-around gap-2 h-[60px] px-4"> */}
+        <div className="flex items-center h-[54px] w-full">
           {navItems.map((item) => {
             const isActive = currentPage === item.id;
             const Icon = item.icon;
@@ -116,13 +121,15 @@ export default function BottomNav() {
                   onClick={handleCaptureClick}
                   whileHover={{ scale: 1.08, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="relative flex flex-col items-center justify-center px-3"
+                  // className="relative flex flex-col items-center justify-center px-3"
+                  // 修改相机按钮的 className
+                  className="relative flex-1 flex flex-col items-center justify-center"
                 >
                   <div
-                    className="relative w-14 h-14 rounded-3xl flex items-center justify-center"
+                    className="relative w-12 h-12 rounded-3xl flex items-center justify-center"
                     style={{
                       background: '#FDE047',
-                      boxShadow: '0 18px 32px rgba(253, 224, 71, 0.4)',
+                      boxShadow: '0 12px 24px rgba(253, 224, 71, 0.35)',
                       border: '1px solid rgba(120, 53, 15, 0.15)'
                     }}
                   >
@@ -131,7 +138,7 @@ export default function BottomNav() {
                       style={{ border: '2px solid rgba(255, 255, 255, 0.35)' }}
                     />
                     <FiCamera
-                      className="relative w-7 h-7"
+                      className="relative w-6 h-6"
                       strokeWidth={2.6}
                       style={{ color: '#78350f' }}
                     />
@@ -139,7 +146,7 @@ export default function BottomNav() {
                 </motion.button>
               );
             }
-            
+
             return (
               <motion.button
                 data-tour-id={`nav-${item.id}`}
@@ -156,8 +163,9 @@ export default function BottomNav() {
                 }}
                 whileHover={{ scale: 1.06, y: -2 }}
                 whileTap={{ scale: 0.95 }}
-                // 🌟 3. 增加按钮内部的高度，通过 pb-3 让内容整体往上抬
-                className="relative flex flex-col items-center gap-1.5 px-5 pt-2 pb-3 rounded-2xl transition-all min-w-[78px]"
+                // className="relative flex flex-col items-center gap-1.5 px-5 pt-1 pb-2 rounded-2xl transition-all min-w-[78px]"
+                // 修改标准按钮的 className
+                className="relative flex-1 flex flex-col items-center gap-0.5 transition-all"
               >
                 <AnimatePresence>
                   {isActive && (
@@ -166,8 +174,7 @@ export default function BottomNav() {
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0, opacity: 0 }}
                       className="absolute rounded-2xl"
-                      // 稍微扩大一点高亮背景的范围
-                      style={{ background: activeBg, inset: '-4px -6px' }} 
+                      style={{ background: activeBg, inset: '-3px -5px' }}
                     />
                   )}
                 </AnimatePresence>
@@ -178,24 +185,19 @@ export default function BottomNav() {
                     transition={{ type: 'spring', stiffness: 320, damping: 22 }}
                   >
                     <Icon
-                      className="w-6 h-6"
+                      className="w-[22px] h-[22px]"
                       strokeWidth={isActive ? 2.6 : 2.2}
-                      // 🌟 4. 把 translateY(-2px) 改成 translateY(-4px) 让图标再往上一点
-                      style={{ color: isActive ? activeColor : inactiveColor, transform: 'translateY(-4px)' }}
+                      style={{ color: isActive ? activeColor : inactiveColor, transform: 'translateY(-2px)' }}
                     />
                   </motion.div>
-                  {/* ... 消息红点保持不变 ... */}
                 </div>
 
                 <span
-                  className={`text-xs transition-colors duration-300 relative z-10 ${
-                    isActive ? 'font-semibold' : 'font-medium'
-                  }`}
+                  className={`text-xs transition-colors duration-300 relative z-10 ${isActive ? 'font-semibold' : 'font-medium'}`}
                   style={{ color: isActive ? activeColor : inactiveColor }}
                 >
                   {item.label}
                 </span>
-
                 <AnimatePresence>
                   {isActive && (
                     <motion.div

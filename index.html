@@ -1,58 +1,64 @@
 <!doctype html>
 <html lang="zh-CN" style="background-color: #121212;">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    
-    <meta name="theme-color" content="#121212" /> <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Orbit" />
-    
-    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    
-    <title>Orbit 轨迹</title>
 
-    <style>
-      /* 关键 2：在 React 运行前，先把“底座”涂黑，防止白屏闪烁 */
-      :root {
-        --orbit-bg: #121212; /* 这里建议手动填入你 SplashScreen 的背景色 Hex 值 */
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <meta name="theme-color" content="#121212" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Orbit" />
+
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <title>Orbit 轨迹</title>
+
+  <style>
+    /* 关键 2：在 React 运行前，先把“底座”涂黑，防止白屏闪烁 */
+    :root {
+      --orbit-bg: #000000;
+      /* 保持与 SplashScreen/Capacitor backgroundColor 一致，避免启动闪白 */
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--orbit-bg);
+      /* 彻底禁用整个页面的橡皮筋回弹，防止下拉露白 */
+      overscroll-behavior: none;
+      overflow: hidden;
+      /* 确保 Emoji 字体在最底层就准备好 */
+      font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", sans-serif;
+    }
+
+    #root {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('error', function (e) {
+      var img = e.target;
+      if (img.tagName === 'IMG' && img.src && img.src.includes('dicebear.com') && img.src.includes(',')) {
+        var m = img.src.match(/[?&]seed=([^&,]+)/);
+        img.src = 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + (m ? m[1] : 'guest');
       }
+    }, true);
+  </script>
+</head>
 
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        background-color: var(--orbit-bg);
-        /* 彻底禁用整个页面的橡皮筋回弹，防止下拉露白 */
-        overscroll-behavior: none;
-        overflow: hidden;
-        /* 确保 Emoji 字体在最底层就准备好 */
-        font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", sans-serif;
-      }
+<body>
+  <div id="root"></div>
 
-      #root {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 
-    <script>
-      document.addEventListener('error', function(e) {
-        var img = e.target;
-        if (img.tagName === 'IMG' && img.src && img.src.includes('dicebear.com') && img.src.includes(',')) {
-          var m = img.src.match(/[?&]seed=([^&,]+)/);
-          img.src = 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + (m ? m[1] : 'guest');
-        }
-      }, true);
-    </script>
-  </head>
-
-  <body>
-    <div id="root"></div>
-
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
 </html>
