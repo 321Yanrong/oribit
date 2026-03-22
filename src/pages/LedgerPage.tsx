@@ -67,11 +67,10 @@ function CalcPad({ expr, onChange, onConfirm }: { expr: string; onChange: (v: st
         <div key={ri} className="grid grid-cols-4 gap-1.5">
           {row.map(btn => (
             <button key={btn} type="button" onClick={() => press(btn)}
-              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all border ${
-                ['÷', '×', '-', '+'].includes(btn) ? 'bg-[#fff7ed] text-[#d97706] border-[#fbbf24]' :
-                btn === 'C' ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecdd3]' :
-                btn === '←' ? 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]' :
-                'bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'}`}>{btn}</button>
+              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all border ${['÷', '×', '-', '+'].includes(btn) ? 'bg-[#fff7ed] text-[#d97706] border-[#fbbf24]' :
+                  btn === 'C' ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecdd3]' :
+                    btn === '←' ? 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]' :
+                      'bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'}`}>{btn}</button>
           ))}
         </div>
       ))}
@@ -93,7 +92,7 @@ const LedgerModal = ({
 }) => {
   const { memories } = useMemoryStore();
   const isEdit = !!editData;
-  
+
   const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>(() =>
     editData?.total_amount
       ? [{ id: '1', category: '🍜 饮食', note: editData?.description || '', amount: String(editData.total_amount) }]
@@ -107,9 +106,9 @@ const LedgerModal = ({
   const updateLedgerItem = (id: string, field: keyof LedgerItem, value: string) =>
     setLedgerItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
   const [selectedMemoryId, setSelectedMemoryId] = useState(editData?.memory_id || '');
-  const [expenseType, setExpenseType] = useState<'shared' | 'personal'>(editData?.expense_type || 'shared'); 
+  const [expenseType, setExpenseType] = useState<'shared' | 'personal'>(editData?.expense_type || 'shared');
   const [selectedFriends, setSelectedFriends] = useState<string[]>(
-    editData?.participants?.filter((p:any) => p.user_id !== editData.creator_id).map((p:any) => p.user_id) || []
+    editData?.participants?.filter((p: any) => p.user_id !== editData.creator_id).map((p: any) => p.user_id) || []
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -118,22 +117,22 @@ const LedgerModal = ({
   const handleSave = async () => {
     if (totalAmount <= 0 || !selectedMemoryId) return;
     setIsSubmitting(true);
-    
+
     const memory = memories.find(m => m.id === selectedMemoryId);
     const tripName = memory?.location?.name || memory?.content?.substring(0, 10) || '未命名旅程';
     const finalParticipants = expenseType === 'personal' ? [] : selectedFriends;
     const description = ledgerItems.map(i => i.category + (i.note ? ` ${i.note}` : '')).join('，');
-    
+
     await onSave({
       id: editData?.id,
       amount: totalAmount,
       description,
-      participants: finalParticipants, 
-      expenseType, 
-      tripName, 
+      participants: finalParticipants,
+      expenseType,
+      tripName,
       memoryId: selectedMemoryId
     });
-    
+
     setIsSubmitting(false);
     onClose();
   };
@@ -178,11 +177,10 @@ const LedgerModal = ({
                     {CATEGORIES.map(cat => (
                       <button key={cat} type="button"
                         onClick={() => updateLedgerItem(item.id, 'category', cat)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
-                          item.category === cat
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${item.category === cat
                             ? 'bg-[#fff7ed] text-[#d97706] border-[#fdba74]'
                             : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
-                        }`}>{cat}</button>
+                          }`}>{cat}</button>
                     ))}
                   </div>
                   {ledgerItems.length > 1 && (
@@ -266,11 +264,12 @@ export default function LedgerPage() {
   const { currentUser, friends } = useUserStore();
   const { memories } = useMemoryStore();
   const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
-  
+
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [editingLedger, setEditingLedger] = useState<any>(null);
   const [groupBy, setGroupBy] = useState<'memory' | 'city'>('memory');
   const [currentMonth, setCurrentMonth] = useState('');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // 2. 过滤出当前月份的账单，并计算本月我花费的总额
   const { filteredLedgers, monthlyTotal } = useMemo(() => {
@@ -279,10 +278,10 @@ export default function LedgerPage() {
       const memory = memories.find(m => m.id === ledger.memory_id);
       const dateStr = memory?.memory_date || memory?.created_at || new Date().toISOString();
       const month = dateStr.slice(0, 7); // 截取 YYYY-MM
-      if(!currentMonth || month === currentMonth) {
+      if (!currentMonth || month === currentMonth) {
         // 计算属于我的金额
-        const myPart = ledger.expense_type === 'personal' 
-          ? ledger.total_amount 
+        const myPart = ledger.expense_type === 'personal'
+          ? ledger.total_amount
           : ledger.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
         total += myPart;
         return true;
@@ -335,7 +334,7 @@ export default function LedgerPage() {
     }
   };
   const currentMonthLabel = currentMonth ? currentMonth.replace('-', ' / ') : '全部';
-  
+
   const cityGrouped = useMemo(() => {
     const map: Record<string, { city: string; ledgers: any[]; total: number }> = {};
     filteredLedgers.forEach(ledger => {
@@ -350,7 +349,7 @@ export default function LedgerPage() {
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [filteredLedgers, memories, currentUser]);
-  
+
   const groupedByMemory = useMemo(() => {
     const groups: Record<string, { key: string; memory: any; ledgers: any[] }> = {};
     filteredLedgers.forEach(ledger => {
@@ -364,9 +363,9 @@ export default function LedgerPage() {
     return Object.values(groups).sort((a, b) => {
       const dateA = a.memory ? new Date(a.memory.memory_date || a.memory.created_at).getTime() : 0;
       const dateB = b.memory ? new Date(b.memory.memory_date || b.memory.created_at).getTime() : 0;
-      return dateB - dateA;
+      return sortOrder === 'desc' ? (dateB - dateA) : (dateA - dateB);
     });
-  }, [filteredLedgers, memories]);
+  }, [filteredLedgers, memories, sortOrder]);
 
   const handleSaveLedger = async (data: any) => {
     if (!currentUser) return;
@@ -378,9 +377,9 @@ export default function LedgerPage() {
       const participants = data.expenseType === 'personal'
         ? [{ userId: currentUser.id, amount: total }]
         : [
-            { userId: currentUser.id, amount: share },
-            ...realParticipantIds.map((id: string) => ({ userId: id, amount: share }))
-          ];
+          { userId: currentUser.id, amount: share },
+          ...realParticipantIds.map((id: string) => ({ userId: id, amount: share }))
+        ];
       if (data.id) {
         await updateLedger(data.id, currentUser.id, total, participants, data.memoryId, data.expenseType);
       } else {
@@ -401,43 +400,87 @@ export default function LedgerPage() {
 
   return (
     <div className={`relative min-h-screen pb-28 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
-{/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
+      {/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
       <div
         className={`sticky top-0 z-20 px-6 pb-5 ${bgMain} border-b ${borderLine}`}
         style={{ top: 0, paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)' }}
       >
-        
+
         {/* 第一行：标题、月份筛选、记一笔 */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-medium tracking-widest">财务足迹</h1>
-            
-            {/* 月份筛选器 (透明覆盖式) */}
-            <div className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10'}`}>
-              <span className="text-sm font-mono font-medium">{currentMonthLabel}</span>
-              <FaChevronDown className="text-[10px] opacity-50" />
-              {/* 核心：把 input 变透明铺满整个框，点击任意位置都能触发 */}
-              <input 
-                type="month" 
-                value={currentMonth} 
-                onChange={e => setCurrentMonth(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
-              />
+
+            {/* 顶部月份筛选 + 排序（与财务页保持一致） */}
+            <div className="flex items-center gap-2">
+              {/* 外层容器：只负责背景色和边框，注意去掉了 relative */}
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border"
+                style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+              >
+                {/* 1. 隔离区：只让 input 盖住文字和箭头，绝不越界 */}
+                <div className="relative flex items-center gap-1.5">
+                  <span className="text-sm font-mono font-medium">{currentMonthLabel}</span>
+                  <FaChevronDown className="text-[10px] opacity-50" />
+                  <input
+                    type="month"
+                    value={currentMonth}
+                    onChange={e => setCurrentMonth(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    style={{ colorScheme: 'light', zIndex: 1 }}
+                  />
+                </div>
+
+                {/* 2. 清空筛选 */}
+                {currentMonth && (
+                  <button
+                    type="button"
+                    aria-label="清空月份筛选"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentMonth('');
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentMonth('');
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium shrink-0"
+                    style={{
+                      backgroundColor: 'var(--orbit-surface)',
+                      borderColor: 'var(--orbit-border)',
+                      color: 'var(--orbit-text-muted, #9ca3af)',
+                      zIndex: 10,
+                    }}
+                  >
+                    ✕
+                    <span>清空</span>
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => setSortOrder((s) => (s === 'desc' ? 'asc' : 'desc'))}
+                className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium border"
+                style={{ backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
+              >
+                时间 {sortOrder === 'desc' ? '↓' : '↑'}
+              </button>
             </div>
           </div>
 
           {/* 统一风格的荧光 Q 弹按钮 */}
-          <motion.button 
-            whileHover={{ scale: 1.05 }} 
+          <motion.button
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowLedgerModal(true)} 
+            onClick={() => setShowLedgerModal(true)}
             className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold text-sm shrink-0 shadow-md shadow-[#00D9FF]/20"
           >
             记一笔
           </motion.button>
         </div>
-        
+
         {/* 第二行：总支出看板 & 视图切换 */}
         <div className="flex items-end justify-between">
           <div>
@@ -446,16 +489,16 @@ export default function LedgerPage() {
               <span className="font-mono text-3xl font-bold tracking-tight">¥ {monthlyTotal.toFixed(2)}</span>
             </div>
           </div>
-          
+
           {/* 高级感切换 Tab */}
           <div className={`flex p-1 rounded-lg border ${borderLine} ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
-            <button 
-              onClick={() => setGroupBy('memory')} 
+            <button
+              onClick={() => setGroupBy('memory')}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${groupBy === 'memory' ? (isDarkMode ? 'bg-white text-black' : 'bg-white shadow-sm text-black') : textSecondary}`}>
               按记忆
             </button>
-            <button 
-              onClick={() => setGroupBy('city')} 
+            <button
+              onClick={() => setGroupBy('city')}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${groupBy === 'city' ? (isDarkMode ? 'bg-white text-black' : 'bg-white shadow-sm text-black') : textSecondary}`}>
               按城市
             </button>
@@ -506,56 +549,56 @@ export default function LedgerPage() {
               ))}
             </div>
           ) : (
-          /* ── 记忆视图 (线条版) ── */
-          <div className="space-y-10">
-            {groupedByMemory.map((group, index) => {
-              const memory = group.memory;
-              const date = memory ? new Date(memory.memory_date || memory.created_at) : null;
-              const myTripCost = group.ledgers.reduce((sum: number, l: any) => {
-                if (l.expense_type === 'personal') return sum + l.total_amount;
-                const myPart = l.participants?.find((p: any) => p.user_id === currentUser?.id);
-                return sum + (myPart ? myPart.amount : 0);
-              }, 0);
+            /* ── 记忆视图 (线条版) ── */
+            <div className="space-y-10">
+              {groupedByMemory.map((group, index) => {
+                const memory = group.memory;
+                const date = memory ? new Date(memory.memory_date || memory.created_at) : null;
+                const myTripCost = group.ledgers.reduce((sum: number, l: any) => {
+                  if (l.expense_type === 'personal') return sum + l.total_amount;
+                  const myPart = l.participants?.find((p: any) => p.user_id === currentUser?.id);
+                  return sum + (myPart ? myPart.amount : 0);
+                }, 0);
 
-              return (
-                <motion.div key={group.key || memory?.id || 'uncategorized'} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                  <div className={`flex items-end justify-between mb-6 pb-2 border-b ${borderLine}`}>
-                    <div>
-                      {date && <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>{date.getFullYear()} / {(date.getMonth() + 1).toString().padStart(2, '0')} / {date.getDate().toString().padStart(2, '0')}</p>}
-                      <h2 className="text-xl font-medium tracking-wide">{memory?.location?.name || memory?.content?.substring(0, 15) || '未分类消费'}</h2>
+                return (
+                  <motion.div key={group.key || memory?.id || 'uncategorized'} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                    <div className={`flex items-end justify-between mb-6 pb-2 border-b ${borderLine}`}>
+                      <div>
+                        {date && <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>{date.getFullYear()} / {(date.getMonth() + 1).toString().padStart(2, '0')} / {date.getDate().toString().padStart(2, '0')}</p>}
+                        <h2 className="text-xl font-medium tracking-wide">{memory?.location?.name || memory?.content?.substring(0, 15) || '未分类消费'}</h2>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>我花费</p>
+                        <p className="font-mono text-xl">¥ {myTripCost.toFixed(2)}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-xs tracking-widest uppercase mb-1 ${textSecondary}`}>我花费</p>
-                      <p className="font-mono text-xl">¥ {myTripCost.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    {group.ledgers.map((item: any) => {
-                      const isPersonal = item.expense_type === 'personal';
-                      const myPart = isPersonal ? item.total_amount : item.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
-                      // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
-                      const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
-                      return (
-                        <div key={item.id} className="flex justify-between items-center group">
-                          <div className="flex-1 pr-4">
-                            <p className="text-base">{cleanDesc || item.description}</p>
-                            <p className={`text-xs mt-1 ${textSecondary}`}>{isPersonal ? '个人消费' : `总花费 ¥${item.total_amount}`}</p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="font-mono text-base font-medium">¥ {myPart.toFixed(2)}</span>
-                            <div className="flex items-center gap-4 text-xs">
-                              <button onClick={() => setEditingLedger(item)} className={`${textSecondary} hover:${textPrimary} transition-colors`}>编辑</button>
-                              <button onClick={() => handleDeleteLedger(item.id)} className={`${textSecondary} hover:text-red-500 transition-colors`}>删除</button>
+                    <div className="space-y-5">
+                      {group.ledgers.map((item: any) => {
+                        const isPersonal = item.expense_type === 'personal';
+                        const myPart = isPersonal ? item.total_amount : item.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
+                        // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
+                        const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
+                        return (
+                          <div key={item.id} className="flex justify-between items-center group">
+                            <div className="flex-1 pr-4">
+                              <p className="text-base">{cleanDesc || item.description}</p>
+                              <p className={`text-xs mt-1 ${textSecondary}`}>{isPersonal ? '个人消费' : `总花费 ¥${item.total_amount}`}</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="font-mono text-base font-medium">¥ {myPart.toFixed(2)}</span>
+                              <div className="flex items-center gap-4 text-xs">
+                                <button onClick={() => setEditingLedger(item)} className={`${textSecondary} hover:${textPrimary} transition-colors`}>编辑</button>
+                                <button onClick={() => handleDeleteLedger(item.id)} className={`${textSecondary} hover:text-red-500 transition-colors`}>删除</button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           )
         ) : (
           <div className={`text-center mt-32 ${textSecondary}`}>

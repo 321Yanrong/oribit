@@ -540,7 +540,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     <div
       className="relative w-full overflow-hidden"
       style={{
-        background: 'transparent',
+        background: 'var(--app-root-bg)', // 改为具体背景色，防止转场时透出底层黑/白屏
         minHeight: '100dvh',
         height: '100dvh',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',

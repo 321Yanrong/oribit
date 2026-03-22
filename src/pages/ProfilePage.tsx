@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAl
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import PullToRefresh from '../components/PullToRefresh';
 import { BOTTOM_NAV_CONTENT_GAP } from '../components/BottomNav';
+import { useScrollLock } from '../hooks/useScrollLock';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -25,6 +26,7 @@ const stripOrbitMetaText = (content: string) => {
 
 // 邮箱修改弹窗（亮色适配）
 const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  useScrollLock(isOpen);
   const [email, setEmail] = useState('');
   const [currentPwd, setCurrentPwd] = useState('');
   if (!isOpen) return null;
@@ -33,7 +35,7 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -85,6 +87,7 @@ const ChangeEmailModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
 
 // 密码修改弹窗（亮色适配）
 const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  useScrollLock(isOpen);
   const [currentPwd, setCurrentPwd] = useState('');
   const [pwd1, setPwd1] = useState('');
   const [pwd2, setPwd2] = useState('');
@@ -94,7 +97,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -155,6 +158,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
 
 // 找回密码弹窗（亮色适配）
 const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
+  useScrollLock(isOpen);
   const [email, setEmail] = useState('');
   if (!isOpen) return null;
   return (
@@ -162,7 +166,7 @@ const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -206,6 +210,7 @@ const ResetPasswordModal = ({ isOpen, onClose, onSubmit, loading }: any) => {
 
 // 通用文档/协议展示弹窗
 const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => {
+  useScrollLock(isOpen);
   if (!isOpen) return null;
 
   const lines = String(content || '').split('\n');
@@ -220,8 +225,8 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100]"
-      style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      className="fixed inset-0 z-[90]"
+      style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -229,6 +234,7 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="h-full w-full overflow-y-auto"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       >
         <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
           <button
@@ -267,6 +273,7 @@ const CommunityGuidelinesPage = ({
   content: string;
   isDarkMode: boolean;
 }) => {
+  useScrollLock(isOpen);
   if (!isOpen) return null;
 
   return (
@@ -274,8 +281,8 @@ const CommunityGuidelinesPage = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[105]"
-      style={{ background: isDarkMode ? '#0b1324' : '#ffffff', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      className="fixed inset-0 z-[80]"
+      style={{ background: isDarkMode ? '#0b1324' : '#ffffff', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -283,6 +290,7 @@ const CommunityGuidelinesPage = ({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="h-full w-full overflow-y-auto"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       >
         <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
           <button
@@ -341,6 +349,7 @@ const HelpSupportPage = ({
   currentUser?: any;
   isDarkMode: boolean;
 }) => {
+  useScrollLock(isOpen);
   type QuestionTab = 'hot' | 'account' | 'settings';
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
   const [selectedQuestionTab, setSelectedQuestionTab] = useState<QuestionTab>('hot');
@@ -526,8 +535,8 @@ const HelpSupportPage = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[106]"
-      style={{ background: hsBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      className="fixed inset-0 z-[80]"
+      style={{ background: hsBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -535,6 +544,7 @@ const HelpSupportPage = ({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="h-full w-full overflow-y-auto"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       >
         <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
           <button
@@ -669,7 +679,7 @@ const HelpSupportPage = ({
               </div>
 
               <div className="px-4 pt-5 pb-10">
-                <p className="text-[15px] mb-3" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>请选择问题发生的场景</p>
+                <p className="text-[15px] mb-3" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3ba' }}>请选择问题发生的场景</p>
 
                 <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                   {feedbackScenes.map((scene, idx) => (
@@ -860,7 +870,7 @@ const HelpSupportPage = ({
                   </button>
                 </div>
 
-                <div className="text-center pb-8">
+                <div className="text-center pb-24">
                   <p className="text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#c4c4c8' }}>—— 以上回答对你有帮助吗 ——</p>
                   <div className="mt-4 rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#f1f2f4', border: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <div className="grid grid-cols-2">
@@ -1171,6 +1181,7 @@ const FontSizePage = ({
   onSave: (size: 'small' | 'normal' | 'large') => void;
   isDarkMode: boolean;
 }) => {
+  useScrollLock(isOpen);
   const [draftFontSize, setDraftFontSize] = useState<'small' | 'normal' | 'large'>(currentFontSize);
   const [followSystem, setFollowSystem] = useState(false);
 
@@ -1216,8 +1227,8 @@ const FontSizePage = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[107]"
-      style={{ background: overlayBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      className="fixed inset-0 z-[80]"
+      style={{ background: overlayBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -1225,6 +1236,7 @@ const FontSizePage = ({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="h-full w-full overflow-y-auto"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       >
         <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
           <button
@@ -1255,8 +1267,11 @@ const FontSizePage = ({
         </div>
 
         <div
-          className="fixed left-4 right-4 bottom-[max(16px,env(safe-area-inset-bottom))] rounded-3xl p-5"
-          style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
+          className="fixed left-4 right-4 bottom-[max(16px,env(safe-area-inset-bottom))+20px] rounded-3xl p-5"
+          style={{
+            background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: '1.5rem',
+            padding: '1.25rem'
+          }}
         >
           <div className="flex items-center justify-between">
             <span className="text-[20px] font-semibold" style={{ color: headingColor }}>跟随系统设置</span>
@@ -1310,6 +1325,7 @@ const DarkModePage = ({
   themeMode: 'light' | 'dark' | 'system';
   onChangeTheme: (mode: 'light' | 'dark' | 'system') => void;
 }) => {
+  useScrollLock(isOpen);
   if (!isOpen) return null;
 
   const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1322,8 +1338,8 @@ const DarkModePage = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[106]"
-      style={{ background: isDark ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+      className="fixed inset-0 z-[80]"
+      style={{ background: isDark ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
         initial={{ x: '100%' }}
@@ -1331,7 +1347,7 @@ const DarkModePage = ({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
         className="h-full w-full overflow-y-auto"
-        style={{ background: isDark ? '#0b1324' : undefined }}
+        style={{ background: isDark ? '#0b1324' : undefined, WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       >
         <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
           <button
@@ -1402,14 +1418,7 @@ const AddFriendModal = ({
   const [previewProfile, setPreviewProfile] = useState<any>(null);
   const [bindTarget, setBindTarget] = useState<string>('new'); // 'new' or friendshipId
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isOpen]);
+  useScrollLock(isOpen);
 
   const handleAdd = async () => {
     if (loading) return;
@@ -1474,7 +1483,7 @@ const AddFriendModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
@@ -1635,21 +1644,14 @@ const AcceptFriendModal = ({
     }
   }, [isOpen, requester?.id]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isOpen]);
+  useScrollLock(isOpen);
 
   if (!isOpen) return null;
 
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
@@ -1733,6 +1735,7 @@ const BindFriendModal = ({
   onClose: () => void;
   onBind: (tempId: string, inviteCode: string) => void;
 }) => {
+  useScrollLock(isOpen);
   const [code, setCode] = useState('');
 
   if (!isOpen) return null;
@@ -1740,7 +1743,7 @@ const BindFriendModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -1787,6 +1790,7 @@ const InviteCodeModal = ({
 }: {
   isOpen: boolean; onClose: () => void; inviteCode: string; username: string;
 }) => {
+  useScrollLock(isOpen);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -1818,7 +1822,7 @@ const InviteCodeModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -1858,6 +1862,7 @@ const InviteCodeModal = ({
 
 // 4. 随机回忆弹窗
 const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }: { memory: any; onClose: () => void; onShuffle?: () => void; friends: any[]; currentUser?: any }) => {
+  useScrollLock(!!memory);
   const META_PREFIX = '[orbit_meta:';
   const AUDIO_PREFIX = '[audio]';
   const AUDIO_SPLIT = '||';
@@ -2082,7 +2087,7 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-xl flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
@@ -2320,13 +2325,7 @@ const MemoirMemoryModal = ({
   const [photoIndex, setPhotoIndex] = useState(Math.max(0, Math.min(initialIndex, Math.max(photos.length - 1, 0))));
   const touchStartXRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, []);
+  useScrollLock(true);
 
   useEffect(() => {
     setPhotoIndex(Math.max(0, Math.min(initialIndex, Math.max(photos.length - 1, 0))));
@@ -2351,7 +2350,7 @@ const MemoirMemoryModal = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
@@ -2462,10 +2461,11 @@ const MemoirMemoryModal = ({
 
 // 5. 共同记忆弹窗 (保持不变)
 const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memories: any[]; onClose: () => void; }) => {
+  useScrollLock(true);
   const hasRemark = friend?.username !== friend?.real_username;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl overflow-y-auto" onClick={onClose}>
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="min-h-screen bg-[#1a1a1a] rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-xl" style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }} onClick={onClose}>
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="h-[100dvh] bg-[#1a1a1a] rounded-t-3xl overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }} onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
           <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
           <div className="text-center">
@@ -2515,6 +2515,7 @@ const AccountDiagnosticsModal = ({
   ledgersCount: number;
   isDarkMode: boolean;
 }) => {
+  useScrollLock(isOpen);
   const [checking, setChecking] = useState(false);
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -2569,7 +2570,7 @@ const AccountDiagnosticsModal = ({
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
-    } catch (e) {
+    } catch {
       alert('复制失败，请稍后再试');
     } finally {
       setCopying(false);
@@ -2636,7 +2637,7 @@ const AccountDiagnosticsModal = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[95]"
+      className="fixed inset-0 z-[80]"
       style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
@@ -2779,18 +2780,22 @@ export default function ProfilePage() {
     : '未知';
   const isSystemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-  useEffect(() => {
-    if (!showAllFriends) return;
-    const prevBodyOverflow = document.body.style.overflow;
-    const root = document.getElementById('root');
-    const prevRootOverflow = root?.style.overflow;
-    document.body.style.overflow = 'hidden';
-    if (root) root.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevBodyOverflow;
-      if (root) root.style.overflow = prevRootOverflow ?? '';
-    };
-  }, [showAllFriends]);
+  const shouldLockBackgroundScroll =
+    showSideMenu ||
+    showFontSizePage || // ✅ 补上
+    showDarkModePage || // ✅ 补上
+    showHelpSupport ||  // ✅ 补上
+    showAllFriends ||   // ✅ 补上
+    showAboutOrbit ||
+    showMoreQuickMenu ||
+    showSettings ||
+    showAvatarPreview ||
+    !!selectedFriend ||
+    !!randomMemory ||
+    !!memoirMemory ||
+    docModal.isOpen;
+
+  useScrollLock(!!shouldLockBackgroundScroll);
   const isDarkMode = settings.themeMode === 'dark' || (settings.themeMode === 'system' && isSystemDark);
   const modalSurfaceColor = isDarkMode ? '#0b0b0b' : '#ffffff';
   const modalPrimaryTextColor = isDarkMode ? '#f9fafb' : '#111';
@@ -3464,6 +3469,27 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showAvatarPreview, closeAvatarPreview]);
+
+  useScrollLock(showAllFriends);
+
+  useEffect(() => {
+    if (showAllFriends) {
+      // 弹窗打开时：禁止 body 滚动，并记录当前位置（防止 iOS 页面回弹）
+      // document.body.style.overflow = 'hidden'; // handled by useScrollLock
+      document.body.style.height = '100vh';
+    } else {
+      // 弹窗关闭时：恢复滚动
+      // document.body.style.overflow = '';
+      document.body.style.height = '';
+    }
+
+    // 组件卸载时安全清理
+    return () => {
+      // document.body.style.overflow = '';
+      document.body.style.height = '';
+    };
+  }, [showAllFriends]);
+
   const handleUploadAvatarFromPicker = useCallback(() => {
     if (uploadingAvatar) return;
     setShowAvatarPicker(false);
@@ -3824,11 +3850,20 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 <button onClick={() => setEditingRemarkId(null)} className="shrink-0 p-1 rounded-md" style={{ background: isDarkMode ? '#111827' : '#f3f4f6', color: isDarkMode ? '#cbd5e1' : '#6b7280' }}><FaTimes className="text-[10px]" /></button>
               </div>
             ) : (
-              <div className="flex items-center gap-1 group/remark" onClick={e => { e.stopPropagation(); setRemarkInput(friendship.remark || ''); setEditingRemarkId(friendship.id); }}>
+              <div className="flex items-center gap-1 mt-1">
                 <p className="text-sm truncate" style={{ color: isDarkMode ? '#cbd5e1' : '#6b7280' }}>
                   {hasRemark ? realName || displayName : (isTemp ? '点击绑定真实账号' : '查看共同记忆')}
                 </p>
-                <FaEdit className="text-[10px] opacity-0 group-hover/remark:opacity-100 shrink-0 transition-opacity" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }} />
+                <button
+                  className="p-1.5 -my-1 opacity-60 hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRemarkInput(friendship.remark || '');
+                    setEditingRemarkId(friendship.id);
+                  }}
+                >
+                  <FaEdit className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }} />
+                </button>
               </div>
             )}
           </div>
@@ -3857,13 +3892,15 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
 
   return (
     <div
-      className="relative min-h-screen hide-scrollbar flex flex-col overflow-y-auto"
+      className={`relative min-h-screen hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
         background: 'var(--app-root-bg)',
         color: 'var(--orbit-text)',
         // minHeight: '100dvh',
         // width: '100%',
         // paddingBottom: BOTTOM_NAV_CONTENT_GAP,
+        height: shouldLockBackgroundScroll ? '100vh' : 'auto',
+        position: shouldLockBackgroundScroll ? 'fixed' : 'relative',
         // overscrollBehaviorY: 'none',
         // touchAction: 'pan-y',
         // WebkitOverflowScrolling: 'touch',
@@ -4361,7 +4398,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-              className="h-full w-[72%] max-w-[300px] px-3 pb-4 flex flex-col pt-[calc(env(safe-area-inset-top)+16px)]"
+              className="h-full w-[72%] max-w-[300px] px-3 pb-2 flex flex-col pt-[calc(env(safe-area-inset-top)+16px)]"
               // className="h-full w-[72%] max-w-[300px] px-3 pt-4 pb-4 flex flex-col"
               style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
               onClick={(e) => e.stopPropagation()}
@@ -4441,7 +4478,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 </div>
               </div>
 
-              <div className="mt-auto pt-4 flex items-start justify-around">
+              <div className="mt-auto pt-4 flex items-start justify-around pb-24">
                 <button className="flex flex-col items-center gap-2" onClick={() => setShowAboutOrbit(true)}>
                   <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
                     <FiInfo className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
@@ -4523,20 +4560,12 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                     <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>鼓励一下</span>
                     <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
-                  <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>社区公约</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
                   <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>服务条款</span>
                     <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
                   <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>隐私政策</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button onClick={() => setShowAccountDiagnostics(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>网络诊断</span>
                     <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                   </button>
                   <button onClick={() => openDocument('证照信息', '证照信息页面（示例）\n\n这里是临时展示内容。\n后续会补充营业执照、备案号和相关资质信息。')} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
@@ -4695,7 +4724,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl"
+            className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xl"
             onClick={() => setShowSettings(false)}
           >
             <motion.div
@@ -4912,7 +4941,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 <div className="w-10" />
               </div>
 
-              <div className="px-4 pt-3 flex gap-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 68px)', zIndex: 4 }}>
+              <div className="px-4 pt-2 flex gap-2" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', position: 'sticky', top: 'calc(env(safe-area-inset-top, 0px) + 56px)', zIndex: 4 }}>
                 {[
                   { key: 'all', label: '全部' },
                   { key: 'real', label: '真实' },
@@ -4950,10 +4979,13 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
               )}
 
               <div
-                className="flex-1 overflow-y-auto"
-                style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', WebkitOverflowScrolling: 'touch' }}
+                className="flex-1 overflow-y-auto min-h-0"
+                style={{
+                  background: isDarkMode ? '#0b0f1a' : '#ffffff', WebkitOverflowScrolling: 'touch', // 🌟 关键：iOS 丝滑滚动补丁
+                  overscrollBehavior: 'contain'
+                }}
               >
-                <div className="p-4 pt-2 pb-24">
+                <div className="p-4 pt-2 pb-32">
                   <div className="rounded-2xl overflow-hidden border" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec', background: isDarkMode ? '#0d1626' : '#fff' }}>
                     {filteredFriends.length > 0 ? (
                       filteredFriends.map((friendship, index) => renderFriendRow(friendship, index, filteredFriends.length))

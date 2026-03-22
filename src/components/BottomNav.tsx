@@ -92,23 +92,21 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[120] pointer-events-auto">
       <motion.div
-        initial={{ y: 10, opacity: 0 }}
+        initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        // className="pointer-events-auto pb-[env(safe-area-inset-bottom)] rounded-t-3xl"
-        className="pointer-events-auto rounded-t-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)]"
+        className="pointer-events-auto rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.08)]"
         style={{
           background: bgColor,
           borderTop: `1px solid ${borderColor}`,
           paddingTop: '6px',
-          // 动态贴合不同机型底部安全区，视觉到底、按钮不被系统手势区吞掉
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          zIndex: 50, // 确保导航栏在内容之上
-          marginBottom: '-1px',
+          // 仅使用 safe-area-inset-bottom，不再增加额外 padding，让它自然贴合物理底部
+          paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+          marginBottom: '-40px',
+          zIndex: 9999,
           touchAction: 'manipulation',
         }}
       >
-        {/* <div className="flex items-center justify-around gap-2 h-[60px] px-4"> */}
-        <div className="flex items-center h-[54px] w-full">
+        <div className="flex items-center h-[60px] w-full">
           {navItems.map((item) => {
             const isActive = currentPage === item.id;
             const Icon = item.icon;

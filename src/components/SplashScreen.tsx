@@ -13,7 +13,7 @@ export const SplashScreen: React.FC = () => {
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center top-safe"
       style={{
         backgroundColor: 'var(--orbit-bg)',
-        color: 'var(--orbit-text)',
+        color: 'var(--orbit-text, #ffffff)',
         // 保留你原本好看的青蓝色氛围光晕
         backgroundImage: `radial-gradient(circle at 50% 30%, rgba(0, 255, 179, 0.15) 0%, transparent 50%),
           radial-gradient(circle at 50% 70%, rgba(0, 217, 255, 0.1) 0%, transparent 50%)`,
@@ -23,7 +23,7 @@ export const SplashScreen: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
+        transition={{ duration: 0.8, delay: 0 }}
         className="flex flex-col items-center"
       >
         {/* App 图标：白天浅灰底，黑夜深色底 */}
@@ -37,10 +37,10 @@ export const SplashScreen: React.FC = () => {
             draggable={false}
           />
         </div>
-        
+
         {/* 标题：白天深灰近黑，黑夜纯白 */}
         <h1 className="text-3xl font-bold tracking-wider mb-2">Orbit</h1>
-        
+
         {/* 副标题：白天中度灰，黑夜浅白灰 */}
         <p className="text-sm tracking-[0.3em] uppercase">记录共同轨迹</p>
       </motion.div>

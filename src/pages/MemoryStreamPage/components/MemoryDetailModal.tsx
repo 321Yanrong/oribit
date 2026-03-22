@@ -78,6 +78,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [avatarSaving, setAvatarSaving] = useState(false);
   const setCurrentUser = useUserStore((s) => s.setCurrentUser);
   const userStoreUser = useUserStore((s) => s.currentUser);
+
   const photos = memory.photos || [];
   const videos = memory.videos || [];
   const audios = memory.audios || [];
@@ -225,7 +226,6 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   };
 
   const handleLightboxPointerDown = (e: React.PointerEvent) => {
-    // Only track primary pointer
     if ((e as any).isPrimary === false) return;
     touchStartRef.current = { x: e.clientX, y: e.clientY };
   };
@@ -256,7 +256,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
 
   useEffect(() => {
     if (isLightboxOpen && lightboxContainerRef.current) {
-      try { lightboxContainerRef.current.focus(); } catch {}
+      try { lightboxContainerRef.current.focus(); } catch { }
     }
   }, [isLightboxOpen]);
 
@@ -270,32 +270,54 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
       onClick={onClose}
     >
       <div className="min-h-screen" onClick={(e) => e.stopPropagation()}>
+
+        {/* ✨ 修复后的独立 Header：实心防穿透、绝对居中 */}
+        {/* ✨ 修复后的独立 Header：完美适配深浅色模式、绝对居中、实心防穿透 */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="sticky top-0 z-10 flex items-center justify-between px-4 py-4"
-          style={{ top: 'env(safe-area-inset-top)', paddingTop: 'env(safe-area-inset-top)', background: 'linear-gradient(180deg, color-mix(in srgb, var(--orbit-surface) 96%, transparent) 0%, color-mix(in srgb, var(--orbit-surface) 80%, transparent) 60%, transparent 100%)' }}
+          className="sticky top-0 z-[100] w-full border-b backdrop-blur-xl"
+          style={{
+            // 完美适配深色/浅色模式，90%不透明度防穿透
+            backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 90%, transparent)',
+            borderColor: 'var(--orbit-border)',
+            paddingTop: 'env(safe-area-inset-top, 20px)',
+          }}
         >
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full backdrop-blur-sm transition-colors"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 65%, transparent)' }}
-          >
-            <FaTimes className="text-white text-lg" />
-          </button>
-          <div className="text-center">
-            <div className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{formatDateGroup(memory.memory_date || memory.created_at)}</div>
-            <div className="font-medium" style={{ color: 'var(--orbit-text)' }}>{formatTime(memory.memory_date || memory.created_at)}</div>
-          </div>
-            <div className="flex items-center gap-1 text-xl">
-            {displayWeather && <span title={displayWeather}>{displayWeather}</span>}
-            {displayMood && <span title={displayMood}>{displayMood}</span>}
+          {/* 内部容器，固定高度14，居中对齐 */}
+          <div className="relative h-14 flex items-center justify-center px-4">
+
+            {/* 左侧：关闭按钮 (绝对定位，靠左) */}
+            <button
+              onClick={onClose}
+              className="absolute left-4 p-2 rounded-full transition-colors active:scale-90"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-text) 10%, transparent)' }}
+            >
+              <FaTimes className="text-lg" style={{ color: 'var(--orbit-text)' }} />
+            </button>
+
+            {/* 中间：时间日期 (Flex居中) */}
+            <div className="flex flex-col items-center">
+              <div className="text-[11px] font-medium mb-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                {formatDateGroup(memory.memory_date || memory.created_at)}
+              </div>
+              <div className="text-[17px] font-bold font-mono tracking-tight" style={{ color: 'var(--orbit-text)' }}>
+                {formatTime(memory.memory_date || memory.created_at)}
+              </div>
+            </div>
+
+            {/* 右侧：天气心情 (绝对定位，靠右) */}
+            <div className="absolute right-4 flex items-center gap-1.5 text-xl">
+              {displayWeather && <span title={displayWeather}>{displayWeather}</span>}
+              {displayMood && <span title={displayMood}>{displayMood}</span>}
+            </div>
           </div>
         </motion.div>
 
+        {/* 👇 下方内容区：调整 paddingTop 配合 sticky header */}
         <div
           className="px-4 pb-32 w-full max-w-3xl mx-auto"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+          style={{ paddingTop: '16px' }}
         >
           {memory.location && (
             <motion.div
@@ -358,7 +380,6 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
             </motion.div>
           )}
 
-          {/* ✨ 核心重构：完美单图居中 + 仿朋友圈动态九宫格 */}
           {photos.length > 0 && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
@@ -388,7 +409,6 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                       onClick={() => { setCurrentPhotoIndex(idx); setIsLightboxOpen(true); }}
                     >
                       <img src={p} alt={`照片 ${idx + 1}`} className="absolute inset-0 w-full h-full object-cover" />
-                      {/* 右下角序号角标 */}
                       <div
                         className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded border text-white/80 text-[10px] font-mono leading-none backdrop-blur-sm"
                         style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 80%, transparent)', borderColor: 'var(--orbit-border)' }}
@@ -512,8 +532,8 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           {memoryText && (
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="mb-8">
               <div
-                  className="relative p-6 rounded-2xl border"
-                  style={{ background: 'color-mix(in srgb, var(--orbit-card) 94%, transparent)', borderColor: 'var(--orbit-border)' }}
+                className="relative p-6 rounded-2xl border"
+                style={{ background: 'color-mix(in srgb, var(--orbit-card) 94%, transparent)', borderColor: 'var(--orbit-border)' }}
               >
                 <FaQuoteLeft className="absolute top-4 left-4 text-xl" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }} />
                 <p className="text-lg leading-relaxed pl-6" style={{ color: 'var(--orbit-text)' }}>{memoryText}</p>

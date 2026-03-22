@@ -1061,7 +1061,7 @@ function App() {
               paddingTop: effectiveContentPaddingTop,
               paddingBottom: effectiveContentPaddingBottom,
               minHeight: isMapPage ? '100dvh' : undefined,
-              backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)',
+              // backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)', // Removed to prevent flash
               overflowX: 'hidden',
               overflowY: isMapPage ? 'hidden' : 'auto',
             }}
@@ -1078,7 +1078,7 @@ function App() {
                   minHeight: isMapPage ? '100dvh' : '100%',
                   height: isMapPage ? '100dvh' : undefined,
                   touchAction: isMapPage ? 'none' : 'pan-y',
-                  backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)',
+                  // backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)', // Removed to prevent flash
                 }}
               >
                 {renderPage()}
