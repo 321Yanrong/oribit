@@ -2778,7 +2778,7 @@ export default function ProfilePage() {
   const appBuildLabel = appBuildTime
     ? new Date(appBuildTime).toLocaleString('zh-CN', { hour12: false })
     : '未知';
-  const isSystemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // const isSystemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
   const shouldLockBackgroundScroll =
     showSideMenu ||
@@ -2796,7 +2796,25 @@ export default function ProfilePage() {
     docModal.isOpen;
 
   useScrollLock(!!shouldLockBackgroundScroll);
-  const isDarkMode = settings.themeMode === 'dark' || (settings.themeMode === 'system' && isSystemDark);
+  // const isDarkMode = settings.themeMode === 'dark' || (settings.themeMode === 'system' && isSystemDark);
+  const [systemIsDark, setSystemIsDark] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: any) => setSystemIsDark(e.matches);
+    if (mq.addEventListener) mq.addEventListener('change', handler);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', handler);
+    };
+  }, []);
+
+  // ✨ 2. 使用动态的 systemIsDark 进行判断
+  const isDarkMode = settings.themeMode === 'dark' || (settings.themeMode === 'system' && systemIsDark);
+  // ===============================
   const modalSurfaceColor = isDarkMode ? '#0b0b0b' : '#ffffff';
   const modalPrimaryTextColor = isDarkMode ? '#f9fafb' : '#111';
   const modalSecondaryTextColor = isDarkMode ? '#9ca3af' : '#374151';
@@ -3892,19 +3910,11 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
 
   return (
     <div
-      className={`relative min-h-screen hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
+      className={`relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
-        background: 'var(--app-root-bg)',
+        backgroundColor: isDarkMode ? '#070707ff' : '#f5f5f7',
         color: 'var(--orbit-text)',
-        // minHeight: '100dvh',
-        // width: '100%',
-        // paddingBottom: BOTTOM_NAV_CONTENT_GAP,
-        height: shouldLockBackgroundScroll ? '100vh' : 'auto',
-        position: shouldLockBackgroundScroll ? 'fixed' : 'relative',
-        // overscrollBehaviorY: 'none',
-        // touchAction: 'pan-y',
-        // WebkitOverflowScrolling: 'touch',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)'
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
       }}
     >
       {/* <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} /> */}
@@ -3970,7 +3980,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                   type="button"
                   onClick={() => setIsEditingName(true)}
                   className="mx-auto flex items-center gap-1 text-xl font-semibold"
-                  style={{ color: 'var(--orbit-text)' }}
+                  style={{ color: isDarkMode ? '#ffffff' : '#111827' }}
                   title="点击修改昵称"
                 >
                   <span>{currentUser?.username || '我的主页'}</span>
@@ -4126,20 +4136,20 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
             <div className="flex-1">
               <div className="grid grid-cols-3 gap-2">
                 <button type="button" onClick={() => setShowPostsCongrats(true)} className="text-center">
-                  <p className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>{memories.length}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted)' }}>帖子</p>
+                  <p className="text-xl font-bold" style={{ color: isDarkMode ? '#ffffff' : '#111827' }}>{memories.length}</p>
+                  <p className="text-xs mt-0.5" style={{ color: isDarkMode ? '#9ca3af' : '#6b7280' }}>帖子</p>
                 </button>
                 <button type="button" onClick={() => setShowAllFriends(true)} className="text-center">
-                  <p className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>{friends.length}</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#2563eb' }}>好友</p>
+                  <p className="text-xl font-bold" style={{ color: isDarkMode ? '#ffffff' : '#111827' }}>{friends.length}</p>
+                  <p className="text-xs mt-0.5" style={{ color: isDarkMode ? '#60a5fa' : '#2563eb' }}>好友</p>
                 </button>
                 <button type="button" onClick={() => setShowBillsCongrats(true)} className="text-center">
-                  <p className="text-xl font-bold" style={{ color: 'var(--orbit-text)' }}>{ledgers.length}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--orbit-text-muted)' }}>账单</p>
+                  <p className="text-xl font-bold" style={{ color: isDarkMode ? '#ffffff' : '#111827' }}>{ledgers.length}</p>
+                  <p className="text-xs mt-0.5" style={{ color: isDarkMode ? '#9ca3af' : '#6b7280' }}>账单</p>
                 </button>
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>邮箱</span>
+                <span className="text-xs" style={{ color: isDarkMode ? '#9ca3af' : '#6b7280' }}>邮箱</span>
                 <span
                   className="text-xs font-medium truncate"
                   style={{ color: 'var(--orbit-text)', maxWidth: '220px' }}

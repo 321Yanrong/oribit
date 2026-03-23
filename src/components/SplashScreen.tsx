@@ -1,8 +1,19 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-
+import { Capacitor } from '@capacitor/core';
+import { useEffect } from 'react';
+import { SplashScreen as NativeSplash } from '@capacitor/splash-screen';
 // Fullscreen splash to cover initial loading, matching Orbit brand gradients
 export const SplashScreen: React.FC = () => {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // 给 100ms 的缓冲时间，确保 React 的光晕和图标已经完全画在屏幕上了
+      const timer = setTimeout(() => {
+        NativeSplash.hide();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   return (
     <motion.div
       initial={{ opacity: 1 }}

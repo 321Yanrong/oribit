@@ -68,9 +68,9 @@ function CalcPad({ expr, onChange, onConfirm }: { expr: string; onChange: (v: st
           {row.map(btn => (
             <button key={btn} type="button" onClick={() => press(btn)}
               className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all border ${['÷', '×', '-', '+'].includes(btn) ? 'bg-[#fff7ed] text-[#d97706] border-[#fbbf24]' :
-                  btn === 'C' ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecdd3]' :
-                    btn === '←' ? 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]' :
-                      'bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'}`}>{btn}</button>
+                btn === 'C' ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecdd3]' :
+                  btn === '←' ? 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]' :
+                    'bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'}`}>{btn}</button>
           ))}
         </div>
       ))}
@@ -178,8 +178,8 @@ const LedgerModal = ({
                       <button key={cat} type="button"
                         onClick={() => updateLedgerItem(item.id, 'category', cat)}
                         className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${item.category === cat
-                            ? 'bg-[#fff7ed] text-[#d97706] border-[#fdba74]'
-                            : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
+                          ? 'bg-[#fff7ed] text-[#d97706] border-[#fdba74]'
+                          : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
                           }`}>{cat}</button>
                     ))}
                   </div>
@@ -399,7 +399,7 @@ export default function LedgerPage() {
   const borderLine = isDarkMode ? 'border-neutral-800' : 'border-neutral-200';
 
   return (
-    <div className={`relative min-h-screen pb-28 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
+    <div className={`relative flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-28 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
       {/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
       <div
         className={`sticky top-0 z-20 px-6 pb-5 ${bgMain} border-b ${borderLine}`}

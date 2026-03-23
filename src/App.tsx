@@ -114,7 +114,7 @@ const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
   }
 
   document.documentElement.dataset.theme = finalTheme;
-
+  document.body.style.backgroundColor = finalTheme === 'dark' ? '#0b1324' : '#f5f5f7';
   if (Capacitor.isNativePlatform()) {
     StatusBar.setStyle({ style: finalTheme === 'dark' ? Style.Light : Style.Dark }).catch((err) => {
       console.warn('StatusBar setStyle failed:', err);
@@ -980,20 +980,20 @@ function App() {
     };
   }, [setCurrentUser]);
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'map':
-        return <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />;
-      case 'memory':
-        return <MemoryStreamPage />;
-      case 'ledger':
-        return <LedgerPage />;
-      case 'profile':
-        return <ProfilePage />;
-      default:
-        return <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />;
-    }
-  };
+  // const renderPage = () => {
+  //   switch (currentPage) {
+  //     case 'map':
+  //       return <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />;
+  //     case 'memory':
+  //       return <MemoryStreamPage />;
+  //     case 'ledger':
+  //       return <LedgerPage />;
+  //     case 'profile':
+  //       return <ProfilePage />;
+  //     default:
+  //       return <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />;
+  //   }
+  // };
 
   // 全局内容区域顶部内边距：
   // - 默认：预留状态栏安全区 + 8px 额外间距，让页面文字不顶在最上方
@@ -1043,46 +1043,42 @@ function App() {
               >退出演示</button>
             </div>
           )}
-          {showEarlyAccessBanner && (
-            <div
-              className="fixed left-0 right-0 z-[998] bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-[#06231c] text-xs font-semibold py-1.5 text-center flex items-center justify-center gap-2"
-              style={{ top: isDemoMode ? 'calc(env(safe-area-inset-top) + 28px)' : '0', paddingTop: 'calc(env(safe-area-inset-top) + 6px)' }}
-            >
-              <span>🎉 欢迎参与 Orbit 早期内测</span>
-              <button
-                onClick={() => setShowEarlyAccessBanner(false)}
-                className="underline opacity-80 hover:opacity-100"
-              >知道了</button>
-            </div>
-          )}
+
           <main
-            className="flex-1 relative"
+            className="flex-1 relative overflow-hidden"
             style={{
-              paddingTop: effectiveContentPaddingTop,
-              paddingBottom: effectiveContentPaddingBottom,
-              minHeight: isMapPage ? '100dvh' : undefined,
-              // backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)', // Removed to prevent flash
-              overflowX: 'hidden',
-              overflowY: isMapPage ? 'hidden' : 'auto',
+              height: '100dvh'
             }}
           >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPage}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="h-full w-full"
-                style={{
-                  minHeight: isMapPage ? '100dvh' : '100%',
-                  height: isMapPage ? '100dvh' : undefined,
-                  touchAction: isMapPage ? 'none' : 'pan-y',
-                  // backgroundColor: isMapPage ? 'transparent' : 'var(--app-root-bg)', // Removed to prevent flash
-                }}
-              >
-                {renderPage()}
-              </motion.div>
+            <div
+              className={`absolute inset-0 w-full h-full ${currentPage === 'map' ? 'block z-0' : 'hidden z-[-1]'}`}
+              style={{ touchAction: 'none' }}
+            >
+              {/* 地图组件永远不会被销毁，切换回来时 0 毫秒延迟 */}
+              <MapPage onFirstScreenReady={() => setFirstScreenReady(true)} />
+            </div>
+
+            <AnimatePresence>
+              {currentPage !== 'map' && (
+                <motion.div
+                  key={currentPage}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  // exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full h-full flex flex-col overflow-hidden"
+                  style={{
+                    backgroundColor: 'var(--app-root-bg)',
+                    paddingTop: effectiveContentPaddingTop,
+                    // paddingBottom: effectiveContentPaddingBottom, // 移除这里的 paddingBottom，避免下方露出底色
+                    touchAction: 'pan-y',
+                  }}
+                >
+                  {currentPage === 'memory' && <MemoryStreamPage />}
+                  {currentPage === 'ledger' && <LedgerPage />}
+                  {currentPage === 'profile' && <ProfilePage />}
+                </motion.div>
+              )}
             </AnimatePresence>
 
             <PWABanners />

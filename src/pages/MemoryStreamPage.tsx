@@ -13,7 +13,7 @@ import PullToRefresh from '../components/PullToRefresh';
 import { track } from '../utils/analytics';
 import { readSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
-
+import { useScrollLock } from '../hooks/useScrollLock';
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
 const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
@@ -388,7 +388,7 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
       return;
     }
 
-    try { placeSearchRef.current.setCity(city); } catch {}
+    try { placeSearchRef.current.setCity(city); } catch { }
 
     placeSearchRef.current.search(trimmed, async (status: string, result: any) => {
       if (status === 'complete' && result.poiList?.pois?.length) {
@@ -633,18 +633,17 @@ const FriendSelector = ({
           const friend = friendship.friend;
           const isVirtual = friend.id?.startsWith('temp-');
           const isSelected = selectedFriends.includes(friend.id);
-          
+
           return (
             <motion.div
               key={friend.id}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onToggle(friend.id)}
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-full border transition-all cursor-pointer ${
-                isSelected
-                  ? 'bg-[#00FFB3]/20 border-[#00FFB3] text-[#00FFB3]'
-                  : 'bg-[color:var(--orbit-card)] border-[color:var(--orbit-border)] text-[color:var(--orbit-text-muted,#9ca3af)]'
-              }`}
+              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-full border transition-all cursor-pointer ${isSelected
+                ? 'bg-[#00FFB3]/20 border-[#00FFB3] text-[#00FFB3]'
+                : 'bg-[color:var(--orbit-card)] border-[color:var(--orbit-border)] text-[color:var(--orbit-text-muted,#9ca3af)]'
+                }`}
             >
               <img
                 src={friend.avatar_url}
@@ -694,10 +693,10 @@ function CalcPad({
     onChange(expr + btn);
   };
   const BTN_ROWS = [
-    ['7','8','9','÷'],
-    ['4','5','6','×'],
-    ['1','2','3','-'],
-    ['C','0','.', '+'],
+    ['7', '8', '9', '÷'],
+    ['4', '5', '6', '×'],
+    ['1', '2', '3', '-'],
+    ['C', '0', '.', '+'],
   ];
   return (
     <div className="rounded-2xl p-3 space-y-2 border" style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>
@@ -706,11 +705,10 @@ function CalcPad({
         <div key={ri} className="grid grid-cols-4 gap-1.5">
           {row.map(btn => (
             <button key={btn} type="button" onClick={() => press(btn)}
-              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all ${
-                ['÷','×','-','+'].includes(btn) ? 'bg-[#FF9F43]/15 text-[#FF9F43] border border-[#FF9F43]/30' :
+              className={`py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all ${['÷', '×', '-', '+'].includes(btn) ? 'bg-[#FF9F43]/15 text-[#FF9F43] border border-[#FF9F43]/30' :
                 btn === 'C' ? 'bg-red-500/10 text-red-500' :
-                btn === '←' ? 'bg-[color:var(--orbit-card)] text-[color:var(--orbit-text-muted,#9ca3af)] border border-[color:var(--orbit-border)]' :
-                'bg-[color:var(--orbit-card)] text-[color:var(--orbit-text)] border border-[color:var(--orbit-border)] hover:bg-[color-mix(in_srgb,var(--orbit-card)_90%,transparent)]'}`}>{btn}</button>
+                  btn === '←' ? 'bg-[color:var(--orbit-card)] text-[color:var(--orbit-text-muted,#9ca3af)] border border-[color:var(--orbit-border)]' :
+                    'bg-[color:var(--orbit-card)] text-[color:var(--orbit-text)] border border-[color:var(--orbit-border)] hover:bg-[color-mix(in_srgb,var(--orbit-card)_90%,transparent)]'}`}>{btn}</button>
           ))}
         </div>
       ))}
@@ -744,7 +742,7 @@ const CreateMemoryModal = ({
   onClearDraft?: () => void;
   refreshSessionQuick: (label: string) => Promise<boolean>;
 }) => {
-  const { currentUser } = useUserStore(); 
+  const { currentUser } = useUserStore();
   const isEditMode = !!editData;
 
   // 解析已有记忆的元数据（编辑模式）
@@ -763,23 +761,23 @@ const CreateMemoryModal = ({
   const [selectedLocation, setSelectedLocation] = useState<AMapPoi | null>(
     isEditMode
       ? (editData?.location ? {
-          id: editData.location.id,
-          name: editData.location.name,
-          address: editData.location.address,
-          location: `${editData.location.lng},${editData.location.lat}`,
-          type: ''
-        } : null)
+        id: editData.location.id,
+        name: editData.location.name,
+        address: editData.location.address,
+        location: `${editData.location.lng},${editData.location.lat}`,
+        type: ''
+      } : null)
       : (initialDraft?.selectedLocation || null)
   );
   const [selectedFriends, setSelectedFriends] = useState<string[]>(
     isEditMode
       ? (editData?.tagged_friends || []).filter((id: string) => {
-          if (id.startsWith('temp-')) {
-            const fid = id.replace('temp-', '');
-            return friends.some((f: any) => f.id === fid);
-          }
-          return friends.some((f: any) => f.friend?.id === id);
-        })
+        if (id.startsWith('temp-')) {
+          const fid = id.replace('temp-', '');
+          return friends.some((f: any) => f.id === fid);
+        }
+        return friends.some((f: any) => f.friend?.id === id);
+      })
       : (initialDraft?.selectedFriends || [])
   );
   const [photos, setPhotos] = useState<string[]>(isEditMode ? (editData?.photos || []) : (initialDraft?.photos || []));
@@ -797,7 +795,7 @@ const CreateMemoryModal = ({
       ? getLocalDateTimeValue(editData?.memory_date || editData?.created_at)
       : (initialDraft?.memoryDate || getLocalDateTimeValue())
   );
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -819,7 +817,7 @@ const CreateMemoryModal = ({
 
   useEffect(() => {
     if (isEditMode || !onDraftChange) return;
-      onDraftChange({
+    onDraftChange({
       content,
       weather,
       mood,
@@ -886,7 +884,7 @@ const CreateMemoryModal = ({
 
   // 2. 逻辑处理
   const toggleFriend = (friendId: string) => {
-    setSelectedFriends(prev => 
+    setSelectedFriends(prev =>
       prev.includes(friendId) ? prev.filter(id => id !== friendId) : [...prev, friendId]
     );
   };
@@ -902,7 +900,7 @@ const CreateMemoryModal = ({
   const handleLocationSelect = (poi: AMapPoi) => {
     setSelectedLocation(poi);
   };
-  
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     const hasContent = content.trim().length > 0 || audios.length > 0 || photos.length > 0 || videos.length > 0;
@@ -922,9 +920,9 @@ const CreateMemoryModal = ({
     }
     setIsSubmitting(true);
     setEditError(null);
-    
+
     try {
-      let locationId = editData?.location_id; 
+      let locationId = editData?.location_id;
       if (selectedLocation && selectedLocation.name !== editData?.location?.name) {
         const [lng, lat] = selectedLocation.location.split(',').map(Number);
         const locationData = await createLocation(
@@ -935,7 +933,7 @@ const CreateMemoryModal = ({
 
       // 编码天气/心情/路线元数据
       const finalContent = encodeMemoryContent(content.trim(), { weather, mood, route });
-      
+
       const realFriendIds = selectedFriends.filter(id => !id.startsWith('temp-'));
       const isShared = splitType === 'equal' && realFriendIds.length > 0;
       const participants = isShared
@@ -1003,12 +1001,12 @@ const CreateMemoryModal = ({
           tagged_friends: memory.tagged_friends || selectedFriends,
           location: memory.location || (selectedLocation
             ? {
-                id: locationId,
-                name: selectedLocation.name,
-                address: selectedLocation.address,
-                lng: Number(selectedLocation.location.split(',')[0]),
-                lat: Number(selectedLocation.location.split(',')[1]),
-              }
+              id: locationId,
+              name: selectedLocation.name,
+              address: selectedLocation.address,
+              lng: Number(selectedLocation.location.split(',')[0]),
+              lat: Number(selectedLocation.location.split(',')[1]),
+            }
             : null),
           has_ledger: enableLedger,
           ledger: enableLedger ? { total_amount: totalAmount } : null,
@@ -1018,7 +1016,7 @@ const CreateMemoryModal = ({
         onClearDraft?.();
         track('memory_save_success', { mode: 'create' });
       }
-      
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -1033,9 +1031,9 @@ const CreateMemoryModal = ({
       setIsSubmitting(false);
     }
   };
-  
+
   if (!isOpen) return null;
-  
+
   // 3. UI 渲染 (注意这里的闭合结构)
   return (
     <motion.div
@@ -1092,9 +1090,9 @@ const CreateMemoryModal = ({
           </div>
 
           <div className="relative z-10">
-             <LocationSearch value={locationName} onChange={setLocationName} onSelect={handleLocationSelect} />
+            <LocationSearch value={locationName} onChange={setLocationName} onSelect={handleLocationSelect} />
           </div>
-          
+
           {/* 天气选择 */}
           <div>
             <p className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #6b7280)' }}>那天天气</p>
@@ -1170,11 +1168,11 @@ const CreateMemoryModal = ({
               />
             </div>
           </div>
-          
+
           <FriendSelector selectedFriends={selectedFriends} onToggle={toggleFriend} friends={friends} />
-          
+
           <MediaUploader userId={currentUser?.id || ''} photos={photos} videos={videos} onPhotosChange={setPhotos} onVideosChange={setVideos} />
-          
+
           <div className="flex items-center justify-between py-4 border-t" style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-full" style={{ background: 'rgba(255, 159, 67, 0.12)', color: '#fbbf24' }}><FaDollarSign /></div>
@@ -1184,7 +1182,7 @@ const CreateMemoryModal = ({
               <motion.div animate={{ x: enableLedger ? 24 : 2 }} className="w-5 h-5 rounded-full bg-white shadow" />
             </button>
           </div>
-          
+
           {enableLedger && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
               {/* 个人 / 均分 */}
@@ -1288,7 +1286,7 @@ const CreateMemoryModal = ({
               )}
             </motion.div>
           )}
-        </div>  
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -1362,6 +1360,14 @@ export default function MemoryStreamPage() {
       return false;
     }
   }, [shouldAllowRefresh]);
+  const shouldLockBackgroundScroll =
+    isCreateOpen ||
+    !!selectedMemory ||
+    !!activeStoryMemories ||
+    showStoryEntry ||
+    showAlbumFilterDialog;
+
+  useScrollLock(!!shouldLockBackgroundScroll);
 
   // 前台可见/获得焦点时快速刷新会话并拉取关键数据，避免短后台后卡死
   useEffect(() => {
@@ -1402,16 +1408,16 @@ export default function MemoryStreamPage() {
     };
   }, [refreshSessionQuick]);
 
-    useEffect(() => {
-      if (showStoryEntry) {
-        setShowAlbumFilterDialog(true);
-        if (albumFilterFriendIds.length === 0 && filterFriendIds.length > 0) {
-          setAlbumFilterFriendIds(filterFriendIds);
-        }
-      } else {
-        setShowAlbumFilterDialog(false);
+  useEffect(() => {
+    if (showStoryEntry) {
+      setShowAlbumFilterDialog(true);
+      if (albumFilterFriendIds.length === 0 && filterFriendIds.length > 0) {
+        setAlbumFilterFriendIds(filterFriendIds);
       }
-    }, [showStoryEntry, filterFriendIds, albumFilterFriendIds.length]);
+    } else {
+      setShowAlbumFilterDialog(false);
+    }
+  }, [showStoryEntry, filterFriendIds, albumFilterFriendIds.length]);
 
   // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
@@ -1431,7 +1437,7 @@ export default function MemoryStreamPage() {
     setReactions(prev => {
       const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false };
       const next = { ...prev, [memoryId]: { ...r, liked: !r.liked, likes: r.liked ? Math.max(0, r.likes - 1) : r.likes + 1 } };
-      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch { }
       return next;
     });
   };
@@ -1440,7 +1446,7 @@ export default function MemoryStreamPage() {
     setReactions(prev => {
       const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false };
       const next = { ...prev, [memoryId]: { ...r, roastOpen: !r.roastOpen } };
-      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch { }
       return next;
     });
   };
@@ -1765,7 +1771,7 @@ export default function MemoryStreamPage() {
         }
 
         const fetchPromise = getMemoryComments(memoryIds);
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('评论拉取超时')), 5000)
         );
 
@@ -1861,7 +1867,7 @@ export default function MemoryStreamPage() {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
     setMemoryCommentUnreadCount(unreadCount);
   }, [memories, commentsByMemory, memoryCommentReadMarkers, currentUser?.id, setMemoryCommentUnreadCount]);
-  
+
   const refreshMemoryStream = useCallback(async (showLoading: boolean) => {
     if (!shouldAllowRefresh()) return;
     if (showLoading) setIsLoading(true);
@@ -1880,12 +1886,12 @@ export default function MemoryStreamPage() {
         fetchMemories(),
         useUserStore.getState().fetchFriends(),
       ]);
-      
+
       // 🚨 超时放宽到 15s，适配唤醒后的慢连接
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 15000)
       );
-      
+
       await Promise.race([fetchPromise, timeoutPromise]);
     } catch (error) {
       console.error('拉取数据超时或被系统打断:', error);
@@ -2007,9 +2013,9 @@ export default function MemoryStreamPage() {
       alert('已开启仅 Wi‑Fi 刷新，请连接 Wi‑Fi 后重试。');
       return;
     }
-    
+
     setIsRefreshingPull(true);
-    
+
     try {
       const ok = await refreshSessionQuick('pull-to-refresh');
       if (!ok) {
@@ -2024,10 +2030,10 @@ export default function MemoryStreamPage() {
           useUserStore.getState().fetchFriends(),
           useLedgerStore.getState().fetchLedgers(),
         ]);
-        
+
         const latestMemories = useMemoryStore.getState().memories || [];
         const memoryIds = latestMemories.map((m: any) => m.id).filter(Boolean);
-        
+
         if (memoryIds.length > 0) {
           const comments = await getMemoryComments(memoryIds);
           const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
@@ -2042,7 +2048,7 @@ export default function MemoryStreamPage() {
       };
 
       // 2. 设定 10 秒的强制死亡线（防止 iOS 假死）
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('刷新超时，网络可能在后台断开了')), 10000)
       );
 
@@ -2057,26 +2063,26 @@ export default function MemoryStreamPage() {
       setIsRefreshingPull(false);
     }
   };
-  
+
   return (
     <div
-      className="memory-stream-page relative min-h-screen pb-28"
+      className={`memory-stream-page relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
         backgroundColor: 'var(--orbit-surface)',
         color: 'var(--orbit-text)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)'
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
       }}
     >
       {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
       {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none sticky top-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00FFB3]/5 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#FF9F43]/5 rounded-full blur-3xl" />
       </div>
-      
+
       {/* 顶部标题 + 搜索筛选 */}
       <div
-        className="fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b safe-top"
+        className="sticky top-0 left-0 right-0 z-40 backdrop-blur-md border-b safe-top"
         style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, transparent)', borderColor: 'var(--orbit-border)' }}
       >
         <div className="px-4 pt-4 pb-2 flex items-center gap-3">
@@ -2084,9 +2090,9 @@ export default function MemoryStreamPage() {
             <h1 className="text-xl font-bold leading-tight" style={{ color: 'var(--orbit-text)' }}>回忆流</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
-              {(searchQuery || filterFriendIds.length > 0) && filteredMemories.length !== memories.length
-                ? `找到 ${filteredMemories.length} / ${memories.length} 条`
-                : `共 ${memories.length} 条记忆`}
+                {(searchQuery || filterFriendIds.length > 0) && filteredMemories.length !== memories.length
+                  ? `找到 ${filteredMemories.length} / ${memories.length} 条`
+                  : `共 ${memories.length} 条记忆`}
               </p>
               {settings.notifyComment && memoryCommentUnreadCount > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/15 px-2 py-0.5 text-[10px] font-semibold text-[#FF8A8A] border border-[#FF6B6B]/20">
@@ -2153,12 +2159,12 @@ export default function MemoryStreamPage() {
           </button>
           {/* 顶部月份筛选 + 排序（与财务页保持一致） */}
           <div className="flex items-center gap-2">
-          {/* 外层容器：只负责背景色和边框，注意去掉了 relative */}
-            <div 
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border relative" 
+            {/* 外层容器：只负责背景色和边框，注意去掉了 relative */}
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border relative"
               style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
             >
-            
+
               {/* 🌟 1. 隔离区：只让 input 盖住文字和箭头，绝不越界 */}
               <div className="relative flex items-center gap-1.5">
                 <span className="text-sm font-mono font-medium">{currentMonth ? currentMonth.replace('-', ' / ') : '全部'}</span>
@@ -2200,7 +2206,7 @@ export default function MemoryStreamPage() {
                 </button>
               )}
             </div>
-            
+
             {/* 时间排序按钮保持不变 */}
             <button
               onClick={() => setSortOrder((s) => (s === 'desc' ? 'asc' : 'desc'))}
@@ -2257,17 +2263,17 @@ export default function MemoryStreamPage() {
           </div>
         )}
       </div>
-      
+
       {/* 记忆列表 */}
-      <div className="relative px-4 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 134px)' }}>
+      <div className="relative px-4 pb-32 pt-4">
         <div ref={albumSectionRef} className="scroll-mt-20" />
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FaSpinner className="text-[#00FFB3] text-3xl animate-spin mb-4" />
             <p className="mb-6" style={{ color: 'var(--orbit-text)' }}>加载回忆中...</p>
             {/* PWA 防卡死神器：刷新按钮 */}
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-full border text-xs transition-colors"
               style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text-muted, #9ca3af)' }}
             >
@@ -2275,7 +2281,7 @@ export default function MemoryStreamPage() {
             </button>
           </div>
         ) : groupedMemories.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-20"
@@ -2386,7 +2392,7 @@ export default function MemoryStreamPage() {
                             <FaShareAlt className="text-[20px]" />
                           </button>
                         </div>
-                        {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5"/> 记账</span>}
+                        {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5" /> 记账</span>}
                       </div>
 
                       {reaction.likes > 0 && (
@@ -2635,7 +2641,7 @@ export default function MemoryStreamPage() {
                             <FaShareAlt className="text-[20px]" />
                           </button>
                         </div>
-                        {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5"/> 记账</span>}
+                        {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5" /> 记账</span>}
                       </div>
 
                       {reaction.likes > 0 && (
@@ -2811,62 +2817,62 @@ export default function MemoryStreamPage() {
                     className="mb-4 rounded-2xl border p-4"
                     style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                   >
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>按时间范围筛选</p>
-                      <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>默认查看全部，可选择一段时间的回忆相册</p>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>按时间范围筛选</p>
+                        <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>默认查看全部，可选择一段时间的回忆相册</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
+                          <span>从</span>
+                          <div className="relative">
+                            {!albumDateRange.start && (
+                              <span
+                                className="absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
+                                style={{ color: 'var(--orbit-text)', opacity: 0.55 }}
+                              >
+                                年/月/日
+                              </span>
+                            )}
+                            <input
+                              type="date"
+                              placeholder="年/月/日"
+                              value={albumDateRange.start}
+                              onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                              className="rounded-lg pl-2 pr-2 py-1 text-sm border min-w-[140px]"
+                              style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                            />
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
+                          <span>到</span>
+                          <div className="relative">
+                            {!albumDateRange.end && (
+                              <span
+                                className="absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
+                                style={{ color: 'var(--orbit-text)', opacity: 0.55 }}
+                              >
+                                年/月/日
+                              </span>
+                            )}
+                            <input
+                              type="date"
+                              placeholder="年/月/日"
+                              value={albumDateRange.end}
+                              onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                              className="rounded-lg pl-2 pr-2 py-1 text-sm border min-w-[140px]"
+                              style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                            />
+                          </div>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => { setAlbumDateRange({ start: '', end: '' }); setCurrentMonth(''); }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                          style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                        >清空</button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
-                        <span>从</span>
-                        <div className="relative">
-                          {!albumDateRange.start && (
-                            <span
-                              className="absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
-                              style={{ color: 'var(--orbit-text)', opacity: 0.55 }}
-                            >
-                              年/月/日
-                            </span>
-                          )}
-                          <input
-                            type="date"
-                            placeholder="年/月/日"
-                            value={albumDateRange.start}
-                            onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, start: e.target.value }))}
-                            className="rounded-lg pl-2 pr-2 py-1 text-sm border min-w-[140px]"
-                            style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                          />
-                        </div>
-                      </label>
-                      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--orbit-text)' }}>
-                        <span>到</span>
-                        <div className="relative">
-                          {!albumDateRange.end && (
-                            <span
-                              className="absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
-                              style={{ color: 'var(--orbit-text)', opacity: 0.55 }}
-                            >
-                              年/月/日
-                            </span>
-                          )}
-                          <input
-                            type="date"
-                            placeholder="年/月/日"
-                            value={albumDateRange.end}
-                            onChange={(e) => setAlbumDateRange((prev) => ({ ...prev, end: e.target.value }))}
-                            className="rounded-lg pl-2 pr-2 py-1 text-sm border min-w-[140px]"
-                            style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                          />
-                        </div>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => { setAlbumDateRange({ start: '', end: '' }); setCurrentMonth(''); }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
-                        style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                      >清空</button>
-                    </div>
-                  </div>
                   </div>
                 </div>
 
@@ -2944,7 +2950,7 @@ export default function MemoryStreamPage() {
           )}
         </AnimatePresence>
       </div>
-      
+
       {/* Story Drawer：保持上下文，不跳页 */}
       <AnimatePresence>
         {activeStoryMemories && (
@@ -2961,7 +2967,7 @@ export default function MemoryStreamPage() {
 
       {/* 创建记忆弹窗 */}
       {/* ================= 弹窗区 ================= */}
-      
+
       {/* 1. 创建记忆弹窗 (新建模式：不传 editData) */}
       <AnimatePresence>
         {isCreateOpen && (
@@ -2977,7 +2983,7 @@ export default function MemoryStreamPage() {
           />
         )}
       </AnimatePresence>
-      
+
       {/* 2. 编辑记忆弹窗 (全量编辑模式：传入 editData，并复用 CreateMemoryModal！) */}
       <AnimatePresence>
         {editingMemory && (
