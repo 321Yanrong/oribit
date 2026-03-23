@@ -15,13 +15,14 @@
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
     "@capacitor/android": "^8.2.0",
+    "@capacitor/app": "^8.0.1",
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
     "@capacitor/keyboard": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.1",
     "@headlessui/react": "^1.7.18",
-    "@supabase/supabase-js": "^2.98.0",
+    "@supabase/supabase-js": "^2.100.0",
     "@vercel/analytics": "^2.0.1",
     "aegis-web": "^0.0.5",
     "aegis-web-sdk": "^1.41.11",
@@ -65,5 +66,21 @@
     "typescript": "~5.8.3",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.2.0"
-  }
+  },
+  "description": "> ⚠️ **保密声明：本项目为私有资产，严禁擅自分发、二次拷贝或开源。** > 如需向第三方进行代码评审或产品演示，请务必先脱敏核心数据，并征得项目负责人明确同意。",
+  "main": "postcss.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/321Yanrong/oribit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/321Yanrong/oribit/issues"
+  },
+  "homepage": "https://github.com/321Yanrong/oribit#readme"
 }

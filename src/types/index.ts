@@ -6,6 +6,7 @@ export interface User {
   email: string;
   username: string;
   avatar_url: string;
+  storage_used?: number; // 字节 B
   created_at: string;
 }
 
@@ -56,8 +57,8 @@ export interface Ledger {
   participants: LedgerParticipant[]; // 参与者
   status: 'pending' | 'settled'; // 账单状态
   created_at: string;
-  trip_name?: string;    
-  expense_type?: 'shared' | 'personal'; 
+  trip_name?: string;
+  expense_type?: 'shared' | 'personal';
   description?: string;
 }
 

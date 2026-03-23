@@ -29,6 +29,8 @@ const config: CapacitorConfig = {
       iosSpinnerStyle: "small",
       splashFullScreen: true,
       splashImmersive: true,
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
 
       // 如果你的 App 是深色背景，建议把状态栏文字设为白色 (LIGHT)
       // 如果是浅色背景，设为 DARK

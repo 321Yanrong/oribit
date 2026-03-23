@@ -257,7 +257,136 @@ const LedgerModal = ({
 };
 
 // ==========================================
-// 2. 主页面 (LedgerPage) - 高级线条重构版
+// 3. 账单详情弹窗 (新增)
+// ==========================================
+const LedgerDetailModal = ({
+  ledger, onClose, friends, currentUser
+}: {
+  ledger: any; onClose: () => void; friends: any[]; currentUser: any;
+}) => {
+  if (!ledger) return null;
+
+  const isPersonal = ledger.expense_type === 'personal';
+  const participants = ledger.participants || [];
+  const memory = ledger._memory || {};
+  const date = new Date(ledger.created_at);
+
+  const getParticipantName = (userId: string) => {
+    if (userId === currentUser?.id) return '我';
+    const friend = friends.find((f: any) => f.friend?.id === userId)?.friend;
+    return friend?.username || '未知好友';
+  };
+
+  const getParticipantAvatar = (userId: string) => {
+    if (userId === currentUser?.id) return currentUser?.avatar_url;
+    const friend = friends.find((f: any) => f.friend?.id === userId)?.friend;
+    return friend?.avatar_url;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+        className="w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl relative"
+        style={{
+          backgroundColor: 'var(--orbit-surface, #ffffff)',
+          color: 'var(--orbit-text, #0f172a)',
+          border: '1px solid var(--orbit-border, rgba(255,255,255,0.1))'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 顶部装饰背景 */}
+        <div className="h-24 bg-gradient-to-br from-[#00FFB3]/20 to-[#00D9FF]/20 relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-[#00FFB3]/30 rounded-full blur-2xl" />
+          <div className="absolute -left-6 -bottom-6 w-32 h-32 bg-[#00D9FF]/30 rounded-full blur-2xl" />
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 rounded-full bg-black/5 hover:bg-black/10 transition-colors backdrop-blur-sm"
+          >
+            <FaTimes className="text-sm opacity-60" />
+          </button>
+        </div>
+
+        <div className="px-6 pb-8 -mt-12 relative">
+          {/* 图标 */}
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-white shadow-lg flex items-center justify-center mb-4 relative z-10" style={{ backgroundColor: 'var(--orbit-surface)' }}>
+            <span className="text-4xl">💰</span>
+          </div>
+
+          <div className="text-center space-y-1 mb-6">
+            <h2 className="text-lg font-bold truncate px-4">{ledger.description?.replace(/^[^\s]+\s/, '') || '未命名账单'}</h2>
+            <p className="text-xs opacity-60">
+              {date.getFullYear()}/{date.getMonth() + 1}/{date.getDate()} · {memory?.location?.name || '未知地点'}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center justify-center mb-8">
+            <p className="text-xs opacity-60 mb-1">总金额</p>
+            <div className="text-4xl font-mono font-bold tracking-tight">
+              <span className="text-2xl align-top mr-1">¥</span>
+              {ledger.total_amount.toFixed(2)}
+            </div>
+            <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium border ${isPersonal
+              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+              : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+              }`}>
+              {isPersonal ? '个人消费' : `多人均摊 · ${participants.length + (participants.some((p: any) => p.user_id === ledger.creator_id) ? 0 : 1)} 人`}
+            </div>
+          </div>
+
+          {/* 参与者列表 */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium opacity-40 px-1">费用组成</p>
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--orbit-border, #e5e7eb)', backgroundColor: 'var(--orbit-card, #f8fafc)' }}>
+              {/* 如果是个人消费 */}
+              {isPersonal && (
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <img src={currentUser?.avatar_url} className="w-8 h-8 rounded-full bg-gray-200" />
+                    <span className="text-sm font-medium">我</span>
+                  </div>
+                  <span className="font-mono font-medium">¥ {ledger.total_amount.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* 如果是多人均摊，遍历 participants + creator(如果不在 list 里需特殊处理，这里假设后端返回完整 list 或者前端需要补) */}
+              {!isPersonal && (
+                <>
+                  {/* 先显示创建者（如果参与了） */}
+                  {/* 注：通常 participants 包含所有分摊人。如果 creator 也在分摊，会在里面。 */}
+                  {participants.map((p: any) => (
+                    <div key={p.user_id} className="flex items-center justify-between p-3 border-b border-dashed last:border-0" style={{ borderColor: 'var(--orbit-border)' }}>
+                      <div className="flex items-center gap-3">
+                        <img src={getParticipantAvatar(p.user_id)} className="w-8 h-8 rounded-full bg-gray-200" />
+                        <span className="text-sm font-medium">{getParticipantName(p.user_id)}</span>
+                        {p.user_id === ledger.creator_id && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">发起人</span>
+                        )}
+                      </div>
+                      <span className="font-mono font-medium">¥ {p.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {/* 如果 participants 为空（异常情况），显示“等待分摊” */}
+                  {participants.length === 0 && (
+                    <div className="p-4 text-center text-xs opacity-50">暂无分摊信息</div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ==========================================
+// 4. 主页面 (LedgerPage) - 高级线条重构版
 // ==========================================
 export default function LedgerPage() {
   const { ledgers, fetchLedgers, deleteLedger } = useLedgerStore();
@@ -267,6 +396,7 @@ export default function LedgerPage() {
 
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [editingLedger, setEditingLedger] = useState<any>(null);
+  const [viewingLedger, setViewingLedger] = useState<any>(null); // New state for details
   const [groupBy, setGroupBy] = useState<'memory' | 'city'>('memory');
   const [currentMonth, setCurrentMonth] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -526,7 +656,11 @@ export default function LedgerPage() {
                       // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
                       const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
                       return (
-                        <div key={item.id} className="flex justify-between items-start group">
+                        <div
+                          key={item.id}
+                          className="flex justify-between items-start group cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 p-2 -mx-2 rounded-lg transition-colors"
+                          onClick={() => setViewingLedger(item)}
+                        >
                           <div className="flex-1 min-w-0 pr-4">
                             <p className="text-base font-medium truncate">{cleanDesc || item.description}</p>
                             <div className={`flex items-center gap-2 mt-1 text-xs ${textSecondary}`}>
@@ -536,7 +670,7 @@ export default function LedgerPage() {
                           </div>
                           <div className="text-right flex flex-col items-end">
                             <span className="font-mono text-base">¥ {myPart.toFixed(2)}</span>
-                            <div className="flex items-center gap-3 mt-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-3 mt-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                               <button onClick={() => setEditingLedger(item)} className={`${textSecondary} hover:${textPrimary}`}><FaEdit size={14} /></button>
                               <button onClick={() => handleDeleteLedger(item.id)} className={`${textSecondary} hover:text-red-500`}><FaTrash size={14} /></button>
                             </div>
@@ -579,14 +713,18 @@ export default function LedgerPage() {
                         // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
                         const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
                         return (
-                          <div key={item.id} className="flex justify-between items-center group">
+                          <div
+                            key={item.id}
+                            className="flex justify-between items-center group cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 p-2 -mx-2 rounded-lg transition-colors"
+                            onClick={() => setViewingLedger({ ...item, _memory: memory })}
+                          >
                             <div className="flex-1 pr-4">
                               <p className="text-base">{cleanDesc || item.description}</p>
                               <p className={`text-xs mt-1 ${textSecondary}`}>{isPersonal ? '个人消费' : `总花费 ¥${item.total_amount}`}</p>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               <span className="font-mono text-base font-medium">¥ {myPart.toFixed(2)}</span>
-                              <div className="flex items-center gap-4 text-xs">
+                              <div className="flex items-center gap-4 text-xs" onClick={(e) => e.stopPropagation()}>
                                 <button onClick={() => setEditingLedger(item)} className={`${textSecondary} hover:${textPrimary} transition-colors`}>编辑</button>
                                 <button onClick={() => handleDeleteLedger(item.id)} className={`${textSecondary} hover:text-red-500 transition-colors`}>删除</button>
                               </div>
@@ -611,6 +749,7 @@ export default function LedgerPage() {
       <AnimatePresence>
         {showLedgerModal && <LedgerModal isOpen={showLedgerModal} onClose={() => setShowLedgerModal(false)} onSave={handleSaveLedger} friends={friends} />}
         {editingLedger && <LedgerModal isOpen={!!editingLedger} onClose={() => setEditingLedger(null)} onSave={handleSaveLedger} friends={friends} editData={editingLedger} />}
+        {viewingLedger && <LedgerDetailModal ledger={viewingLedger} onClose={() => setViewingLedger(null)} friends={friends} currentUser={currentUser} />}
       </AnimatePresence>
     </div>
   );

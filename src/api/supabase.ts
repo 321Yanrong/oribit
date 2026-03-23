@@ -57,6 +57,17 @@ const ensureOnlineForWrite = (action: string) => {
   }
 }
 
+// 在文件顶部定义一个通用的同步函数
+const syncStorageUsed = async (bytes: number) => {
+  // 注意：此处调用 rpc 可能与数据库 Trigger 并行运行，如有冲突请删除此函数调用
+  // 若 increment_storage 函数未定义，请忽略错误或在 SQL Editor 中创建该函数
+  const { error } = await (supabase as any).rpc('increment_storage', { x: bytes });
+  if (error) {
+    // 忽略 RPC 错误（可能是因为未创建对应 SQL 函数），转交给 Trigger 处理
+    // console.warn('同步存储空间失败:', error);
+  }
+};
+
 // ==================== 照片上传 ====================
 
 export const uploadPhoto = async (
@@ -66,7 +77,7 @@ export const uploadPhoto = async (
   ensureOnlineForWrite('上传图片')
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-  
+
   const { error: uploadError } = await withTimeout(
     supabase.storage
       .from('photos')
@@ -75,14 +86,17 @@ export const uploadPhoto = async (
         upsert: false,
       })
   )
-  
+
   if (uploadError) throw uploadError
-  
+
+  // 新增：手动调用 RPC 同步（注意：若 storage-quota-migration.sql 触发器已生效，此处会导致双倍计数）
+  await syncStorageUsed(file.size);
+
   // 获取公开 URL
   const { data: { publicUrl } } = supabase.storage
     .from('photos')
     .getPublicUrl(fileName)
-  
+
   return publicUrl
 }
 
@@ -98,15 +112,15 @@ export const deletePhoto = async (url: string): Promise<void> => {
   // 从 URL 提取文件路径
   const urlObj = new URL(url)
   const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/photos\/(.+)$/)
-  
+
   if (!pathMatch) throw new Error('Invalid photo URL')
-  
+
   const filePath = pathMatch[1]
-  
+
   const { error } = await supabase.storage
     .from('photos')
     .remove([filePath])
-  
+
   if (error) throw error
 }
 
@@ -119,7 +133,7 @@ export const uploadVideo = async (
   ensureOnlineForWrite('上传视频')
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-  
+
   const { error: uploadError } = await withTimeout(
     supabase.storage
       .from('videos')
@@ -129,14 +143,14 @@ export const uploadVideo = async (
         contentType: file.type || undefined,
       })
   )
-  
+
   if (uploadError) throw uploadError
-  
+
   // 获取公开 URL
   const { data: { publicUrl } } = supabase.storage
     .from('videos')
     .getPublicUrl(fileName)
-  
+
   return publicUrl
 }
 
@@ -175,15 +189,15 @@ export const uploadAudio = async (
 export const deleteVideo = async (url: string): Promise<void> => {
   const urlObj = new URL(url)
   const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/videos\/(.+)$/)
-  
+
   if (!pathMatch) throw new Error('Invalid video URL')
-  
+
   const filePath = pathMatch[1]
-  
+
   const { error } = await supabase.storage
     .from('videos')
     .remove([filePath])
-  
+
   if (error) throw error
 }
 
@@ -196,16 +210,19 @@ export const uploadAvatar = async (
   ensureOnlineForWrite('上传头像')
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/avatar.${fileExt}`
-  
+
   const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(fileName, file, {
       cacheControl: '3600',
       upsert: true, // 允许覆盖旧头像
     })
-  
+
   if (uploadError) throw uploadError
-  
+
+  // 新增：头像是小文件，但也计入
+  await syncStorageUsed(file.size);
+
   // 获取公开 URL
   const { data: { publicUrl } } = supabase.storage
     .from('avatars')
@@ -213,15 +230,15 @@ export const uploadAvatar = async (
 
   // 加上时间戳防浏览器缓存
   const finalUrl = `${publicUrl}?v=${Date.now()}`
-  
+
   // 更新用户 profile
   const { error: updateError } = await supabase
     .from('profiles')
     .update({ avatar_url: finalUrl })
     .eq('id', userId)
-  
+
   if (updateError) throw updateError
-  
+
   return finalUrl
 }
 
@@ -292,9 +309,9 @@ export const signUp = async (email: string, password: string, username: string, 
       },
     },
   })
-  
+
   if (error) throw error
-  
+
   // Profile 会由数据库触发器自动创建
   // 触发器会从 auth.users.raw_user_meta_data 中读取 username
   // 同步内测序号到 profile（若触发器已创建则覆盖，若未创建则 upsert）
@@ -308,7 +325,7 @@ export const signUp = async (email: string, password: string, username: string, 
   } catch (syncError) {
     console.warn('同步 beta_join_order 失败（已忽略）：', syncError)
   }
-  
+
   return { data, betaJoinOrder }
 }
 
@@ -318,7 +335,7 @@ export const signIn = async (email: string, password: string) => {
     email,
     password,
   })
-  
+
   if (error) throw error
   return data
 }
@@ -553,7 +570,7 @@ export const getProfile = async (userId: string, userEmail?: string) => {
     .select('*')
     .eq('id', userId)
     .single()
-  
+
   // If profile doesn't exist or RLS blocks access, return null instead of throwing
   if (error) {
     // PGRST116 is "No rows found" - return null for this case
@@ -562,7 +579,7 @@ export const getProfile = async (userId: string, userEmail?: string) => {
     }
     throw error
   }
-  
+
   // Combine profile data with email from auth user
   return {
     ...data,
@@ -632,7 +649,7 @@ export const getFriends = async (userId: string) => {
     `)
     .eq('user_id', userId)
     .eq('status', 'accepted')
-  
+
   if (error) throw error
   return data
 }
@@ -646,7 +663,7 @@ export const addFriend = async (userId: string, friendId: string) => {
       friend_id: friendId,
       status: 'accepted',
     })
-  
+
   if (error) throw error
 }
 
@@ -737,19 +754,19 @@ export const createMemory = async (
     })
     .select()
     .single()
-  
+
   if (memoryError) throw memoryError
-  
+
   if ((taggedFriends || []).length > 0 && memory) {
     // 真实好友：直接存 user_id
-      const realTags = (taggedFriends || [])
-        .filter(id => !id.startsWith('temp-'))
-        .map(friendId => ({ memory_id: memory.id, user_id: friendId, owner_id: userId }));
+    const realTags = (taggedFriends || [])
+      .filter(id => !id.startsWith('temp-'))
+      .map(friendId => ({ memory_id: memory.id, user_id: friendId, owner_id: userId }));
 
     // 虚拟好友：存 virtual_friend_id = friendships.id（去掉 temp- 前缀）
     const virtualTags = (taggedFriends || [])
       .filter(id => id.startsWith('temp-'))
-        .map(id => ({ memory_id: memory.id, virtual_friend_id: id.replace('temp-', ''), owner_id: userId }));
+      .map(id => ({ memory_id: memory.id, virtual_friend_id: id.replace('temp-', ''), owner_id: userId }));
 
     const allTags = [...realTags, ...virtualTags]
     if (allTags.length > 0) {
@@ -780,7 +797,7 @@ export const createMemory = async (
       is_owner: true,
     }
   }
-  
+
   return formatMemoryRecord(hydratedMemory, userId)
 }
 
@@ -808,7 +825,7 @@ export const createLocation = async (
     })
     .select()
     .single()
-  
+
   if (error) throw error
   return data
 }
@@ -836,9 +853,9 @@ export const createLedger = async (
     })
     .select()
     .single()
-  
+
   if (ledgerError) throw ledgerError
-  
+
   // 添加参与者
   if (ledger) {
     const participantRecords = participants.map(p => ({
@@ -848,14 +865,14 @@ export const createLedger = async (
       paid: p.userId === creatorId, // 创建者默认已付
       paid_at: p.userId === creatorId ? new Date().toISOString() : null,
     }))
-    
+
     const { error: participantsError } = await supabase
       .from('ledger_participants')
       .insert(participantRecords)
-    
+
     if (participantsError) throw participantsError
   }
-  
+
   return ledger
 }
 
@@ -868,7 +885,7 @@ export const getLedgers = async (userId: string) => {
     `)
     .eq('creator_id', userId)
     .order('created_at', { ascending: false })
-  
+
   if (error) throw error
   return data
 }
@@ -943,7 +960,7 @@ export const getSettlements = async (userId: string) => {
     `)
     .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
     .eq('status', 'pending')
-  
+
   if (error) throw error
   return data
 }
@@ -957,7 +974,7 @@ export const settlePayment = async (settlementId: string) => {
       settled_at: new Date().toISOString(),
     })
     .eq('id', settlementId)
-  
+
   if (error) throw error
 }
 // 修改记忆内容

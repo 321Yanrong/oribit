@@ -10,6 +10,10 @@ import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVis
 import PullToRefresh from '../components/PullToRefresh';
 import { BOTTOM_NAV_CONTENT_GAP } from '../components/BottomNav';
 import { useScrollLock } from '../hooks/useScrollLock';
+import imageCompression from 'browser-image-compression';
+import ReportPage from '../components/ReportPage';
+import PhotoUploader from '../components/PhotoUploader';
+import AdminReportsPage from '../components/AdminReportsPage';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -362,12 +366,52 @@ const HelpSupportPage = ({
   const [showAccountRecoveryPage, setShowAccountRecoveryPage] = useState(false);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
   const [checkingStep, setCheckingStep] = useState(-1);
-  const [selectedFeedbackScene, setSelectedFeedbackScene] = useState<{ title: string; desc: string } | null>(null);
-  const [faultText, setFaultText] = useState('');
-  const [faultImagePreview, setFaultImagePreview] = useState('');
-  const [faultContact, setFaultContact] = useState('');
+  const [feedbackCategory, setFeedbackCategory] = useState('功能建议');
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [feedbackImages, setFeedbackImages] = useState<string[]>([]);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [showSubmitToast, setShowSubmitToast] = useState(false);
-  const feedbackImageInputRef = useRef<HTMLInputElement>(null);
+
+  // New feedback handler
+  const handleSubmitFeedback = async () => {
+    if (!feedbackContent.trim()) {
+      alert('请输入反馈内容');
+      return;
+    }
+    if (!currentUser?.id) {
+      // Can handle guest feedback here if wanted, or alert
+      alert('请先登录后提交反馈');
+      return;
+    }
+    setSubmittingFeedback(true);
+    try {
+      const { error } = await (supabase.from('feedbacks' as any) as any).insert({
+        user_id: currentUser.id,
+        category: feedbackCategory,
+        content: feedbackContent,
+        images: feedbackImages, // PhotoUploader already uploaded them
+        app_version: (import.meta as any)?.env?.VITE_APP_VERSION,
+        device_info: navigator.userAgent
+      });
+
+      if (error) throw error;
+
+      setShowSubmitToast(true);
+      setTimeout(() => {
+        setShowSubmitToast(false);
+        setFeedbackContent('');
+        setFeedbackImages([]);
+        setFeedbackCategory('功能建议');
+        setShowFeedbackScenePage(false);
+      }, 2000);
+    } catch (err: any) {
+      console.error('Submit feedback failed', err);
+      alert('提交失败: ' + err.message);
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!feedback) return;
@@ -436,18 +480,6 @@ const HelpSupportPage = ({
       ? accountQuestions
       : settingsQuestions;
 
-  const feedbackScenes = [
-    { title: '登录/账号', desc: '登录失败、验证码、找回账号' },
-    { title: '邀请码/好友', desc: '邀请码无效、好友申请收发问题' },
-    { title: '回忆发布', desc: '文字、图片、视频发布异常' },
-    { title: '画质/音质', desc: '图片、视频清晰度和音频问题' },
-    { title: '评论/互动', desc: '评论发送失败、互动提醒异常' },
-    { title: '同步/备份', desc: '多设备不同步、历史回忆缺失' },
-    { title: '网络/刷新', desc: '加载缓慢、无法刷新、页面空白' },
-    { title: '深色模式/字体', desc: '显示模式与字体大小异常' },
-    { title: '隐私/数据', desc: '数据导出、删除、注销相关问题' },
-    { title: '其他', desc: '建议反馈、其他使用问题' },
-  ];
 
   const accountCheckItems = [
     '登录状态校验',
@@ -507,22 +539,6 @@ const HelpSupportPage = ({
   };
 
   const uniformAnswer = '目前正在建设中，如有其他问题请拨打110。';
-
-  const handlePickFeedbackImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setFaultImagePreview(url);
-  };
-
-  const handleSubmitFault = () => {
-    if (!faultText.trim() || !faultImagePreview) return;
-    setShowSubmitToast(true);
-    window.setTimeout(() => setShowSubmitToast(false), 2200);
-    setFaultText('');
-    setFaultImagePreview('');
-    setFaultContact('');
-  };
 
   const hsBg = isDarkMode ? '#0b1324' : '#f5f5f7';
   const hsCard = isDarkMode ? '#0f172a' : '#ffffff';
@@ -665,164 +681,86 @@ const HelpSupportPage = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="h-full w-full overflow-y-auto"
+              className="h-full w-full flex flex-col"
+              style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7' }}
             >
-              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-between relative" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                 <button
                   onClick={() => setShowFeedbackScenePage(false)}
-                  className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
+                  className="w-8 h-8 rounded-full flex items-center justify-center -ml-2"
                   style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
                 >
                   <FaChevronLeft className="text-base" />
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>意见反馈</h2>
+                <h2 className="text-[17px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>意见反馈</h2>
+                <button
+                  onClick={handleSubmitFeedback}
+                  disabled={submittingFeedback || !feedbackContent.trim()}
+                  className="px-4 py-1.5 rounded-full text-sm font-bold bg-[#00FFB3] text-black disabled:opacity-30 disabled:grayscale transition-all"
+                >
+                  {submittingFeedback ? <FaSpinner className="animate-spin" /> : '发送'}
+                </button>
               </div>
 
-              <div className="px-4 pt-5 pb-10">
-                <p className="text-[15px] mb-3" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3ba' }}>请选择问题发生的场景</p>
-
-                <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                  {feedbackScenes.map((scene, idx) => (
+              <div className="flex-1 overflow-y-auto p-5 pb-[max(20px,env(safe-area-inset-bottom))] flex flex-col">
+                {/* 1. Category Chips */}
+                <div className="flex gap-3 mb-6 overflow-x-auto pb-2 scrollbar-none">
+                  {['功能建议', 'Bug反馈', '体验吐槽', '其他'].map(cat => (
                     <button
-                      key={scene.title}
-                      className="w-full px-4 py-4 flex items-center justify-between text-left"
-                      style={{ borderBottom: idx === feedbackScenes.length - 1 ? 'none' : `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-                      onClick={() => {
-                        setSelectedFeedbackScene(scene);
-                        setFaultText('');
-                        setFaultImagePreview('');
-                        setFaultContact('');
-                      }}
+                      key={cat}
+                      onClick={() => setFeedbackCategory(cat)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all shrink-0 border ${feedbackCategory === cat
+                        ? 'bg-[#00FFB3] text-black border-[#00FFB3] shadow-lg shadow-[#00FFB3]/20'
+                        : (isDarkMode ? 'bg-white/5 text-white/60 border-white/10' : 'bg-black/5 text-black/60 border-black/5')
+                        }`}
                     >
-                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>{scene.title}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[14px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>{scene.desc}</span>
-                        <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }} />
-                      </div>
+                      {cat === 'Bug反馈' && '🛠 '}
+                      {cat === '功能建议' && '💡 '}
+                      {cat === '体验吐槽' && '😤 '}
+                      {cat === '其他' && '🤔 '}
+                      {cat}
                     </button>
                   ))}
                 </div>
 
-                <AnimatePresence>
-                  {selectedFeedbackScene && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="fixed inset-0 z-[112]"
-                      style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7' }}
-                    >
-                      <motion.div
-                        initial={{ x: '100%' }}
-                        animate={{ x: 0 }}
-                        exit={{ x: '100%' }}
-                        transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                        className="h-full w-full overflow-y-auto"
-                      >
-                        <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                          <button
-                            onClick={() => setSelectedFeedbackScene(null)}
-                            className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                            style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
-                          >
-                            <FaChevronLeft className="text-base" />
-                          </button>
-                          <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>故障提交</h2>
-                        </div>
+                {/* 2. Content Input */}
+                <textarea
+                  value={feedbackContent}
+                  onChange={(e) => setFeedbackContent(e.target.value)}
+                  placeholder="详细描述一下你的想法..."
+                  className="w-full flex-1 bg-transparent text-lg resize-none mb-6 leading-relaxed placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                  style={{ color: isDarkMode ? '#fff' : '#111' }}
+                />
 
-                        <div className="px-4 pt-5 pb-14 space-y-6">
-                          <div>
-                            <div className="mb-2 flex items-center justify-between">
-                              <p className="text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>问题和意见 <span style={{ color: '#ff2442' }}>*</span></p>
-                              <p className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>{faultText.length}/100</p>
-                            </div>
-                            <div className="rounded-2xl p-4" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                              <textarea
-                                maxLength={100}
-                                value={faultText}
-                                onChange={(e) => setFaultText(e.target.value)}
-                                placeholder="请填写你的功能建议，感谢你的支持～（必填）"
-                                className="w-full min-h-[150px] resize-none outline-none text-[18px]"
-                                style={{ color: isDarkMode ? '#e5e7eb' : '#303133', background: 'transparent' }}
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>图片 <span style={{ color: '#ff2442' }}>*</span></p>
-                            <div className="rounded-2xl p-4" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                              <button
-                                onClick={() => feedbackImageInputRef.current?.click()}
-                                className="w-[88px] h-[88px] rounded-xl flex items-center justify-center"
-                                style={{ background: isDarkMode ? '#111827' : '#f1f2f4', border: `0.5px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` }}
-                              >
-                                {faultImagePreview ? (
-                                  <img src={faultImagePreview} alt="feedback" className="w-full h-full rounded-xl object-cover" />
-                                ) : (
-                                  <span className="text-[42px]" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }}>＋</span>
-                                )}
-                              </button>
-                              <input
-                                ref={feedbackImageInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handlePickFeedbackImage}
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#e5e7eb' : '#303133' }}>联系方式</p>
-                            <div className="rounded-2xl p-4" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                              <input
-                                value={faultContact}
-                                onChange={(e) => setFaultContact(e.target.value)}
-                                placeholder="留下联系方式，更可能解决问题～"
-                                className="w-full outline-none text-[16px]"
-                                style={{ color: isDarkMode ? '#e5e7eb' : '#303133', background: 'transparent' }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="pt-2 flex justify-center">
-                            <button
-                              onClick={handleSubmitFault}
-                              disabled={!faultText.trim() || !faultImagePreview}
-                              className="w-[300px] h-12 rounded-full text-[36px] disabled:opacity-60"
-                              style={{ background: (!faultText.trim() || !faultImagePreview) ? (isDarkMode ? '#1f2937' : '#eceff1') : '#111827', color: '#ffffff' }}
-                            >
-                              <span className="text-[16px]">提交</span>
-                            </button>
-                          </div>
-
-                          {showSubmitToast && (
-                            <div className="pt-3 flex justify-center">
-                              <div className="px-6 py-3 rounded-full text-[15px]" style={{ background: '#1f2333', color: '#ffffff' }}>
-                                感谢您的反馈，我们会尽快处理，如遇到其他问题请拨打110
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="mt-8">
-                  <p className="text-[15px] mb-2" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>联系我们</p>
-                  <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <button className="w-full px-4 py-4 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }} onClick={() => setShowContactModal(true)}>
-                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>客服邮箱</span>
-                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>3482407231@qq.com</span>
-                    </button>
-                    <div className="px-4 py-4 flex items-center justify-between">
-                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>紧急联系</span>
-                      <span className="text-[15px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3baf' }}>110</span>
-                    </div>
-                  </div>
+                {/* 3. Photo Uploader */}
+                <div className="mt-auto pt-4 border-t" style={{ borderColor: isDarkMode ? '#1f2937' : '#e5e7eb' }}>
+                  <p className="text-xs mb-4 font-medium" style={{ color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }}>上传截图（可选，最多 3 张）</p>
+                  <PhotoUploader
+                    userId={currentUser?.id || 'guest'}
+                    photos={feedbackImages}
+                    onPhotosChange={setFeedbackImages}
+                    maxPhotos={3}
+                  />
                 </div>
               </div>
+
+              {showSubmitToast && (
+                <div className="absolute inset-0 flex items-center justify-center z-[50] pointer-events-none">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-6 py-3 rounded-2xl font-medium shadow-xl flex items-center gap-2 backdrop-blur-md"
+                    style={{
+                      background: isDarkMode ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                      color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`
+                    }}
+                  >
+                    <FaCheck className={isDarkMode ? 'text-green-400' : 'text-green-600'} /> 感谢反馈！我们会认真阅读
+                  </motion.div>
+                </div>
+              )}
+
             </motion.div>
           </motion.div>
         )}
@@ -1861,11 +1799,28 @@ const InviteCodeModal = ({
 };
 
 // 4. 随机回忆弹窗
-const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }: { memory: any; onClose: () => void; onShuffle?: () => void; friends: any[]; currentUser?: any }) => {
+const RandomMemoryModal = ({
+  memory,
+  onClose,
+  onShuffle,
+  friends,
+  currentUser,
+  onReport,
+  onBlock
+}: {
+  memory: any;
+  onClose: () => void;
+  onShuffle?: () => void;
+  friends: any[];
+  currentUser?: any;
+  onReport?: (memory: any) => void;
+  onBlock?: (userId: string) => void;
+}) => {
   useScrollLock(!!memory);
   const META_PREFIX = '[orbit_meta:';
   const AUDIO_PREFIX = '[audio]';
   const AUDIO_SPLIT = '||';
+  const [showMenu, setShowMenu] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const [showQuickComment, setShowQuickComment] = useState(false);
   const [quickCommentText, setQuickCommentText] = useState('');
@@ -2106,6 +2061,36 @@ const RandomMemoryModal = ({ memory, onClose, onShuffle, friends, currentUser }:
             {memory.location && <p className="text-sm mt-0.5 text-[color:var(--orbit-text-muted)]">📍 {memory.location.name}</p>}
           </div>
           <div className="flex items-center gap-2">
+            {currentUser?.id !== memory.user_id && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 rounded-full shadow-sm"
+                  style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+                  aria-label="更多"
+                >
+                  <FaEllipsisH />
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-32 rounded-xl shadow-xl overflow-hidden z-[110] animate-in fade-in zoom-in-95 duration-200" style={{ background: 'var(--orbit-card)', border: '1px solid var(--orbit-border)' }}>
+                    <button
+                      onClick={() => { setShowMenu(false); onReport?.(memory); }}
+                      className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                      style={{ color: '#ef4444' }}
+                    >
+                      举报该内容
+                    </button>
+                    <button
+                      onClick={() => { setShowMenu(false); onBlock?.(memory.user_id); }}
+                      className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                      style={{ color: 'var(--orbit-text)' }}
+                    >
+                      屏蔽作者
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             <button
               onClick={() => onShuffle?.()}
               className="p-2 rounded-full shadow-sm"
@@ -2301,11 +2286,17 @@ const MemoirMemoryModal = ({
   memory,
   onClose,
   initialIndex = 0,
+  onReport,
+  onBlock,
 }: {
   memory: any;
   onClose: () => void;
   initialIndex?: number;
+  onReport?: (memory: any) => void;
+  onBlock?: (userId: string) => void;
 }) => {
+  const { currentUser } = useUserStore();
+  const [showMenu, setShowMenu] = useState(false);
   const META_PREFIX = '[orbit_meta:';
   const decodeMemoryContent = (content: string): { text: string; weather: string; mood: string; route: string } => {
     if (!content?.startsWith(META_PREFIX)) return { text: stripOrbitMetaText(content || ''), weather: '', mood: '', route: '' };
@@ -2375,11 +2366,45 @@ const MemoirMemoryModal = ({
                 {photoIndex + 1}/{photos.length}
               </span>
             )}
-            <button onClick={onClose} className="p-2 rounded-full shadow-sm" style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}>
-              <FaTimes />
+            {currentUser?.id !== memory.user_id && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-1.5 opacity-60 hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--orbit-text)' }}
+                >
+                  <FaEllipsisH className="text-sm" />
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-32 rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 border" style={{ background: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}>
+                    <button
+                      onClick={() => { setShowMenu(false); onReport?.(memory); }}
+                      className="w-full text-left px-4 py-3 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-red-500"
+                    >
+                      Report Content
+                    </button>
+                    <button
+                      onClick={() => { setShowMenu(false); onBlock?.(memory.user_id); }}
+                      className="w-full text-left px-4 py-3 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t"
+                      style={{ color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }}
+                    >
+                      Block User
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 opacity-60 hover:opacity-100 transition-opacity"
+              style={{ color: 'var(--orbit-text)' }}
+              aria-label="Close"
+            >
+              <FaTimes className="text-lg" />
             </button>
           </div>
         </div>
+
 
         <div
           className="relative w-full mb-4 overflow-hidden rounded-2xl border"
@@ -2454,43 +2479,186 @@ const MemoirMemoryModal = ({
             <p className="text-sm" style={{ color: 'var(--orbit-text-muted)' }}>这条回忆暂无文字描述</p>
           )}
         </div>
-      </motion.div>
-    </motion.div>
+      </motion.div >
+    </motion.div >
   );
 };
 
-// 5. 共同记忆弹窗 (保持不变)
-const SharedMemoriesModal = ({ friend, memories, onClose }: { friend: any; memories: any[]; onClose: () => void; }) => {
+// 5. 共同记忆弹窗 (已重构：支持右向左滑、安全区、亮色模式)
+const SharedMemoriesModal = ({
+  friend,
+  memories,
+  onClose,
+  isDarkMode,
+  onReportUser,
+  onBlockUser,
+}: {
+  friend: any;
+  memories: any[];
+  onClose: () => void;
+  isDarkMode: boolean;
+  onReportUser?: (user: any) => void;
+  onBlockUser?: (user: any) => void;
+}) => {
   useScrollLock(true);
+  const { currentUser } = useUserStore();
+  const [showMenu, setShowMenu] = useState(false);
+  const [activeMemoryId, setActiveMemoryId] = useState<string | null>(null);
   const hasRemark = friend?.username !== friend?.real_username;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-xl" style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }} onClick={onClose}>
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="h-[100dvh] bg-[#1a1a1a] rounded-t-3xl overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }} onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-[#1a1a1a] p-4 border-b border-white/5 flex items-center justify-between">
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><FaTimes className="text-white/60" /></button>
-          <div className="text-center">
-            <h2 className="text-lg font-bold text-white">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-xl"
+      style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+        className="h-[100dvh] w-full flex flex-col overflow-hidden"
+        style={{
+          backgroundColor: isDarkMode ? '#070707' : '#f5f5f7',
+          color: isDarkMode ? '#f3f4f6' : '#111827',
+          WebkitOverflowScrolling: 'touch'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header 适配亮色并加入安全区内边距 */}
+        <div
+          className="safe-top sticky top-0 z-20 flex items-center justify-between px-4 pb-4 border-b transition-colors"
+          style={{
+            background: isDarkMode ? '#1a1a1a' : '#ffffff',
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)'
+          }}
+        >
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full active:opacity-60"
+            style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
+          >
+            <FaTimes />
+          </button>
+          <div className="text-center flex-1 mx-4 min-w-0">
+            <h2 className="text-lg font-bold truncate">
               与 {friend?.username} 的共同记忆
             </h2>
-            {/* 详情页才展示真实账号名 */}
             {hasRemark && (
-              <p className="text-white/30 text-xs mt-0.5">账号名：{friend?.real_username}</p>
+              <p className="opacity-40 text-xs mt-0.5 truncate">账号名：{friend?.real_username}</p>
             )}
           </div>
-          <div className="w-10" />
+          <div className="w-10 relative flex justify-end">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-full active:opacity-60"
+              style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
+            >
+              <FaEllipsisH />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-2 w-32 rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200" style={{ background: isDarkMode ? '#1e293b' : '#ffffff', border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}` }}>
+                <button
+                  onClick={() => { setShowMenu(false); onReportUser?.(friend); }}
+                  className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                  style={{ color: '#ef4444' }}
+                >
+                  举报该用户
+                </button>
+                <button
+                  onClick={() => { setShowMenu(false); onBlockUser?.(friend); }}
+                  className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                  style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}
+                >
+                  屏蔽该用户
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="p-4 pb-20">
+
+        {/* 滚动内容区 */}
+        <div className="flex-1 overflow-y-auto p-4 pb-24">
           {memories.length > 0 ? (
             <div className="space-y-4">
-              {memories.map((memory) => (
-                <div key={memory.id} className="p-4 rounded-2xl bg-white/5">
-                  <p className="text-white/80 mb-2">{stripOrbitMetaText(memory.content) || '（无文字记录）'}</p>
-                  <p className="text-white/40 text-sm">{memory.memory_date}</p>
-                </div>
-              ))}
+              {memories.map((memory) => {
+                const isMyMemory = memory.user_id === memory.friend?.id; // 这里判断逻辑可能需要微调，取决于 context，但 friend 通常是对方
+                // 暂时简单点：只要不是自己就可以举报
+                return (
+                  <div
+                    key={memory.id}
+                    className="p-5 rounded-3xl border transition-all relative"
+                    style={{
+                      background: isDarkMode ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      boxShadow: isDarkMode ? 'none' : '0 4px 12px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <div className="absolute top-4 right-4 z-10 flex">
+                      {currentUser?.id !== memory.user_id && (
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMemoryId(activeMemoryId === memory.id ? null : memory.id);
+                            }}
+                            className="p-2 -mr-2 -mt-2 transition-opacity"
+                            style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}
+                          >
+                            <FaEllipsisH className="text-sm" />
+                          </button>
+                          {activeMemoryId === memory.id && (
+                            <div className="absolute right-0 top-full mt-1 w-28 rounded-xl shadow-xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-200 border" style={{ background: isDarkMode ? '#1e293b' : '#ffffff', borderColor: isDarkMode ? '#334155' : '#e2e8f0' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMemoryId(null);
+                                  onReportUser?.(friend); // Always report the friend context in shared view
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 text-red-500"
+                              >
+                                举报发布者
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMemoryId(null);
+                                  onBlockUser?.(friend);
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 border-t"
+                                style={{ color: isDarkMode ? '#e5e7eb' : '#111827', borderColor: isDarkMode ? '#334155' : '#e2e8f0' }}
+                              >
+                                屏蔽发布者
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-[15px] leading-relaxed mb-3">
+                      {stripOrbitMetaText(memory.content) || '（无文字记录）'}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs opacity-40 font-medium">{memory.memory_date}</p>
+                      {memory.location?.name && (
+                        <span className="text-[10px] opacity-30 flex items-center gap-1">
+                          <FaMapMarkerAlt /> {memory.location.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <div className="text-center py-20"><p className="text-white/40">还没有共同记忆</p></div>
+            <div className="h-full flex flex-col items-center justify-center py-20 opacity-30">
+              <FaDice className="text-4xl mb-4" />
+              <p>还没有共同记忆</p>
+            </div>
           )}
         </div>
       </motion.div>
@@ -2735,6 +2903,7 @@ export default function ProfilePage() {
   const [editingRemarkId, setEditingRemarkId] = useState<string | null>(null);
   const [remarkInput, setRemarkInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showAdminPage, setShowAdminPage] = useState(false);
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [showFontSizePage, setShowFontSizePage] = useState(false);
   const [showDarkModePage, setShowDarkModePage] = useState(false);
@@ -3523,7 +3692,11 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
     try {
       const cropped = await cropImageToSquare(pendingAvatarFile, avatarAdjustScale, avatarAdjustOffsetX, avatarAdjustOffsetY);
       const url = await uploadAvatar(currentUser.id, cropped);
-      setCurrentUser({ ...currentUser, avatar_url: url });
+      setCurrentUser({
+        ...currentUser,
+        avatar_url: url,
+        storage_used: (currentUser.storage_used || 0) + cropped.size
+      });
       setPreviewAvatarUrl(url);
       closeAvatarPreview();
     } catch (err: any) {
@@ -3718,7 +3891,10 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
       setUploadingAvatar(false);
     }
   };
-
+  // 举报弹窗的显示状态
+  const [showReportModal, setShowReportModal] = useState(false);
+  // 记录当前正在举报哪一个好友/用户
+  const [reportingFriend, setReportingFriend] = useState<any>(null);
   const filteredFriends = friends
     .filter((fs: any) => {
       const isVirtual = fs?.status === 'virtual' || fs?.friend?.id?.startsWith?.('temp-');
@@ -3827,87 +4003,223 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
     ? Array.from(companionCounter.entries()).sort((a, b) => b[1] - a[1])[0][1]
     : 0;
 
-  const renderFriendRow = (friendship: any, index: number, total: number) => {
-    const friend = friendship?.friend || {};
-    const friendId = String(friend.id || friendship.friend_id || '').trim();
-    const isTemp = friendId.startsWith('temp-');
-    const hasRemark = !!friendship?.remark;
-    const rowKey = friendship?.id || friendId || `friend-${index}`;
-    const displayName = friend?.username || friendship?.friend_name || '好友';
-    const realName = friend?.real_username || '';
-    const avatarSrc = friend?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=orbit';
+  // const renderFriendRow = (friendship: any, index: number, total: number) => {
+  //   const friend = friendship?.friend || {};
+  //   const friendId = String(friend.id || friendship.friend_id || '').trim();
+  //   const isTemp = friendId.startsWith('temp-');
+  //   const hasRemark = !!friendship?.remark;
+  //   const rowKey = friendship?.id || friendId || `friend-${index}`;
+  //   const displayName = friend?.username || friendship?.friend_name || '好友';
+  //   const realName = friend?.real_username || '';
+  //   const avatarSrc = friend?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=orbit';
+  //   const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  //   const rowBg = index % 2 === 0 ? (isDarkMode ? '#0f172a' : '#f8fafc') : (isDarkMode ? '#0b1324' : '#ffffff');
+  //   const divider = index === total - 1 ? 'transparent' : (isDarkMode ? '#1f2937' : '#e5e7eb');
 
-    const rowBg = index % 2 === 0 ? (isDarkMode ? '#0f172a' : '#f8fafc') : (isDarkMode ? '#0b1324' : '#ffffff');
-    const divider = index === total - 1 ? 'transparent' : (isDarkMode ? '#1f2937' : '#e5e7eb');
+  //   return (
+  //     <motion.div
+  //       key={rowKey}
+  //       className={`w-full flex items-center gap-3 p-4 ${index !== total - 1 ? 'border-b' : ''}`}
+  //       style={{ borderColor: divider, background: rowBg }}
+  //     >
+  //       <div className="flex items-center gap-3 flex-1 cursor-pointer min-w-0" onClick={() => { if (editingRemarkId !== friendship.id) handleFriendClick(friend); }}>
+  //         <img src={avatarSrc} alt={displayName} className="w-12 h-12 rounded-full shrink-0 border" style={{ borderColor: isDarkMode ? '#1f2937' : '#e5e7eb' }} />
+  //         <div className="text-left min-w-0 flex-1">
+  //           <div className="flex items-center gap-2">
+  //             <p className="font-medium truncate" style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}>{displayName}</p>
+  //             {isTemp && <span className="px-1.5 py-0.5 rounded text-[10px] shrink-0" style={{ background: isDarkMode ? 'rgba(253,224,71,0.16)' : '#fff7ed', color: isDarkMode ? '#fcd34d' : '#9a3412' }}>临时</span>}
+  //           </div>
+  //           {editingRemarkId === friendship.id ? (
+  //             <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+  //               <input
+  //                 autoFocus
+  //                 value={remarkInput}
+  //                 onChange={e => setRemarkInput(e.target.value)}
+  //                 onKeyDown={e => { if (e.key === 'Enter') handleSaveRemark(friendship.id); if (e.key === 'Escape') setEditingRemarkId(null); }}
+  //                 placeholder="输入备注..."
+  //                 className="flex-1 text-xs px-2 py-1 rounded-lg outline-none border min-w-0"
+  //                 style={{ background: isDarkMode ? '#0f172a' : '#fff', color: isDarkMode ? '#e5e7eb' : '#111827', borderColor: isDarkMode ? '#1f2937' : '#d1d5db' }}
+  //               />
+  //               <button onClick={() => handleSaveRemark(friendship.id)} className="shrink-0 p-1 bg-[#00FFB3] text-black rounded-md"><FaCheck className="text-[10px]" /></button>
+  //               <button onClick={() => setEditingRemarkId(null)} className="shrink-0 p-1 rounded-md" style={{ background: isDarkMode ? '#111827' : '#f3f4f6', color: isDarkMode ? '#cbd5e1' : '#6b7280' }}><FaTimes className="text-[10px]" /></button>
+  //             </div>
+  //           ) : (
+  //             <div className="flex items-center gap-1 mt-1">
+  //               <p className="text-sm truncate" style={{ color: isDarkMode ? '#cbd5e1' : '#6b7280' }}>
+  //                 {hasRemark ? realName || displayName : (isTemp ? '点击绑定真实账号' : '查看共同记忆')}
+  //               </p>
+  //               <button
+  //                 className="p-1.5 -my-1 opacity-60 hover:opacity-100 transition-opacity"
+  //                 onClick={(e) => {
+  //                   e.stopPropagation();
+  //                   setRemarkInput(friendship.remark || '');
+  //                   setEditingRemarkId(friendship.id);
+  //                 }}
+  //               >
+  //                 <FaEdit className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }} />
+  //               </button>
+  //             </div>
+  //           )}
+  //         </div>
+  //       </div>
 
-    return (
-      <motion.div
-        key={rowKey}
-        className={`w-full flex items-center gap-3 p-4 ${index !== total - 1 ? 'border-b' : ''}`}
-        style={{ borderColor: divider, background: rowBg }}
-      >
-        <div className="flex items-center gap-3 flex-1 cursor-pointer min-w-0" onClick={() => { if (editingRemarkId !== friendship.id) handleFriendClick(friend); }}>
-          <img src={avatarSrc} alt={displayName} className="w-12 h-12 rounded-full shrink-0 border" style={{ borderColor: isDarkMode ? '#1f2937' : '#e5e7eb' }} />
-          <div className="text-left min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-medium truncate" style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}>{displayName}</p>
-              {isTemp && <span className="px-1.5 py-0.5 rounded text-[10px] shrink-0" style={{ background: isDarkMode ? 'rgba(253,224,71,0.16)' : '#fff7ed', color: isDarkMode ? '#fcd34d' : '#9a3412' }}>临时</span>}
-            </div>
-            {editingRemarkId === friendship.id ? (
-              <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
-                <input
-                  autoFocus
-                  value={remarkInput}
-                  onChange={e => setRemarkInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSaveRemark(friendship.id); if (e.key === 'Escape') setEditingRemarkId(null); }}
-                  placeholder="输入备注..."
-                  className="flex-1 text-xs px-2 py-1 rounded-lg outline-none border min-w-0"
-                  style={{ background: isDarkMode ? '#0f172a' : '#fff', color: isDarkMode ? '#e5e7eb' : '#111827', borderColor: isDarkMode ? '#1f2937' : '#d1d5db' }}
-                />
-                <button onClick={() => handleSaveRemark(friendship.id)} className="shrink-0 p-1 bg-[#00FFB3] text-black rounded-md"><FaCheck className="text-[10px]" /></button>
-                <button onClick={() => setEditingRemarkId(null)} className="shrink-0 p-1 rounded-md" style={{ background: isDarkMode ? '#111827' : '#f3f4f6', color: isDarkMode ? '#cbd5e1' : '#6b7280' }}><FaTimes className="text-[10px]" /></button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 mt-1">
-                <p className="text-sm truncate" style={{ color: isDarkMode ? '#cbd5e1' : '#6b7280' }}>
-                  {hasRemark ? realName || displayName : (isTemp ? '点击绑定真实账号' : '查看共同记忆')}
-                </p>
-                <button
-                  className="p-1.5 -my-1 opacity-60 hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRemarkInput(friendship.remark || '');
-                    setEditingRemarkId(friendship.id);
-                  }}
-                >
-                  <FaEdit className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+  //       <div className="flex items-center gap-1 shrink-0">
+  //         <button
+  //           onClick={() => handleFriendClick(friend)}
+  //           className="px-3 py-1.5 rounded-xl text-sm font-semibold"
+  //           style={{ background: isTemp ? (isDarkMode ? 'rgba(59,130,246,0.15)' : '#eef2ff') : (isDarkMode ? 'rgba(52,211,153,0.12)' : '#eef2ff'), color: isTemp ? '#3b82f6' : (isDarkMode ? '#34d399' : '#1d4ed8') }}
+  //         >
+  //           {isTemp ? '绑定' : '查看'}
+  //         </button>
+  //         <button
+  //           onClick={() => handleDeleteFriend(friendship.id, displayName)}
+  //           className="p-2 rounded-full transition-colors"
+  //           style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}
+  //           title="删除好友"
+  //         >
+  //           <FaTrash className="text-xs" />
+  //         </button>
+  //       </div>
+  //     </motion.div>
+  //   );
+  // };
+  const handleBlockUser = async (targetUser: any, skipConfirm = false) => {
+    if (!targetUser) return;
+    const name = targetUser.username || targetUser.friend_name || '该用户';
+    const targetId = targetUser.friend_id || targetUser.id;
 
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => handleFriendClick(friend)}
-            className="px-3 py-1.5 rounded-xl text-sm font-semibold"
-            style={{ background: isTemp ? (isDarkMode ? 'rgba(59,130,246,0.15)' : '#eef2ff') : (isDarkMode ? 'rgba(52,211,153,0.12)' : '#eef2ff'), color: isTemp ? '#3b82f6' : (isDarkMode ? '#34d399' : '#1d4ed8') }}
-          >
-            {isTemp ? '绑定' : '查看'}
-          </button>
-          <button
-            onClick={() => handleDeleteFriend(friendship.id, displayName)}
-            className="p-2 rounded-full transition-colors"
-            style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}
-            title="删除好友"
-          >
-            <FaTrash className="text-xs" />
-          </button>
-        </div>
-      </motion.div>
-    );
+    if (!targetId || targetId === currentUser.id) {
+      alert('无法屏蔽自己或未知用户');
+      return;
+    }
+
+    if (!skipConfirm && !window.confirm(`确定要屏蔽 ${name} 吗？屏蔽后你们将互不可见。`)) return;
+
+    try {
+      const { error } = await (supabase.from('blocked_users' as any) as any)
+        .insert({
+          user_id: currentUser.id,
+          blocked_user_id: targetId
+        });
+
+      if (error) throw error;
+      alert('已屏蔽该用户。');
+      await useUserStore.getState().fetchFriends();
+      // Close modals if likely open
+      if (selectedFriend && (selectedFriend.id === targetId || selectedFriend.friend_id === targetId)) {
+        setSelectedFriend(null);
+      }
+      if (memoirMemory && memoirMemory.user_id === targetId) {
+        setMemoirMemory(null);
+      }
+      // Also refresh memories to hide content from blocked user
+      // But fetchMemories is a heavy operation, maybe just filter locally?
+      // useUserStore.getState().fetchMemories(); // If available
+    } catch (err: any) {
+      alert('屏蔽失败：' + err.message);
+    }
   };
 
+  const handleReportSubmit = async (reason: string, evidenceUrl?: string) => {
+    if (!currentUser || !reportingFriend) return;
+    const targetUser = { ...reportingFriend }; // Clone to keep reference after state clear
+
+    try {
+      const { error } = await (supabase.from('reports' as any) as any)
+        .insert({
+          reporter_id: currentUser.id,
+          reported_user_id: reportingFriend.friend_id || reportingFriend.id,
+          reason: reason,
+          evidence_url: evidenceUrl,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      alert('举报已收到，感谢您的反馈！我们将在 24 小时内核实处理。');
+      setShowReportModal(false);
+      setReportingFriend(null);
+
+      // Ask for blocking
+      setTimeout(() => {
+        if (window.confirm('是否同时屏蔽该用户？屏蔽后你们将互不可见。')) {
+          handleBlockUser(targetUser, true);
+        }
+      }, 500);
+
+    } catch (err: any) {
+      alert('举报提交失败：' + err.message);
+    }
+  };
+
+  // 2. 增强型左滑行组件
+  const SwipeableFriendRow = ({
+    friendship, index, total, isDarkMode,
+    onFriendClick, onDelete, onReport, onBlock
+  }: any) => {
+    const friend = friendship?.friend || {};
+    const displayName = friend?.username || friendship?.friend_name || '好友';
+
+    // 按钮宽度：举报(70)+屏蔽(70)+删除(70) = 210
+    const dragThreshold = -210;
+
+    return (
+      <div
+        className="relative overflow-hidden w-full h-[76px] select-none"
+        style={{ borderBottom: index === total - 1 ? 'none' : `0.5px solid ${isDarkMode ? '#1f2937' : '#f3f4f6'}` }}
+      >
+        {/* 底部按钮层 */}
+        <div className="absolute inset-0 flex justify-end items-stretch z-0">
+          <button
+            onClick={() => onReport(friendship)}
+            className="w-[70px] bg-orange-500 text-white flex flex-col items-center justify-center gap-1 active:opacity-70"
+          >
+            <FaInfoCircle className="text-sm" />
+            <span className="text-[10px] font-bold">举报</span>
+          </button>
+          <button
+            onClick={() => onBlock(friendship)}
+            className="w-[70px] bg-gray-500 text-white flex flex-col items-center justify-center gap-1 active:opacity-70"
+          >
+            <FaUserLock className="text-sm" />
+            <span className="text-[10px] font-bold">屏蔽</span>
+          </button>
+          <button
+            onClick={() => onDelete(friendship.id, displayName)}
+            className="w-[70px] bg-red-500 text-white flex flex-col items-center justify-center gap-1 active:opacity-70"
+          >
+            <FaTrash className="text-sm" />
+            <span className="text-[10px] font-bold">删除</span>
+          </button>
+        </div>
+
+        {/* 顶层内容层 */}
+        <motion.div
+          drag="x"
+          dragConstraints={{ left: dragThreshold, right: 0 }}
+          dragElastic={0.05}
+          className="absolute inset-0 z-10 flex items-center gap-3 px-4 touch-pan-y"
+          style={{
+            background: isDarkMode ? '#0d1626' : '#ffffff',
+          }}
+        >
+          <img
+            src={friend?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=orbit'}
+            className="w-12 h-12 rounded-full shrink-0 border"
+            style={{ borderColor: isDarkMode ? '#1f2937' : '#e5e7eb' }}
+            alt=""
+          />
+          <div className="flex-1 min-w-0" onClick={() => onFriendClick(friend)}>
+            <p className="font-medium truncate" style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}>{displayName}</p>
+            <p className="text-xs mt-1 opacity-50" style={{ color: isDarkMode ? '#cbd5e1' : '#6b7280' }}>
+              {friendship.remark || '查看共同记忆'}
+            </p>
+          </div>
+          <FaChevronRight className="text-[10px] opacity-20" />
+        </motion.div>
+      </div>
+    );
+  };
   return (
     <div
       className={`relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
@@ -4149,16 +4461,36 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 </button>
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs" style={{ color: isDarkMode ? '#9ca3af' : '#6b7280' }}>邮箱</span>
-                <span
-                  className="text-xs font-medium truncate"
-                  style={{ color: 'var(--orbit-text)', maxWidth: '220px' }}
-                  title={currentUser?.email || '未绑定邮箱'}
-                >
-                  {currentUser?.email || '未绑定邮箱'}
-                </span>
+                <span className="text-xs opacity-60">邮箱</span>
+                <span className="text-xs font-medium truncate opacity-90" title={currentUser?.email || '未绑定'}>{currentUser?.email || '未绑定'}</span>
               </div>
-              <p className="text-sm mt-2" style={{ color: 'var(--orbit-text)' }}>记录生活碎片 ✨</p>
+
+              {/* 存储空间条：仅对已登录用户展示 */}
+              {currentUser && (
+                <div className="mt-3">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-[10px] opacity-50">存储空间</span>
+                    <span className="text-[10px] font-medium opacity-80">
+                      {(currentUser.storage_used ? (currentUser.storage_used / 1024 / 1024).toFixed(1) : '0.0')} MB / 1024 MB
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full transition-all duration-500 rounded-full"
+                      style={{
+                        width: `${Math.min(100, ((currentUser.storage_used || 0) / (1024 * 1024 * 1024)) * 100)}%`,
+                        // 超过 90% 变红色预警
+                        backgroundColor: ((currentUser.storage_used || 0) / (1024 * 1024 * 1024)) > 0.9 ? '#ff4d4f' : undefined,
+                        background: ((currentUser.storage_used || 0) / (1024 * 1024 * 1024)) <= 0.9
+                          ? 'linear-gradient(to right, #60a5fa, #a855f7)'
+                          : undefined
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <p className="text-sm mt-3 font-medium opacity-90">记录生活碎片 ✨</p>
               <p className="text-xs mt-1" style={{ color: 'var(--orbit-text-muted)' }}>
                 {(latestActivePlace || '最近位置未知')} · 最近活跃 {latestActiveAt ? latestActiveAt.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '今天'}
               </p>
@@ -4884,6 +5216,10 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                     <p className="font-medium text-[color:var(--orbit-text)]">❓ 猜你想问</p>
                     <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">常见问题与使用技巧</p>
                   </button>
+                  <button onClick={() => setShowAdminPage(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🛡️ 举报审核 (Admin)</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">查看并处理用户举报</p>
+                  </button>
                 </div>
 
                 {/* 6. 关于 Orbit */}
@@ -4996,9 +5332,30 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 }}
               >
                 <div className="p-4 pt-2 pb-32">
-                  <div className="rounded-2xl overflow-hidden border" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec', background: isDarkMode ? '#0d1626' : '#fff' }}>
+                  <div className="rounded-2xl overflow-hidden border" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec' }}>
                     {filteredFriends.length > 0 ? (
-                      filteredFriends.map((friendship, index) => renderFriendRow(friendship, index, filteredFriends.length))
+                      filteredFriends.map((fs: any, idx: number) => (
+                        <SwipeableFriendRow
+                          key={fs.id}
+                          friendship={fs}
+                          index={idx}
+                          total={filteredFriends.length}
+                          isDarkMode={isDarkMode}
+                          // 传入你现有的逻辑函数
+                          onFriendClick={handleFriendClick}
+                          onDelete={handleDeleteFriend}
+                          onEditRemark={(item: any) => {
+                            setRemarkInput(item.remark || '');
+                            setEditingRemarkId(item.id);
+                          }}
+                          // ✨ 新增的举报屏蔽入口
+                          onReport={(item: any) => {
+                            setReportingFriend(item); // 先锁定举报对象
+                            setShowReportModal(true);       // 打开举报弹窗
+                          }}
+                          onBlock={(item: any) => handleBlockUser(item)}
+                        />
+                      ))
                     ) : (
                       <div className="p-8 text-center text-sm" style={{ color: 'var(--orbit-text-muted)' }}>没有匹配的好友</div>
                     )}
@@ -5084,12 +5441,21 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
             </motion.div>
           )}
         </AnimatePresence>
-        {selectedFriend && <SharedMemoriesModal key={`shared-${selectedFriend.id || 'unknown'}`} friend={selectedFriend} memories={memories.filter(m =>
-          // 我发布的、@了对方的记忆
-          m.tagged_friends?.includes(selectedFriend.id) ||
-          // 对方发布的、@了我的记忆（通过 RLS 已拉取到本地）
-          m.user_id === selectedFriend.id
-        )} onClose={() => setSelectedFriend(null)} />}
+        {selectedFriend && (<SharedMemoriesModal
+          key={`shared-${selectedFriend.id || 'unknown'}`}
+          friend={selectedFriend}
+          memories={memories.filter(m =>
+            // 我发布的、@了对方的记忆
+            m.tagged_friends?.includes(selectedFriend.id) ||
+            // 对方发布的、@了我的记忆（通过 RLS 已拉取到本地）
+            m.user_id === selectedFriend.id
+          )}
+          onClose={() => setSelectedFriend(null)}
+          isDarkMode={isDarkMode}
+          onReportUser={(user: any) => { setReportingFriend(user); setShowReportModal(true); }}
+          onBlockUser={(user: any) => handleBlockUser(user)}
+        />
+        )}
         {bindingFriend && <BindFriendModal key={`bind-${bindingFriend.id || 'unknown'}`} friend={bindingFriend} isOpen={!!bindingFriend} onClose={() => setBindingFriend(null)} onBind={handleBindFriend} />}
         {acceptingRequest && (
           <AcceptFriendModal
@@ -5112,6 +5478,15 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
             onClose={() => setRandomMemory(null)}
             friends={friends}
             currentUser={currentUser}
+            onReport={(item: any) => {
+              setReportingFriend({
+                friend_id: item.user_id,
+                friend: { username: item.username || '作者' },
+                friend_name: item.username
+              });
+              setShowReportModal(true);
+            }}
+            onBlock={(userId: string) => handleBlockUser({ id: userId, username: '此用户' })}
           />
         )}
         {memoirMemory && (
@@ -5119,6 +5494,16 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
             key={`memoir-${memoirMemory.id || memoirMemory.created_at || 'mem'}`}
             memory={memoirMemory}
             onClose={() => setMemoirMemory(null)}
+            onReport={(item: any) => {
+              // Construct a fake friend object for the report page
+              setReportingFriend({
+                friend_id: item.user_id,
+                friend: { username: item.user_name || '作者' },
+                friend_name: item.user_name
+              });
+              setShowReportModal(true);
+            }}
+            onBlock={(userId: string) => handleBlockUser({ id: userId, username: '此用户' })}
           />
         )}
         {showAccountDiagnostics && (
@@ -5139,6 +5524,22 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
           onClose={() => setShowEmailModal(false)}
           onSubmit={handleSubmitEmail}
           loading={actionLoading}
+        />
+        <ReportPage
+          key="report-page"
+          isOpen={showReportModal}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingFriend(null);
+          }}
+          targetName={reportingFriend?.friend?.username || reportingFriend?.friend_name || '该用户'}
+          onSubmit={handleReportSubmit}
+          isDarkMode={isDarkMode}
+        />
+        <AdminReportsPage
+          isOpen={showAdminPage}
+          onClose={() => setShowAdminPage(false)}
+          isDarkMode={isDarkMode}
         />
         <ChangePasswordModal
           key="change-password-modal"

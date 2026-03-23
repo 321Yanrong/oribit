@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaTimes, FaSpinner } from 'react-icons/fa';
+import imageCompression from 'browser-image-compression';
 
 interface PhotoUploaderProps {
   userId: string;
@@ -21,14 +22,12 @@ export default function PhotoUploader({
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || uploading) return;
-    
-    const validFiles = Array.from(files).filter(file => {
+
+    // Convert FileList to Array and filter for valid images
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
       if (!file.type.startsWith('image/')) {
         alert('请选择图片文件');
-        return false;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        alert('图片大小不能超过 5MB');
         return false;
       }
       return true;
@@ -36,21 +35,43 @@ export default function PhotoUploader({
 
     if (validFiles.length === 0) return;
 
+    // Check if we exceed max photos
     const remainingSlots = maxPhotos - photos.length;
-    const filesToUpload = validFiles.slice(0, remainingSlots);
-
-    if (filesToUpload.length < validFiles.length) {
+    if (validFiles.length > remainingSlots) {
       alert(`最多只能上传 ${maxPhotos} 张照片`);
     }
+
+    const filesToProcess = validFiles.slice(0, remainingSlots);
+    if (filesToProcess.length === 0) return;
 
     setUploading(true);
 
     try {
+      // Compress images
+      const options = {
+        maxSizeMB: 1, // Target 1MB max size
+        maxWidthOrHeight: 1920, // Reasonable max dimension for photos
+        useWebWorker: true,
+      };
+
+      const compressedFiles = await Promise.all(
+        filesToProcess.map(async (file) => {
+          try {
+            // Only compress if larger than 1MB or large dimensions
+            // But verify it is definitely an image
+            const compressed = await imageCompression(file, options);
+            // If compression result is larger (rare but possible for already optimal images), use original
+            return compressed.size < file.size ? compressed : file;
+          } catch (e) {
+            console.error('Image compression failed for file:', file.name, e);
+            // Fallback to original file
+            return file;
+          }
+        })
+      );
+
       const { uploadMultiplePhotos } = await import('../api/supabase');
-      const urls = await uploadMultiplePhotos(userId, filesToUpload);
-      onPhotosChange([...photos, ...urls]);
-    } catch (error) {
-      console.error('Upload failed:', error);
+      const urls = await uploadMultiplePhotos(userId, compressedFiles);
       alert('上传失败，请重试');
     } finally {
       setUploading(false);
@@ -125,8 +146,8 @@ export default function PhotoUploader({
           className={`
             relative aspect-video rounded-2xl border-2 border-dashed cursor-pointer
             transition-all duration-300 overflow-hidden
-            ${dragOver 
-              ? 'border-orbit-mint bg-orbit-mint/10' 
+            ${dragOver
+              ? 'border-orbit-mint bg-orbit-mint/10'
               : 'border-white/20 bg-white/5 hover:border-orbit-mint/50'
             }
           `}
@@ -141,9 +162,8 @@ export default function PhotoUploader({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center transition-all ${
-                  dragOver ? 'bg-orbit-mint text-orbit-black' : 'bg-white/10 text-white/40'
-                }`}>
+                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center transition-all ${dragOver ? 'bg-orbit-mint text-orbit-black' : 'bg-white/10 text-white/40'
+                  }`}>
                   <FaImage className="w-6 h-6" />
                 </div>
                 <p className={`text-sm transition-colors ${dragOver ? 'text-orbit-mint' : 'text-white/40'}`}>

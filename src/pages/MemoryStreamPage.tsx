@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock } from 'react-icons/fa';
+import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock, FaCity, FaEllipsisH } from 'react-icons/fa';
 import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
@@ -9,6 +9,7 @@ import { supabase, createMemory, createLocation, createLedger, updateLedger, del
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
+import ReportPage from '../components/ReportPage';
 import PullToRefresh from '../components/PullToRefresh';
 import { track } from '../utils/analytics';
 import { readSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
@@ -140,19 +141,28 @@ const formatTime = (dateStr: string) => {
   return `${hours}:${minutes}`;
 };
 
-// ── 天气 / 心情 / 路线 元数据编解码 ──────────────────────────────
-const WEATHER_OPTIONS = [
-  { emoji: '☀️', label: '晴天' }, { emoji: '⛅', label: '多云' },
-  { emoji: '🌧️', label: '下雨' }, { emoji: '❄️', label: '下雪' },
-  { emoji: '🌈', label: '彩虹' }, { emoji: '🌪️', label: '大风' },
-  { emoji: '🌫️', label: '大雾' }, { emoji: '⛈️', label: '雷雨' },
+export const WEATHER_OPTIONS = [
+  { emoji: '\u2600\uFE0F', label: '晴天' },      // ☀️
+  { emoji: '\u26C5', label: '多云' },            // ⛅
+  { emoji: '\uD83C\uDF27\uFE0F', label: '下雨' }, // 🌧️
+  { emoji: '\u2744\uFE0F', label: '下雪' },      // ❄️
+  { emoji: '\uD83C\uDF08', label: '彩虹' },      // 🌈
+  { emoji: '\uD83C\uDF2A\uFE0F', label: '大风' }, // 🌪️
+  { emoji: '\uD83C\uDF2B\uFE0F', label: '大雾' }, // 🌫️
+  { emoji: '\u26C8\uFE0F', label: '雷雨' },      // ⛈️
 ];
-const MOOD_OPTIONS = [
-  { emoji: '😊', label: '开心' }, { emoji: '😍', label: '幸福' },
-  { emoji: '🥰', label: '甜蜜' }, { emoji: '😎', label: '酷' },
-  { emoji: '🥺', label: '感动' }, { emoji: '😢', label: '落泪' },
-  { emoji: '😤', label: '疲惫' }, { emoji: '🤩', label: '超棒' },
-  { emoji: '🤔', label: '迷茫' }, { emoji: '😴', label: '困了' },
+
+export const MOOD_OPTIONS = [
+  { emoji: '\uD83D\uDE0A', label: '开心' }, // 😊
+  { emoji: '\uD83D\uDE0D', label: '幸福' }, // 😍
+  { emoji: '\uD83E\uDD70', label: '甜蜜' }, // 🥰
+  { emoji: '\uD83D\uDE0E', label: '酷' },   // 😎
+  { emoji: '\uD83E\uDD7A', label: '感动' }, // 🥺
+  { emoji: '\uD83D\uDE22', label: '落泪' }, // 😢
+  { emoji: '\uD83D\uDE24', label: '疲惫' }, // 😤
+  { emoji: '\uD83E\uDD29', label: '超棒' }, // 🤩
+  { emoji: '\uD83E\uDD14', label: '迷茫' }, // 🤔
+  { emoji: '\uD83D\uDE34', label: '困了' }, // 😴
 ];
 
 const META_PREFIX = '[orbit_meta:';
@@ -1292,6 +1302,14 @@ const CreateMemoryModal = ({
   );
 };
 
+const getIsDarkTheme = () => {
+  if (typeof document === 'undefined') return true;
+  const theme = document.documentElement.dataset.theme;
+  if (theme === 'dark') return true;
+  if (theme === 'light') return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+};
+
 export default function MemoryStreamPage() {
   const { memories, fetchMemories, deleteMemory } = useMemoryStore();
   const { friends } = useUserStore();
@@ -1318,12 +1336,94 @@ export default function MemoryStreamPage() {
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshingPull, setIsRefreshingPull] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const updateTheme = () => setIsDarkMode(getIsDarkTheme());
+    const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    updateTheme();
+    media?.addEventListener('change', updateTheme);
+    window.addEventListener(SETTINGS_EVENT, updateTheme);
+    return () => {
+      media?.removeEventListener('change', updateTheme);
+      window.removeEventListener(SETTINGS_EVENT, updateTheme);
+    };
+  }, []);
   const [activeStoryMemories, setActiveStoryMemories] = useState<any[] | null>(null);
   const [showStoryEntry, setShowStoryEntry] = useState(false);
   // 在原有的 useState 旁边加上这两个：
   const { currentUser } = useUserStore(); // 获取当前用户，用来判断是不是自己发的回忆
   const [editingMemory, setEditingMemory] = useState<any>(null);
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
+  const [activeMenuMemoryId, setActiveMenuMemoryId] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportingFriend, setReportingFriend] = useState<any>(null);
+
+  const handleBlockUser = async (targetUser: any) => {
+    if (!targetUser) return;
+    const name = targetUser.username || targetUser.friend_name || '该用户';
+    const targetId = targetUser.friend_id || targetUser.id; // Corrected logic to handle different user objects
+
+    if (!targetId || targetId === currentUser?.id) {
+      alert('无法屏蔽自己或未知用户');
+      return;
+    }
+
+    if (!window.confirm(`确定要屏蔽 ${name} 吗？屏蔽后你们将互不可见。`)) return;
+
+    try {
+      const { error } = await (supabase.from('blocked_users' as any) as any)
+        .insert({
+          user_id: currentUser?.id,
+          blocked_user_id: targetId
+        });
+
+      if (error) throw error;
+      alert('已屏蔽该用户。');
+      await useUserStore.getState().fetchFriends();
+      await fetchMemories();
+    } catch (err: any) {
+      console.error('Block error:', err);
+      alert('屏蔽失败，请稍后重试');
+    }
+  };
+
+  const handleSubmitReport = async (reason: string, evidenceUrl?: string) => {
+    if (!reportingFriend) return;
+    const targetUser = { ...reportingFriend };
+
+    try {
+      const { error } = await (supabase.from('reports' as any) as any)
+        .insert({
+          reporter_id: currentUser?.id,
+          reported_user_id: reportingFriend.id,
+          reason: reason,
+          evidence_url: evidenceUrl,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      alert('举报已收到，感谢您的反馈！我们将在 24 小时内核实处理。');
+      setShowReportModal(false);
+      setReportingFriend(null);
+
+      // Ask for blocking in a separate cycle to let UI update
+      setTimeout(() => {
+        if (window.confirm('是否同时屏蔽该用户？屏蔽后你们将互不可见。')) {
+          handleBlockUser(targetUser);
+        }
+      }, 500);
+
+    } catch (e: any) {
+      console.error('Report error:', e);
+      alert('提交失败: ' + (e.message || '未知错误'));
+      setShowReportModal(false);
+      setReportingFriend(null);
+    }
+  };
+
   const scrollRestoredRef = useRef(false);
   const albumSectionRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState(readSettings());
@@ -2066,6 +2166,7 @@ export default function MemoryStreamPage() {
 
   return (
     <div
+      onClick={() => setActiveMenuMemoryId(null)}
       className={`memory-stream-page relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
         backgroundColor: 'var(--orbit-surface)',
@@ -2155,7 +2256,10 @@ export default function MemoryStreamPage() {
               : { backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)', borderColor: 'var(--orbit-border)' }
             }
           >
-            {groupBy === 'city' ? '🏙 按城市' : '📅 按日期'}
+            {groupBy === 'city'
+              ? <div className="flex items-center gap-1.5"><FaCity /><span>按城市</span></div>
+              : <div className="flex items-center gap-1.5"><FaCalendarAlt /><span>按日期</span></div>
+            }
           </button>
           {/* 顶部月份筛选 + 排序（与财务页保持一致） */}
           <div className="flex items-center gap-2">
@@ -2298,7 +2402,7 @@ export default function MemoryStreamPage() {
               {/* 城市标题 */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF9F43]/20 to-[#FF6B6B]/20 flex items-center justify-center">
-                  <span className="text-base">🏙</span>
+                  <FaCity className="text-[#FF9F43]" />
                 </div>
                 <div>
                   <div className="font-semibold" style={{ color: 'var(--orbit-text)' }}>{cityGroup.city}</div>
@@ -2334,10 +2438,48 @@ export default function MemoryStreamPage() {
                             )}
                           </div>
                         </div>
-                        {memory.user_id === currentUser?.id && (
+                        {memory.user_id === currentUser?.id ? (
                           <div className="flex items-center gap-2">
                             <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"><FaEdit className="text-sm" /></button>
                             <button onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }} disabled={deletingMemoryId === memory.id} className="text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-40"><FaTrash className="text-sm" /></button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuMemoryId(activeMenuMemoryId === memory.id ? null : memory.id);
+                              }}
+                              className="p-1.5 rounded-full text-[color:var(--orbit-text-muted)] hover:text-[color:var(--orbit-text)]"
+                            >
+                              <FaEllipsisH className="text-xs" />
+                            </button>
+                            {activeMenuMemoryId === memory.id && (
+                              <div className="absolute right-0 top-full mt-1 w-28 rounded-xl bg-[var(--orbit-card)] border border-[var(--orbit-border)] shadow-xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-200">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuMemoryId(null);
+                                    setReportingFriend({ id: memory.user_id, username: author.name });
+                                    setShowReportModal(true);
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 text-red-500"
+                                >
+                                  举报发布者
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuMemoryId(null);
+                                    handleBlockUser({ id: memory.user_id, username: author.name });
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 border-t border-[var(--orbit-border)]"
+                                  style={{ color: 'var(--orbit-text)' }}
+                                >
+                                  屏蔽发布者
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2583,10 +2725,48 @@ export default function MemoryStreamPage() {
                             )}
                           </div>
                         </div>
-                        {memory.user_id === currentUser?.id && (
+                        {memory.user_id === currentUser?.id ? (
                           <div className="flex items-center gap-2">
                             <button onClick={(e) => { e.stopPropagation(); setEditingMemory(memory); }} className="text-[color:var(--orbit-text-muted,#9ca3af)] hover:text-[#00FFB3] transition-colors"><FaEdit className="text-sm" /></button>
                             <button onClick={(e) => { e.stopPropagation(); void handleDeleteMemory(memory.id); }} disabled={deletingMemoryId === memory.id} className="text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-40"><FaTrash className="text-sm" /></button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuMemoryId(activeMenuMemoryId === memory.id ? null : memory.id);
+                              }}
+                              className="p-1.5 rounded-full text-[color:var(--orbit-text-muted)] hover:text-[color:var(--orbit-text)]"
+                            >
+                              <FaEllipsisH className="text-xs" />
+                            </button>
+                            {activeMenuMemoryId === memory.id && (
+                              <div className="absolute right-0 top-full mt-1 w-28 rounded-xl bg-[var(--orbit-card)] border border-[var(--orbit-border)] shadow-xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-200">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuMemoryId(null);
+                                    setReportingFriend({ id: memory.user_id, username: author.name });
+                                    setShowReportModal(true);
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 text-red-500"
+                                >
+                                  举报发布者
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuMemoryId(null);
+                                    handleBlockUser({ id: memory.user_id, username: author.name });
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 border-t border-[var(--orbit-border)]"
+                                  style={{ color: 'var(--orbit-text)' }}
+                                >
+                                  屏蔽发布者
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -3009,6 +3189,14 @@ export default function MemoryStreamPage() {
           />
         )}
       </AnimatePresence>
+
+      <ReportPage
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        targetName={reportingFriend?.username || reportingFriend?.friend_name || '该用户'}
+        onSubmit={handleSubmitReport}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 }

@@ -1,18 +1,27 @@
 const META_PREFIX = '[orbit_meta:';
 
 export const WEATHER_OPTIONS = [
-  { emoji: '☀️', label: '晴天' }, { emoji: '⛅', label: '多云' },
-  { emoji: '🌧️', label: '下雨' }, { emoji: '❄️', label: '下雪' },
-  { emoji: '🌈', label: '彩虹' }, { emoji: '🌪️', label: '大风' },
-  { emoji: '🌫️', label: '大雾' }, { emoji: '⛈️', label: '雷雨' },
+  { emoji: '\u2600\uFE0F', label: '晴天' },      // ☀️
+  { emoji: '\u26C5', label: '多云' },            // ⛅
+  { emoji: '\uD83C\uDF27\uFE0F', label: '下雨' }, // 🌧️
+  { emoji: '\u2744\uFE0F', label: '下雪' },      // ❄️
+  { emoji: '\uD83C\uDF08', label: '彩虹' },      // 🌈
+  { emoji: '\uD83C\uDF2A\uFE0F', label: '大风' }, // 🌪️
+  { emoji: '\uD83C\uDF2B\uFE0F', label: '大雾' }, // 🌫️
+  { emoji: '\u26C8\uFE0F', label: '雷雨' },      // ⛈️
 ];
 
 export const MOOD_OPTIONS = [
-  { emoji: '😊', label: '开心' }, { emoji: '😍', label: '幸福' },
-  { emoji: '🥰', label: '甜蜜' }, { emoji: '😎', label: '酷' },
-  { emoji: '🥺', label: '感动' }, { emoji: '😢', label: '落泪' },
-  { emoji: '😤', label: '疲惫' }, { emoji: '🤩', label: '超棒' },
-  { emoji: '🤔', label: '迷茫' }, { emoji: '😴', label: '困了' },
+  { emoji: '\uD83D\uDE0A', label: '开心' }, // 😊
+  { emoji: '\uD83D\uDE0D', label: '幸福' }, // 😍
+  { emoji: '\uD83E\uDD70', label: '甜蜜' }, // 🥰
+  { emoji: '\uD83D\uDE0E', label: '酷' },   // 😎
+  { emoji: '\uD83E\uDD7A', label: '感动' }, // 🥺
+  { emoji: '\uD83D\uDE22', label: '落泪' }, // 😢
+  { emoji: '\uD83D\uDE24', label: '疲惫' }, // 😤
+  { emoji: '\uD83E\uDD29', label: '超棒' }, // 🤩
+  { emoji: '\uD83E\uDD14', label: '迷茫' }, // 🤔
+  { emoji: '\uD83D\uDE34', label: '困了' }, // 😴
 ];
 
 export const formatDateGroup = (dateStr: string) => {

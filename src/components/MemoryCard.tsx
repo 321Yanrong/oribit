@@ -2,16 +2,21 @@ import { motion } from 'framer-motion';
 import { FaMapMarkerAlt, FaCalendar, FaUsers, FaHeart, FaReceipt } from 'react-icons/fa';
 import { Memory } from '../types';
 import { useUserStore, getUserById } from '../store';
+import { useState } from 'react';
+import ReportModal from './ReportModal';
 
 interface MemoryCardProps {
   memory: Memory;
   onClick?: () => void;
   compact?: boolean;
+  onBlockUser: () => void;
+  onReportUser: (reason: string) => void;
 }
 
-export default function MemoryCard({ memory, onClick, compact = false }: MemoryCardProps) {
+export default function MemoryCard({ memory, onClick, compact = false, onBlockUser, onReportUser }: MemoryCardProps) {
   const taggedUsers = memory.tagged_friends.map(id => getUserById(id)).filter(Boolean);
-  
+  const [isReportModalOpen, setReportModalOpen] = useState(false);
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const month = date.getMonth() + 1;
@@ -31,9 +36,9 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
         <div className="flex gap-4">
           {memory.photos[0] && (
             <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0">
-              <img 
-                src={memory.photos[0]} 
-                alt="" 
+              <img
+                src={memory.photos[0]}
+                alt=""
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
@@ -64,15 +69,15 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
       {/* 照片 */}
       {memory.photos.length > 0 && (
         <div className="relative aspect-[4/3]">
-          <img 
-            src={memory.photos[0]} 
-            alt="" 
+          <img
+            src={memory.photos[0]}
+            alt=""
             className="w-full h-full object-cover"
             loading="lazy"
           />
           {/* 渐变遮罩 */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          
+
           {/* 账单标签 */}
           {memory.has_ledger && (
             <motion.div
@@ -86,7 +91,7 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
               </div>
             </motion.div>
           )}
-          
+
           {/* 地点信息 */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="flex items-center gap-2 text-white">
@@ -98,7 +103,7 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
           </div>
         </div>
       )}
-      
+
       {/* 内容区域 */}
       <div className="p-5">
         {/* 日期 */}
@@ -106,23 +111,23 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
           <FaCalendar className="w-4 h-4 text-orbit-mint/60" />
           <span className="text-white/50 text-sm">{formatDate(memory.memory_date)}</span>
         </div>
-        
+
         {/* 内容 */}
         <p className="text-white/90 text-base leading-relaxed mb-4">{memory.content}</p>
-        
+
         {/* 同行好友 */}
         {taggedUsers.length > 0 && (
           <div className="flex items-center gap-3 pt-3 border-t border-white/10">
             <FaUsers className="w-4 h-4 text-white/40" />
             <div className="flex -space-x-2">
               {taggedUsers.map((user) => (
-                <div 
+                <div
                   key={user!.id}
                   className="w-8 h-8 rounded-full ring-2 ring-orbit-dark overflow-hidden"
                   title={user!.username}
                 >
-                  <img 
-                    src={user!.avatar_url} 
+                  <img
+                    src={user!.avatar_url}
                     alt={user!.username}
                     className="w-full h-full object-cover"
                   />
@@ -134,7 +139,7 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
             </span>
           </div>
         )}
-        
+
         {/* 互动按钮 */}
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/10">
           <button className="flex items-center gap-1.5 text-white/40 hover:text-orbit-mint transition-colors">
@@ -143,6 +148,21 @@ export default function MemoryCard({ memory, onClick, compact = false }: MemoryC
           </button>
         </div>
       </div>
+
+      {/* 菜单 */}
+      <div className="menu">
+        <button onClick={() => setReportModalOpen(true)} className="menu-item text-orange-500">举报</button>
+        <button onClick={onBlockUser} className="menu-item text-gray-500">拉黑该用户</button>
+      </div>
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onSubmit={(reason) => {
+          onReportUser(reason);
+          setReportModalOpen(false);
+        }}
+      />
     </motion.div>
   );
 }

@@ -181,9 +181,7 @@ export function VoiceRecorder({
         )}
       </div>
     );
-  }
-
-  return (
+  } return (
     <div className="space-y-4">
       <div className="flex flex-col items-center gap-4 py-6">
         <motion.button
@@ -362,9 +360,8 @@ export default function MediaUploader({
 
     // 🚨 唤醒 iOS PWA：给底层留 500ms 恢复网络/内存
     await new Promise(resolve => setTimeout(resolve, 500));
-
     try {
-      // 1. import 也加 5 秒超时，避免断网卡死
+      // 1. 加载上传环境
       const importPromise = import('../api/supabase');
       const timeoutImport = new Promise((_, reject) => setTimeout(() => reject(new Error('网络初始化超时')), 5000));
       const { uploadPhoto } = (await Promise.race([importPromise, timeoutImport])) as any;
@@ -374,47 +371,69 @@ export default function MediaUploader({
 
       for (const file of files) {
         let timeoutId: NodeJS.Timeout | null = null;
-        try {
-          const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: false, initialQuality: 0.8 };
 
-          // 压缩+上传完整链路
+        try {
+          // 压缩配置
+          const options = {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true, // 改回 true，性能更好
+            initialQuality: 0.8
+          };
+
+          // ✨ 将压缩和上传封装在一个逻辑链路中
           const processPromise = async () => {
-            console.log('开始压缩图片...');
+            // A. 压缩阶段
+            console.log('--- 开始处理图片 ---');
             const compressedFile = await imageCompression(file, options);
-            console.log('压缩完成，开始上传...');
+
+            // 打印真实压缩报告
+            console.log('压缩成功！');
+            console.log('原始体积:', (file.size / 1024).toFixed(2), 'KB');
+            console.log('压缩后体积:', (compressedFile.size / 1024).toFixed(2), 'KB');
+            console.log('压缩率:', ((1 - compressedFile.size / file.size) * 100).toFixed(2) + '%');
+
+            // B. 上传阶段 - 确保传给 uploadPhoto 的是 compressedFile
+            console.log('开始上传到云端...');
             return await uploadPhoto(userId, compressedFile);
           };
 
-          // 20 秒强制超时（压缩+上传）
+          // 30 秒超时控制（针对单张图片的处理+上传）
           const timeoutPromise = new Promise<string>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('图片处理超时，请检查网络')), 20000);
+            timeoutId = setTimeout(() => reject(new Error('图片处理或上传超时')), 30000);
           });
 
+          // 执行赛跑
           const url = await Promise.race([processPromise(), timeoutPromise]);
 
           uploadedUrls.push(url);
           setUploadDone(prev => Math.min(prev + 1, files.length));
+          console.log('✅ 单张图片上传完成:', url);
+
         } catch (innerErr) {
           console.error('单张图片处理失败:', innerErr);
-          alert(`图片 ${file.name} 处理失败：${(innerErr as any)?.message || '请重试'}`);
           failedFiles.push(file);
         } finally {
-          // 清理定时器，避免未捕获异常
           if (timeoutId) clearTimeout(timeoutId);
         }
       }
 
+      // 更新父组件状态
       if (uploadedUrls.length > 0) {
         onPhotosChange([...photos, ...uploadedUrls]);
       }
+
+      // 失败处理
       if (failedFiles.length > 0) {
-        await savePendingPhotos(failedFiles, MAX_PENDING_FILES);
+        await savePendingPhotos(failedFiles, 4); // 假设 MAX 是 4
+        alert(`有 ${failedFiles.length} 张图片上传失败，已转入待处理队列`);
       } else {
         await clearPendingPhotos();
       }
+
     } catch (err) {
-      console.error('上传环境加载失败:', err);
-      alert('系统异常，请稍后重试');
+      console.error('全局上传失败:', err);
+      alert('上传环境加载失败，请检查网络后重试');
     } finally {
       setUploading(false);
       if (inputEl) inputEl.value = '';
