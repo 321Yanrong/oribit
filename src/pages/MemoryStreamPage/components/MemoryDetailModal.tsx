@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { VoiceRecorder } from '../../../components/MediaUploader';
 import { uploadAvatar, updateProfileAvatarUrl } from '../../../api/supabase';
 import { useUserStore } from '../../../store';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, FaQuoteLeft } from 'react-icons/fa';
 import { decodeMemoryContent, formatDateGroup, formatTime, MOOD_OPTIONS, WEATHER_OPTIONS } from '../utils';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../../../utils/tagVisibility';
 import { getMemoryComments, addMemoryComment, deleteMemoryComment } from '../../../api/supabase';
+import { useScrollLock } from '../../../hooks/useScrollLock';    // Add useScrollLock
+import { App } from '@capacitor/app';                            // Add Capacitor App for backButton handling
 
 interface MemoryDetailModalProps {
   memory: any;
@@ -78,6 +80,38 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [avatarSaving, setAvatarSaving] = useState(false);
   const setCurrentUser = useUserStore((s) => s.setCurrentUser);
   const userStoreUser = useUserStore((s) => s.currentUser);
+  useScrollLock(true);
+
+  // 监听硬件返回键（Android）
+  useEffect(() => {
+    let unregister: (() => void) | undefined;
+    App.addListener('backButton', () => {
+      // 这里的逻辑需要小心闭包问题，最好用 ref 引用最新的 state，或者让 UI 驱动 state
+      // 简单起见，我们只能在顶层做。由于 useEffect deps 包含 state，每次 state 变了都会重新注册，性能尚可。
+      if (isLightboxOpen) {
+        setIsLightboxOpen(false);
+      } else if (avatarPreview) {
+        setAvatarPreview(null);
+      } else {
+        onClose();
+      }
+    }).then(result => {
+      unregister = result.remove;
+    });
+
+    return () => {
+      if (unregister) unregister();
+    };
+  }, [isLightboxOpen, avatarPreview, onClose]);
+
+  // 1. 设置手势的基础动画值
+  const y = useMotionValue(0);
+  const x = useMotionValue(0);
+
+  // 2. 灵魂魔法：将拖拽的距离映射到 背景透明度 和 图片缩放比例 上
+  // 当往下或往上拖拽超过 150px 时，背景变得全透，图片缩小到 80%
+  const bgOpacity = useTransform(y, [-150, 0, 150], [0, 1, 0]);
+  const imgScale = useTransform(y, [-150, 0, 150], [0.8, 1, 0.8]);
 
   const photos = memory.photos || [];
   const videos = memory.videos || [];
@@ -206,6 +240,25 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
 
   const goPrevPhoto = () => setCurrentPhotoIndex((idx) => Math.max(0, idx - 1));
   const goNextPhoto = () => setCurrentPhotoIndex((idx) => Math.min(photos.length - 1, idx + 1));
+
+  // 3. 处理拖拽结束的逻辑
+  const handleDragEnd = (e: any, info: any) => {
+    const { offset, velocity } = info;
+    const swipeThreshold = 50; // 滑动判定阈值
+
+    // 垂直方向判断：下拉或上拉超过阈值，直接关闭
+    if (Math.abs(offset.y) > 100 || Math.abs(velocity.y) > 500) {
+      setIsLightboxOpen(false);
+      return; // 退出就不执行后面的代码了
+    }
+
+    // 水平方向判断：左滑或右滑切图
+    if (offset.x < -swipeThreshold && currentPhotoIndex < photos.length - 1) {
+      goNextPhoto();
+    } else if (offset.x > swipeThreshold && currentPhotoIndex > 0) {
+      goPrevPhoto();
+    }
+  };
 
   const handleLightboxTouchStart = (e: React.TouchEvent) => {
     const t = e.touches?.[0];
@@ -425,80 +478,67 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           <AnimatePresence>
             {isLightboxOpen && photos.length > 0 && (
               <motion.div
+                className="fixed inset-0 z-[120] flex items-center justify-center touch-none overscroll-none"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[120] backdrop-blur-sm flex items-center justify-center touch-none"
-                style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 94%, transparent)' }}
-                onClick={() => setIsLightboxOpen(false)}
+                transition={{ duration: 0.2 }}
               >
-                <div
-                  ref={lightboxContainerRef}
-                  tabIndex={0}
-                  className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center px-4"
-                  onClick={(e) => e.stopPropagation()}
-                  onTouchStart={handleLightboxTouchStart}
-                  onTouchEnd={handleLightboxTouchEnd}
-                  onPointerDown={handleLightboxPointerDown}
-                  onPointerUp={handleLightboxPointerUp}
-                  onKeyDown={handleLightboxKeyDown}
+                {/* 动态背景层：跟着下拉手势变透明 */}
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 98%, #000)',
+                    opacity: bgOpacity
+                  }}
+                  onClick={() => setIsLightboxOpen(false)} // 点击空白处依然可以退出
+                />
+
+                {/* 图片容器：处理所有拖拽逻辑 */}
+                <motion.div
+                  className="relative w-full h-full flex items-center justify-center pointer-events-none"
                 >
-                  <img
+                  <motion.img
+                    key={currentPhotoIndex} // key 变化时会触发切换动画
                     src={photos[currentPhotoIndex]}
                     alt={`原图 ${currentPhotoIndex + 1}`}
-                    className="max-h-[90vh] max-w-[90vw] w-auto h-auto object-contain"
+                    className="max-h-[100vh] max-w-[100vw] w-auto h-auto object-contain pointer-events-auto cursor-grab active:cursor-grabbing"
+
+                    // 绑定动画值
+                    style={{ x, y, scale: imgScale }}
+
+                    // 开启全向拖拽
+                    drag
+
+                    // 锁定方向：要么横滑，要么竖滑，不会斜着乱跑（微信也是这样的）
+                    dragDirectionLock
+
+                    // 弹簧阻尼设置：松手后的回弹动画，数值越小越 Q 弹
+                    dragTransition={{ bounceStiffness: 300, bounceDamping: 20 }}
+
+                    // 给拖拽设定一个弹性边界，即使不到阈值，拖不动了也会有拉扯感
+                    dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+                    dragElastic={0.8} // 橡皮筋拉力，1 为完全自由，0 为死死锁住
+
+                    // 拖拽结束判定
+                    onDragEnd={handleDragEnd}
+
+                    // 图片切入动画（可选：让左右切换也带点过渡）
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   />
-                  {photos.length > 1 && (
-                    <>
-                      <button
-                        onClick={goPrevPhoto}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition disabled:opacity-40"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}
-                        disabled={currentPhotoIndex === 0}
-                      >
-                        <FaChevronRight className="text-white rotate-180" />
-                      </button>
-                      <button
-                        onClick={goNextPhoto}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition disabled:opacity-40"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)' }}
-                        disabled={currentPhotoIndex === photos.length - 1}
-                      >
-                        <FaChevronRight className="text-white" />
-                      </button>
-                      <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">
-                        {photos.map((_, index) => (
-                          <button
-                            key={index}
-                            onClick={() => setCurrentPhotoIndex(index)}
-                            className={`w-2 h-2 rounded-full transition-all ${index === currentPhotoIndex ? 'bg-white w-6' : 'bg-white/40'}`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  <button
-                    onClick={() => setIsLightboxOpen(false)}
-                    className="absolute p-3 rounded-full transition"
-                    style={{
-                      top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-                      right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-                      backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)',
-                    }}
-                  >
-                    <FaTimes className="text-white text-lg" />
-                  </button>
-                  <div
-                    className="absolute px-3 py-1.5 rounded-full text-white text-sm"
-                    style={{
-                      top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-                      left: 'calc(env(safe-area-inset-left, 0px) + 12px)',
-                      backgroundColor: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)',
-                    }}
-                  >
+                </motion.div>
+
+                {/* 顶部指示器 1 / 3 */}
+                <motion.div
+                  style={{ opacity: bgOpacity }} // 下拉时连同背景一起消失
+                  className="absolute top-safe-12 left-0 right-0 flex justify-center pointer-events-none"
+                >
+                  <div className="px-3 py-1.5 rounded-full text-white text-sm bg-black/40 backdrop-blur-md mt-4">
                     {currentPhotoIndex + 1} / {photos.length}
                   </div>
-                </div>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>

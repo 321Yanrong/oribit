@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { App } from '@capacitor/app';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { FaEdit, FaChevronRight, FaChevronLeft, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaUserPlus, FaBars, FaShareAlt, FaCopy, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt, FaComment, FaPaperPlane, FaInfoCircle, FaHeadset, FaEllipsisH, FaFont, FaMoon, FaWifi, FaAt, FaBell, FaUserShield, FaUserLock, FaStore, FaUndoAlt, FaTicketAlt, FaClipboardList, FaTruck, FaTrash, FaMicrophone } from 'react-icons/fa';
@@ -224,12 +225,14 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
     ? lines.filter((_, index) => index !== firstNonEmptyIndex).join('\n').replace(/^\s*\n/, '')
     : String(content || '');
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[90]"
+      className="fixed inset-0 z-[10000]"
       style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
@@ -262,7 +265,8 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -279,13 +283,14 @@ const CommunityGuidelinesPage = ({
 }) => {
   useScrollLock(isOpen);
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80]"
+      className="fixed inset-0 z-[10000]"
       style={{ background: isDarkMode ? '#0b1324' : '#ffffff', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
@@ -338,7 +343,8 @@ const CommunityGuidelinesPage = ({
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -546,12 +552,14 @@ const HelpSupportPage = ({
   const hsSubText = isDarkMode ? '#94a3b8' : '#9ca3af';
   const hsBorder = isDarkMode ? '#1f2937' : '#ececf1';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80]"
+      className="fixed inset-0 z-[10000]"
       style={{ background: hsBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
@@ -1102,7 +1110,8 @@ const HelpSupportPage = ({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -1160,12 +1169,14 @@ const FontSizePage = ({
   const cardBorder = isDarkMode ? '#1f2937' : 'transparent';
   const sliderAccent = isDarkMode ? '#475569' : '#c8cdd3';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80]"
+      className="fixed inset-0 z-[10000]"
       style={{ background: overlayBg, fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
     >
       <motion.div
@@ -1248,7 +1259,8 @@ const FontSizePage = ({
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -1271,12 +1283,14 @@ const DarkModePage = ({
   const isDark = themeMode === 'dark' || (followSystem && prefersDark);
   const darkEnabled = !followSystem && themeMode === 'dark';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80]"
+      className="fixed inset-0 z-[10000]"
       style={{ background: isDark ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif', overscrollBehaviorY: 'contain' }}
     >
       <motion.div
@@ -1325,7 +1339,8 @@ const DarkModePage = ({
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -2048,7 +2063,7 @@ const RandomMemoryModal = ({
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: 'spring', damping: 20, stiffness: 250 }}
-        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] min-h-[50vh] overflow-y-auto overflow-x-hidden touch-pan-y"
         style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -2122,7 +2137,7 @@ const RandomMemoryModal = ({
             </button>
           </div>
         </div>
-        <div className="px-5 pb-5">
+        <div className="px-5 pb-35 w-full break-words">
           {photos.length > 0 && (
             <div
               className="relative w-full mb-4 overflow-hidden rounded-2xl border"
@@ -2799,13 +2814,14 @@ const AccountDiagnosticsModal = ({
   };
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80]"
+      className="fixed inset-0 z-[10000]"
       style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
     >
       <motion.div
@@ -2873,7 +2889,8 @@ const AccountDiagnosticsModal = ({
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -3193,12 +3210,18 @@ export default function ProfilePage() {
 
     const interval = window.setInterval(tryAutoRefresh, 60000);
     window.addEventListener('online', tryAutoRefresh);
-    document.addEventListener('visibilitychange', tryAutoRefresh);
+
+    const setupListener = async () => {
+      return await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) tryAutoRefresh();
+      });
+    };
+    const listenerPromise = setupListener();
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('online', tryAutoRefresh);
-      document.removeEventListener('visibilitychange', tryAutoRefresh);
+      listenerPromise.then(l => l.remove());
     };
   }, [refreshProfileData]);
 
@@ -4589,21 +4612,6 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
               <div className="flex items-center gap-3 min-w-0">
                 <span className="w-9 h-9 rounded-xl flex items-center justify-center">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isDarkMode ? '#e5e7eb' : '#111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" />
-                    <circle cx="12" cy="10" r="2.5" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[13px] leading-5" style={{ color: 'var(--orbit-text)' }}>最常出没</p>
-                  <p className="text-[12px] truncate" style={{ color: 'var(--orbit-text-muted)' }}>{mostFrequentLocation} · {mostFrequentLocationCount}次</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center py-2" style={{ borderTop: `0.5px solid ${isDarkMode ? '#1f2937' : '#f0f0f0'}` }}>
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="w-9 h-9 rounded-xl flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isDarkMode ? '#e5e7eb' : '#111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="9" cy="8" r="3" />
                     <circle cx="17" cy="9" r="2.5" />
                     <path d="M4 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
@@ -4685,7 +4693,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
           whileTap={{ scale: 0.97 }}
           onClick={() => handleRandomMemory()}
           disabled={memories.length === 0}
-          className="w-full min-h-[56px] py-3 px-1 flex items-center gap-3 disabled:opacity-30"
+          className="w-full min-h-[56px] py-3 px-1 flex items-center gap-3 disabled:opacity-30 rounded-2xl"
           style={{ background: isDarkMode ? '#111827' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}
         >
           <div className="w-6 h-6 flex items-center justify-center text-lg shrink-0">
@@ -4695,31 +4703,32 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
           <FaChevronRight className="ml-auto" style={{ color: 'var(--orbit-text-muted)' }} />
         </motion.button>
 
-        <div className="mt-2 px-1 flex items-center justify-between">
-          <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>回忆录（最新四个）</p>
-          <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>点击图片查看</p>
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {memoryPreviewSlots.map((item: any, idx) => (
-            item ? (
-              <button
-                key={`mem-slot-${idx}`}
-                type="button"
-                className="aspect-square rounded-xl overflow-hidden relative text-left"
-                style={{ background: '#f3f4f6' }}
-                onClick={() => setMemoirMemory(item.memory)}
-                title="查看这条回忆"
-              >
-                <img src={item.cover} alt={`recent-memory-${idx + 1}`} className="w-full h-full object-cover" />
-                <div className="absolute inset-x-0 bottom-0 px-2 py-1.5" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0))' }}>
-                  <p className="text-white text-[11px] font-medium">{item.label} · 查看回忆</p>
-                </div>
-              </button>
-            ) : (
-              <div key={`mem-slot-${idx}`} className="aspect-square rounded-xl" style={{ background: '#f3f4f6' }} />
-            )
-          ))}
-        </div>
+        {/* 只有过滤后有数据，才渲染整个回忆录板块 */}
+        {memoryPreviewSlots.filter(Boolean).length > 0 && (
+          <>
+            <div className="mt-2 px-1 flex items-center justify-between">
+              <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>回忆录（最新四个）</p>
+              <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>点击图片查看</p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {memoryPreviewSlots.filter(Boolean).map((item: any, idx: number) => (
+                <button
+                  key={`mem-slot-${idx}`}
+                  type="button"
+                  className="aspect-square rounded-xl overflow-hidden relative text-left"
+                  style={{ background: '#f3f4f6' }}
+                  onClick={() => setMemoirMemory(item.memory)}
+                  title="查看这条回忆"
+                >
+                  <img src={item.cover} alt={`recent-memory-${idx + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0))' }}>
+                    <p className="text-white text-[11px] font-medium">{item.label} · 查看回忆</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="relative z-10 px-4 mt-2">
@@ -4909,173 +4918,182 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showAboutOrbit && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[85]"
-            style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
-          >
-            <div className="h-full overflow-y-auto">
-              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
-                <button
-                  onClick={() => setShowAboutOrbit(false)}
-                  className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
-                >
-                  <FaChevronLeft className="text-base" />
-                </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>关于 Orbit</h2>
-              </div>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showAboutOrbit && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000]"
+              style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+            >
+              <div className="h-full overflow-y-auto">
+                <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
+                  <button
+                    onClick={() => setShowAboutOrbit(false)}
+                    className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
+                  >
+                    <FaChevronLeft className="text-base" />
+                  </button>
+                  <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>关于 Orbit</h2>
+                </div>
 
-              <div className="px-4 pt-2">
-                <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                  <div className="px-6 pt-12 pb-8 text-center" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <img src="/icons/icon-384.png" alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
-                    <p className="mt-4 text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>v{appVersion}</p>
-                    <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>更新于 {appBuildLabel}</p>
+                <div className="px-4 pt-2">
+                  <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <div className="px-6 pt-12 pb-8 text-center" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <img src="/icons/icon-384.png" alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
+                      <p className="mt-4 text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>v{appVersion}</p>
+                      <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>更新于 {appBuildLabel}</p>
+                    </div>
+
+                    <button onClick={() => setShowEncouragePopup(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>鼓励一下</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                    <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>服务条款</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                    <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>隐私政策</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                    <button onClick={() => openDocument('证照信息', '证照信息页面（示例）\n\n这里是临时展示内容。\n后续会补充营业执照、备案号和相关资质信息。')} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>证照信息</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
                   </div>
+                </div>
 
-                  <button onClick={() => setShowEncouragePopup(true)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>鼓励一下</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button onClick={() => openDocument('服务条款', TERMS_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>服务条款</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>隐私政策</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button onClick={() => openDocument('证照信息', '证照信息页面（示例）\n\n这里是临时展示内容。\n后续会补充营业执照、备案号和相关资质信息。')} className="w-full px-6 py-4 flex items-center justify-between text-left" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>证照信息</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
+                <div className="px-4 pt-14 pb-8 text-center">
+                  <p className="text-[12px] leading-6" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }}>
+                    Orbit 版权所有<br />
+                    Copyright©2013 - 2026 Orbit. All Rights Reserved<br />
+                    官方热线: 9501 3888
+                  </p>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
-              <div className="px-4 pt-14 pb-8 text-center">
-                <p className="text-[12px] leading-6" style={{ color: isDarkMode ? '#64748b' : '#c4c4c8' }}>
-                  Orbit 版权所有<br />
-                  Copyright©2013 - 2026 Orbit. All Rights Reserved<br />
-                  官方热线: 9501 3888
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showEncouragePopup && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-6"
-            onClick={() => setShowEncouragePopup(false)}
-          >
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showEncouragePopup && (
             <motion.div
-              initial={{ scale: 0.9, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.92, y: 8 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-              className="w-full max-w-xs rounded-3xl p-6 text-center"
-              style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center p-6"
+              onClick={() => setShowEncouragePopup(false)}
             >
-              <div className="text-[42px] leading-none">🥰🎉✨</div>
-              <p className="mt-3 text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}>感谢你的鼓励！</p>
-              <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}>Orbit 会继续努力 💫</p>
-              <button
-                onClick={() => setShowEncouragePopup(false)}
-                className="mt-4 px-4 py-2 rounded-full text-[13px]"
-                style={{ background: isDarkMode ? '#1e293b' : '#f3f4f6', color: isDarkMode ? '#e5e7eb' : '#111827' }}
+              <motion.div
+                initial={{ scale: 0.9, y: 12 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.92, y: 8 }}
+                transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+                className="w-full max-w-xs rounded-3xl p-6 text-center"
+                style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                onClick={(e) => e.stopPropagation()}
               >
-                好的
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showMoreQuickMenu && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90]"
-            style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
-          >
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="h-full w-full overflow-y-auto"
-            >
-              <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
+                <div className="text-[42px] leading-none">🥰🎉✨</div>
+                <p className="mt-3 text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#111827' }}>感谢你的鼓励！</p>
+                <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}>Orbit 会继续努力 💫</p>
                 <button
-                  onClick={() => setShowMoreQuickMenu(false)}
-                  className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
+                  onClick={() => setShowEncouragePopup(false)}
+                  className="mt-4 px-4 py-2 rounded-full text-[13px]"
+                  style={{ background: isDarkMode ? '#1e293b' : '#f3f4f6', color: isDarkMode ? '#e5e7eb' : '#111827' }}
                 >
-                  <FaChevronLeft className="text-base" />
+                  好的
                 </button>
-                <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>更多</h2>
-              </div>
-
-              <div className="px-4 pt-2 pb-8">
-                <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                  <button
-                    className="w-full px-6 py-4 flex items-center justify-between text-left"
-                    style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-                    onClick={() => {
-                      openDocument('检查更新', `当前版本：v${appVersion}\n构建时间：${appBuildLabel}\n\n已是最新版本。`);
-                    }}
-                  >
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>检查更新</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button
-                    className="w-full px-6 py-4 flex items-center justify-between text-left"
-                    style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-                    onClick={async () => {
-                      await handleClearCache();
-                    }}
-                  >
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>清理缓存</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button
-                    className="w-full px-6 py-4 flex items-center justify-between text-left"
-                    style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-                    onClick={() => {
-                      setShowHelpSupport(true);
-                    }}
-                  >
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>意见反馈</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                  <button
-                    className="w-full px-6 py-4 flex items-center justify-between text-left"
-                    onClick={() => {
-                      openDocument('关于版本', `Orbit\n版本号：v${appVersion}\n构建时间：${appBuildLabel}`);
-                    }}
-                  >
-                    <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>关于版本</span>
-                    <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                  </button>
-                </div>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showMoreQuickMenu && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000]"
+              style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+            >
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                className="h-full w-full overflow-y-auto"
+              >
+                <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
+                  <button
+                    onClick={() => setShowMoreQuickMenu(false)}
+                    className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}
+                  >
+                    <FaChevronLeft className="text-base" />
+                  </button>
+                  <h2 className="text-[18px] font-semibold" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>更多</h2>
+                </div>
+
+                <div className="px-4 pt-2 pb-8">
+                  <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                    <button
+                      className="w-full px-6 py-4 flex items-center justify-between text-left"
+                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                      onClick={() => {
+                        openDocument('检查更新', `当前版本：v${appVersion}\n构建时间：${appBuildLabel}\n\n已是最新版本。`);
+                      }}
+                    >
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>检查更新</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                    <button
+                      className="w-full px-6 py-4 flex items-center justify-between text-left"
+                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                      onClick={async () => {
+                        await handleClearCache();
+                      }}
+                    >
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>清理缓存</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                    <button
+                      className="w-full px-6 py-4 flex items-center justify-between text-left"
+                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                      onClick={() => {
+                        setShowHelpSupport(true);
+                      }}
+                    >
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>意见反馈</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                    <button
+                      className="w-full px-6 py-4 flex items-center justify-between text-left"
+                      onClick={() => {
+                        openDocument('关于版本', `Orbit\n版本号：v${appVersion}\n构建时间：${appBuildLabel}`);
+                      }}
+                    >
+                      <span className="text-[16px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>关于版本</span>
+                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <AnimatePresence>
         {showCommunityGuidelines && (
@@ -5604,6 +5622,6 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
           isDarkMode={isDarkMode}
         />
       </AnimatePresence>
-    </div>
+    </div >
   );
 }

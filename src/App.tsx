@@ -10,6 +10,7 @@ import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } f
 import BottomNav, { BOTTOM_NAV_CONTENT_GAP } from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import PWABanners from './components/PWABanners';
+import { SplashScreen as CapacitorSplashScreen } from '@capacitor/splash-screen';
 import SplashScreen from './components/SplashScreen';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
@@ -21,6 +22,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { useAppWakeUp } from './hooks/useAppWakeUp';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -177,11 +179,8 @@ const usePWAKeeper = (onResume: () => void) => {
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        lastHiddenAtRef.current = Date.now();
-        return;
-      }
-      void handleWake('visibility');
+      // Logic for background state
+      lastHiddenAtRef.current = Date.now();
     };
 
     const handleOnline = () => {
@@ -189,17 +188,31 @@ const usePWAKeeper = (onResume: () => void) => {
       void handleWake('online');
     };
 
-    document.addEventListener('visibilitychange', handleVisibility);
+    // Use Capacitor App state change instead of visibilitychange
+    const setupListener = async () => {
+      return await CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          void handleWake('appStateChange');
+        } else {
+          handleVisibility();
+        }
+      });
+    };
+    const listenerPromise = setupListener();
+
     window.addEventListener('online', handleOnline);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
+      listenerPromise.then(l => l.remove());
       window.removeEventListener('online', handleOnline);
     };
   }, [onResume]);
 };
 
 function App() {
+  // 注入心脏起搏器
+  useAppWakeUp();
+
   const { currentPage } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
   const [showAuth, setShowAuth] = useState(false);
@@ -226,6 +239,18 @@ function App() {
   usePushSetup();
   useNativeStatusBar();
   useNativeKeyboardGuard();
+
+  // Hide native splash screen on mount
+  useEffect(() => {
+    const hideNativeSplash = async () => {
+      try {
+        await CapacitorSplashScreen.hide();
+      } catch (e) {
+        // ignore
+      }
+    };
+    hideNativeSplash();
+  }, []);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -455,16 +480,14 @@ function App() {
 
   // 前台可见即尝试刷新 Session + 重拉核心数据，解决短暂后台后假连接的问题
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const onVisible = () => {
-      if (document.visibilityState !== 'visible') return;
-      void refreshSessionAndData('visibility');
+    const setupListener = async () => {
+      return await CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) void refreshSessionAndData('appStateChange');
+      });
     };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onVisible);
+    const listenerPromise = setupListener();
     return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', onVisible);
+      listenerPromise.then(l => l.remove());
     };
   }, [refreshSessionAndData]);
 
@@ -560,32 +583,32 @@ function App() {
       if (!ledgers || ledgers.length === 0) fetchLedgers();
     };
 
-    const handleResume = () => {
-      if (resumeTimerRef.current) {
-        window.clearTimeout(resumeTimerRef.current);
-      }
-      resumeTimerRef.current = window.setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          void rehydrateIfEmpty();
-          triggerResume();
+    const setupListener = async () => {
+      // appStateChange listener replaces pageshow/visibilitychange logic
+      return await CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          if (resumeTimerRef.current) {
+            window.clearTimeout(resumeTimerRef.current);
+          }
+          resumeTimerRef.current = window.setTimeout(() => {
+            void rehydrateIfEmpty();
+            triggerResume();
+          }, 800);
         }
-      }, 800);
+      });
     };
+
+    const listenerPromise = setupListener();
 
     const handleOnline = () => {
-      if (document.visibilityState === 'visible') {
-        void rehydrateIfEmpty();
-        triggerResume();
-      }
+      void rehydrateIfEmpty();
+      triggerResume();
     };
 
-    document.addEventListener('visibilitychange', handleResume);
-    window.addEventListener('pageshow', handleResume);
     window.addEventListener('online', handleOnline);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleResume);
-      window.removeEventListener('pageshow', handleResume);
+      listenerPromise.then(l => l.remove());
       window.removeEventListener('online', handleOnline);
       if (resumeTimerRef.current) {
         window.clearTimeout(resumeTimerRef.current);

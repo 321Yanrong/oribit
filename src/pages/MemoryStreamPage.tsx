@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { App } from '@capacitor/app';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock, FaCity, FaEllipsisH } from 'react-icons/fa';
 import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
@@ -45,6 +46,7 @@ interface MemoryReactionState {
   liked: boolean;
   likes: number;
   roastOpen: boolean;
+  likers: string[];
 }
 
 const REPLY_PREFIX = '[reply=';
@@ -1461,20 +1463,10 @@ export default function MemoryStreamPage() {
       return false;
     }
   }, [shouldAllowRefresh]);
-  const shouldLockBackgroundScroll =
-    isCreateOpen ||
-    !!selectedMemory ||
-    !!activeStoryMemories ||
-    showStoryEntry ||
-    showAlbumFilterDialog;
-
-  useScrollLock(!!shouldLockBackgroundScroll);
 
   // 前台可见/获得焦点时快速刷新会话并拉取关键数据，避免短后台后卡死
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const handleVisible = async () => {
-      if (document.visibilityState !== 'visible') return;
+    const handleResume = async () => {
       setResuming(true);
       const ok = await refreshSessionQuick('visibility-resume');
       if (ok) {
@@ -1501,11 +1493,19 @@ export default function MemoryStreamPage() {
       }
       setResuming(false);
     };
-    document.addEventListener('visibilitychange', handleVisible);
-    window.addEventListener('focus', handleVisible);
+
+    const setupListener = async () => {
+      return await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          handleResume();
+        }
+      });
+    };
+
+    const listenerPromise = setupListener();
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisible);
-      window.removeEventListener('focus', handleVisible);
+      listenerPromise.then(l => l.remove());
     };
   }, [refreshSessionQuick]);
 
@@ -1520,35 +1520,114 @@ export default function MemoryStreamPage() {
     }
   }, [showStoryEntry, filterFriendIds, albumFilterFriendIds.length]);
 
-  // 点赞本地持久化；评论改为 Supabase 持久化，好友之间终于能互相看到了。
-  const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>(() => {
-    try { return JSON.parse(localStorage.getItem('orbit_reactions') || '{}'); } catch { return {}; }
-  });
+  // 点赞改为 Supabase 持久化
+  const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>({});
   const [commentsByMemory, setCommentsByMemory] = useState<Record<string, MemoryCommentItem[]>>({});
   const [roastInput, setRoastInput] = useState<Record<string, string>>({});
+  const [activeInteractionMemoryId, setActiveInteractionMemoryId] = useState<string | null>(null);
+
+  const shouldLockBackgroundScroll =
+    isCreateOpen ||
+    // !!selectedMemory || // MemoryDetailModal handles its own scroll lock
+    !!activeStoryMemories ||
+    showStoryEntry ||
+    showAlbumFilterDialog ||
+    !!activeInteractionMemoryId;
+
+  useScrollLock(!!shouldLockBackgroundScroll);
 
   const getReaction = (id: string) => ({
     liked: reactions[id]?.liked || false,
     likes: reactions[id]?.likes || 0,
     roastOpen: reactions[id]?.roastOpen || false,
+    likers: reactions[id]?.likers || [],
     roasts: commentsByMemory[id] || [],
   });
 
-  const toggleLike = (memoryId: string) => {
+  // 拉取点赞数据
+  useEffect(() => {
+    const memoryIds = memories.map((m: any) => m.id).filter(Boolean);
+    if (memoryIds.length === 0) return;
+
+    const fetchLikes = async () => {
+      const { data, error } = await (supabase
+        .from('memory_likes' as any) as any)
+        .select('memory_id, user_id')
+        .in('memory_id', memoryIds);
+
+      if (!error && data) {
+        setReactions(prev => {
+          const next = { ...prev };
+          // 先把当前这批 memory 的赞数清零重算，保留 roastOpen 状态
+          memoryIds.forEach(id => {
+            const existing = next[id] || { liked: false, likes: 0, roastOpen: false, likers: [] };
+            next[id] = { ...existing, liked: false, likes: 0, likers: [] };
+          });
+
+          data.forEach((like: any) => {
+            if (next[like.memory_id]) {
+              next[like.memory_id].likes = (next[like.memory_id].likes || 0) + 1;
+              if (like.user_id) next[like.memory_id].likers.push(like.user_id);
+              if (like.user_id === currentUser?.id) {
+                next[like.memory_id].liked = true;
+              }
+            }
+          });
+          return next;
+        });
+      }
+    };
+
+    fetchLikes();
+  }, [memories, currentUser?.id]);
+
+  const toggleLike = async (memoryId: string) => {
+    if (!currentUser?.id) return;
+
+    const currentVal = reactions[memoryId] || { liked: false, likes: 0, roastOpen: false, likers: [] };
+    const isLiking = !currentVal.liked; // 判断是想点赞还是取消赞
+
+    // 🚀 核心：乐观更新！不要等服务器，先让 UI 变色和加减数字！
     setReactions(prev => {
-      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false };
-      const next = { ...prev, [memoryId]: { ...r, liked: !r.liked, likes: r.liked ? Math.max(0, r.likes - 1) : r.likes + 1 } };
-      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch { }
-      return next;
+      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false, likers: [] };
+      const newLikers = isLiking
+        ? [...(r.likers || []), currentUser.id]
+        : (r.likers || []).filter(id => id !== currentUser.id);
+
+      return {
+        ...prev,
+        [memoryId]: {
+          ...r,
+          liked: isLiking,
+          likes: isLiking ? r.likes + 1 : Math.max(0, r.likes - 1),
+          likers: newLikers
+        }
+      };
     });
+
+    // ☁️ 后台静默同步给 Supabase
+    try {
+      if (isLiking) {
+        // 增加赞
+        await (supabase.from('memory_likes' as any) as any).insert({
+          memory_id: memoryId,
+          user_id: currentUser.id
+        });
+      } else {
+        // 取消赞
+        await (supabase.from('memory_likes' as any) as any)
+          .delete()
+          .match({ memory_id: memoryId, user_id: currentUser.id });
+      }
+    } catch (err) {
+      console.error('同步点赞状态失败', err);
+    }
   };
 
   const toggleRoastOpen = (memoryId: string) => {
     setReactions(prev => {
-      const r = prev[memoryId] || { liked: false, likes: 0, roastOpen: false };
-      const next = { ...prev, [memoryId]: { ...r, roastOpen: !r.roastOpen } };
-      try { localStorage.setItem('orbit_reactions', JSON.stringify(next)); } catch { }
-      return next;
+      const r = (prev && prev[memoryId]) || { liked: false, likes: 0, roastOpen: false, likers: [] };
+      return { ...prev, [memoryId]: { ...r, roastOpen: !r.roastOpen } };
     });
   };
 
@@ -2022,6 +2101,12 @@ export default function MemoryStreamPage() {
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
+      // 检查当前 store 是否已有数据
+      if (useMemoryStore.getState().memories.length > 0) {
+        if (isMounted) setIsLoading(false);
+        return;
+      }
+
       if (!shouldAllowRefresh()) {
         if (isMounted) setIsLoading(false);
         return;
@@ -2032,7 +2117,7 @@ export default function MemoryStreamPage() {
     return () => {
       isMounted = false;
     };
-  }, [refreshMemoryStream]);
+  }, []); // 仅挂载时检查一次
 
   // 前台/联网时自动轻量刷新，避免卡在旧界面
   useEffect(() => {
@@ -2047,12 +2132,19 @@ export default function MemoryStreamPage() {
 
     const interval = window.setInterval(tryAutoRefresh, 60000);
     window.addEventListener('online', tryAutoRefresh);
-    document.addEventListener('visibilitychange', tryAutoRefresh);
+
+    // Replace visibilitychange with Capacitor appStateChange
+    const setupListener = async () => {
+      return await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) tryAutoRefresh();
+      });
+    };
+    const listenerPromise = setupListener();
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('online', tryAutoRefresh);
-      document.removeEventListener('visibilitychange', tryAutoRefresh);
+      listenerPromise.then(l => l.remove());
     };
   }, [refreshMemoryStream]);
 
@@ -2184,7 +2276,7 @@ export default function MemoryStreamPage() {
   return (
     <div
       onClick={() => setActiveMenuMemoryId(null)}
-      className={`memory-stream-page relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
+      className={`memory-stream-page relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col overflow-x-hidden ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
         backgroundColor: 'var(--orbit-surface)',
         color: 'var(--orbit-text)',
@@ -2548,7 +2640,7 @@ export default function MemoryStreamPage() {
                           <button onClick={() => toggleLike(memory.id)} className={`transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
                             <FaHeart className="text-[22px]" />
                           </button>
-                          <button onClick={() => { const willOpen = !reaction.roastOpen; toggleRoastOpen(memory.id); if (willOpen) markCommentsAsRead(memory.id); }} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
+                          <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
                             <FaComment className="text-[22px] scale-x-[-1]" />
                             {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
                           </button>
@@ -2559,9 +2651,42 @@ export default function MemoryStreamPage() {
                         {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5" /> 记账</span>}
                       </div>
 
-                      {reaction.likes > 0 && (
-                        <div className="px-4 pb-1">
-                          <span className="text-sm font-bold" style={{ color: 'var(--orbit-text)' }}>{reaction.likes} 次赞</span>
+                      {/* Social Summary Button */}
+                      {(reaction.likes > 0 || (reaction.roasts && reaction.roasts.length > 0)) && (
+                        <div className="px-4 pb-2">
+                          <div
+                            onClick={() => setActiveInteractionMemoryId(memory.id)}
+                            className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-colors cursor-pointer"
+                          >
+                            <div className="flex -space-x-1.5 relative z-0">
+                              {reaction.likers?.slice(0, 3).map((uid, idx) => {
+                                const liker = getMemoryAuthor(uid) || { avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + uid };
+                                return (
+                                  <img
+                                    key={uid}
+                                    src={liker.avatar || 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + uid}
+                                    className="w-4 h-4 rounded-full border border-[var(--orbit-card)] object-cover bg-gray-200"
+                                    style={{ zIndex: 10 - idx }}
+                                  />
+                                );
+                              })}
+                              {reaction.roasts?.slice(0, Math.max(0, 3 - (reaction.likers?.length || 0))).map((r, idx) => {
+                                const cAuthor = getCommentAuthor(memory, r.author_id);
+                                return (
+                                  <img
+                                    key={r.id}
+                                    src={cAuthor.avatar}
+                                    className="w-4 h-4 rounded-full border border-[var(--orbit-card)] object-cover bg-gray-200"
+                                    style={{ zIndex: 10 - (reaction.likers?.length || 0) - idx }}
+                                  />
+                                );
+                              })}
+                            </div>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--orbit-text)' }}>
+                              {new Set([...(reaction.likers || []), ...(reaction.roasts?.map((r: any) => r.author_id) || [])]).size} 人互动
+                            </span>
+                            <FaChevronRight className="ml-auto text-xs opacity-30" />
+                          </div>
                         </div>
                       )}
 
@@ -2835,7 +2960,7 @@ export default function MemoryStreamPage() {
                           <button onClick={() => toggleLike(memory.id)} className={`transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
                             <FaHeart className="text-[22px]" />
                           </button>
-                          <button onClick={() => { const willOpen = !reaction.roastOpen; toggleRoastOpen(memory.id); if (willOpen) markCommentsAsRead(memory.id); }} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
+                          <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
                             <FaComment className="text-[22px] scale-x-[-1]" />
                             {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
                           </button>
@@ -2846,9 +2971,42 @@ export default function MemoryStreamPage() {
                         {memory.has_ledger && <span className="text-orange-500 text-sm font-semibold"><FaDollarSign className="inline text-xs -mt-0.5" /> 记账</span>}
                       </div>
 
-                      {reaction.likes > 0 && (
-                        <div className="px-4 pb-1">
-                          <span className="text-sm font-bold" style={{ color: 'var(--orbit-text)' }}>{reaction.likes} 次赞</span>
+                      {/* Social Summary Button */}
+                      {(reaction.likes > 0 || (reaction.roasts && reaction.roasts.length > 0)) && (
+                        <div className="px-4 pb-2">
+                          <div
+                            onClick={() => setActiveInteractionMemoryId(memory.id)}
+                            className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-xl active:bg-black/5 dark:active:bg-white/10 transition-colors cursor-pointer"
+                          >
+                            <div className="flex -space-x-1.5 relative z-0">
+                              {reaction.likers?.slice(0, 3).map((uid, idx) => {
+                                const liker = getMemoryAuthor(uid) || { avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + uid };
+                                return (
+                                  <img
+                                    key={uid}
+                                    src={liker.avatar || 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + uid}
+                                    className="w-4 h-4 rounded-full border border-[var(--orbit-card)] object-cover bg-gray-200"
+                                    style={{ zIndex: 10 - idx }}
+                                  />
+                                );
+                              })}
+                              {reaction.roasts?.slice(0, Math.max(0, 3 - (reaction.likers?.length || 0))).map((r, idx) => {
+                                const cAuthor = getCommentAuthor(memory, r.author_id);
+                                return (
+                                  <img
+                                    key={r.id}
+                                    src={cAuthor.avatar}
+                                    className="w-4 h-4 rounded-full border border-[var(--orbit-card)] object-cover bg-gray-200"
+                                    style={{ zIndex: 10 - (reaction.likers?.length || 0) - idx }}
+                                  />
+                                );
+                              })}
+                            </div>
+                            <span className="text-xs font-semibold" style={{ color: 'var(--orbit-text)' }}>
+                              {new Set([...(reaction.likers || []), ...(reaction.roasts?.map((r: any) => r.author_id) || [])]).size} 人互动
+                            </span>
+                            <FaChevronRight className="ml-auto text-xs opacity-30" />
+                          </div>
                         </div>
                       )}
 
@@ -3276,6 +3434,197 @@ export default function MemoryStreamPage() {
             </motion.div>
           </>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeInteractionMemoryId && (() => {
+          const memory = memories.find(m => m.id === activeInteractionMemoryId);
+          if (!memory) return null;
+
+          const reaction = getReaction(memory.id);
+
+          const handleReply = (comment: MemoryCommentItem) => {
+            const commentAuthor = getCommentAuthor(memory, comment.author_id);
+            const decoded = decodeCommentContent(comment.content);
+            const replyTo = decoded.replyTo;
+
+            setReplyTarget(prev => ({
+              ...prev,
+              [memory.id]: {
+                commentId: comment.id,
+                authorId: replyTo?.authorId || comment.author_id,
+                authorName: replyTo?.authorName || commentAuthor.name,
+              }
+            }));
+          };
+
+          return (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setActiveInteractionMemoryId(null)}
+                className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed bottom-0 left-0 right-0 z-[191] flex flex-col rounded-t-3xl border-t shadow-2xl safe-bottom max-h-[85vh]"
+                style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)' }}
+              >
+                <div className="w-full flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => setActiveInteractionMemoryId(null)}>
+                  <div className="w-12 h-1.5 rounded-full bg-gray-400/30" />
+                </div>
+
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  <div className="px-6 pb-4 border-b border-[var(--orbit-border)] flex items-center justify-between shrink-0">
+                    <h2 className="text-lg font-bold" style={{ color: 'var(--orbit-text)' }}>互动详情</h2>
+                    <button onClick={() => setActiveInteractionMemoryId(null)} className="p-2 -mr-2 text-[var(--orbit-text-muted, #9ca3af)]">
+                      <FaTimes />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto hide-scrollbar">
+                    {reaction.likers && reaction.likers.length > 0 && (
+                      <div className="px-6 py-4 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>
+                          <FaHeart className="text-red-500" />
+                          <span>{reaction.likes} 人赞过</span>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          {reaction.likers.map(uid => {
+                            const liker = getMemoryAuthor(uid) || { name: 'Unknown', avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + uid };
+                            return (
+                              <div key={uid} className="flex flex-col items-center gap-1 w-12">
+                                <img src={liker.avatar} className="w-10 h-10 rounded-full object-cover border border-[var(--orbit-border)]" />
+                                <span className="text-[10px] truncate w-full text-center" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{liker.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {reaction.likers?.length > 0 && reaction.roasts?.length > 0 && (
+                      <div className="h-2 bg-black/5 dark:bg-white/5 shrink-0" />
+                    )}
+
+                    <div className="px-6 py-4 pb-20 space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: 'var(--orbit-text)' }}>
+                        <FaComment className="text-[var(--orbit-text)]" />
+                        <span>{reaction.roasts.length} 条评论</span>
+                      </div>
+
+                      {reaction.roasts.length === 0 ? (
+                        <div className="py-8 text-center text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                          暂无评论，快来抢沙发～
+                        </div>
+                      ) : (
+                        reaction.roasts.map((r: MemoryCommentItem) => {
+                          const commentAuthor = getCommentAuthor(memory, r.author_id);
+                          const canDeleteComment = currentUser?.id === r.author_id || currentUser?.id === memory.user_id;
+                          const decoded = decodeCommentContent(r.content);
+                          const replyTo = decoded.replyTo;
+
+                          return (
+                            <div key={r.id} className="flex items-start gap-3">
+                              <img src={commentAuthor.avatar} className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>{commentAuthor.name}</span>
+                                      <span className="text-[10px]" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{formatTime(r.created_at)}</span>
+                                    </div>
+                                    {replyTo && (
+                                      <span className="text-xs text-[var(--orbit-text-muted, #9ca3af)] mt-0.5">回复 {replyTo.authorName}</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div
+                                  className="mt-1.5 p-3 rounded-xl text-sm leading-relaxed"
+                                  style={{ backgroundColor: 'var(--orbit-card)', color: 'var(--orbit-text)' }}
+                                  onClick={() => handleReply(r)}
+                                >
+                                  {decoded.audioUrl && (
+                                    <audio src={decoded.audioUrl} controls className="w-full h-8 mb-1" />
+                                  )}
+                                  {(decoded.text || !decoded.audioUrl) && decoded.text}
+                                </div>
+
+                                <div className="flex items-center gap-4 mt-1.5 ml-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReply(r)}
+                                    className="text-xs font-medium text-[var(--orbit-text-muted, #9ca3af)] hover:text-[#00FFB3]"
+                                  >回复</button>
+                                  {canDeleteComment && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); void deleteRoast(memory.id, r.id); }}
+                                      className="text-xs font-medium text-[var(--orbit-text-muted, #9ca3af)] hover:text-red-500"
+                                    >删除</button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3 border-t bg-[var(--orbit-surface)] shrink-0" style={{ borderColor: 'var(--orbit-border)' }}>
+                    {replyTarget[memory.id] && (
+                      <div className="flex items-center gap-2 px-2 pb-2 text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                        <span>回复 {replyTarget[memory.id]?.authorName}</span>
+                        <button
+                          type="button"
+                          className="hover:text-[#00FFB3]"
+                          onClick={() => setReplyTarget(prev => ({ ...prev, [memory.id]: null }))}
+                        >取消</button>
+                      </div>
+                    )}
+                    <div className="flex items-end gap-2">
+                      <img src={currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest'} className="w-8 h-8 rounded-full object-cover shrink-0 mb-1" />
+                      <div className="flex-1 space-y-2">
+                        <div
+                          className="flex items-center gap-2 rounded-2xl px-3 py-2 border bg-[var(--orbit-card)]"
+                          style={{ borderColor: 'var(--orbit-border)' }}
+                        >
+                          <input
+                            type="text"
+                            placeholder={replyTarget?.[memory.id] ? `回复 @${replyTarget[memory.id]?.authorName}` : "说点什么..."}
+                            value={roastInput[memory.id] || ''}
+                            onChange={(e) => setRoastInput(prev => ({ ...prev, [memory.id]: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') void addRoast(memory.id); }}
+                            className="bg-transparent text-sm w-full outline-none placeholder:text-gray-400"
+                            style={{ color: 'var(--orbit-text)' }}
+                          />
+                          <button
+                            onClick={() => void addRoast(memory.id)}
+                            disabled={!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)}
+                            className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
+                          >发送</button>
+                        </div>
+                        <VoiceRecorder
+                          userId={currentUser?.id || ''}
+                          audios={commentAudios[memory.id] || []}
+                          onAudiosChange={(urls) => setCommentAudios(prev => ({ ...prev, [memory.id]: urls }))}
+                          compact
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
       </AnimatePresence>
 
       <ReportPage

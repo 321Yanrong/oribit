@@ -293,6 +293,7 @@ export const MemoryStoryDrawer = ({
   const pinchStartScaleRef = useRef(1);
   const clampScale = (s: number) => Math.min(3, Math.max(1, s));
   const [zoomScale, setZoomScale] = useState(1);
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
   // Always use a single audio element, update src/volume as needed
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) {
@@ -431,6 +432,7 @@ export const MemoryStoryDrawer = ({
   // 切换 memory 时重置完成态
   useEffect(() => {
     setStoryCompleted(false);
+    setIsTextExpanded(false);
   }, [activeIndex, memories]);
 
   const getPoint = (e: React.MouseEvent | React.TouchEvent) => {
@@ -972,7 +974,27 @@ export const MemoryStoryDrawer = ({
                   exit={{ opacity: 0 }}
                   className="space-y-4"
                 >
-                  {mText && <p className="text-white text-base leading-relaxed drop-shadow-lg font-medium whitespace-pre-wrap">{mText}</p>}
+                  {mText && (
+                    <div>
+                      <div
+                        className={`text-white text-base leading-relaxed drop-shadow-lg font-medium whitespace-pre-wrap transition-all duration-300 ${isTextExpanded ? '' : 'line-clamp-3'
+                          }`}
+                      >
+                        {mText}
+                      </div>
+
+                      {/* 如果字数超过一定长度（比如大约 60 个字符），才显示展开按钮 */}
+                      {mText && mText.length > 60 && (
+                        <button
+                          onClick={() => setIsTextExpanded(!isTextExpanded)}
+                          className="text-xs mt-1 font-medium drop-shadow-md hover:opacity-80 transition-opacity"
+                          style={{ color: '#00FFB3' }} // 你的品牌主题色
+                        >
+                          {isTextExpanded ? '收起' : '展开全文'}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {currentItem.isAllLast && storyCompleted && (
                     <div

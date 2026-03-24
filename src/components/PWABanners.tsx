@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { App } from '@capacitor/app';
 import { registerSW } from 'virtual:pwa-register';
 
 type BeforeInstallPromptEvent = Event & {
@@ -125,14 +126,21 @@ export default function PWABanners() {
     const interval = window.setInterval(checkForUpdate, 5 * 60 * 1000);
     const initial = window.setTimeout(checkForUpdate, 4000);
 
-    document.addEventListener('visibilitychange', onVisibility);
+    const setupListener = async () => {
+      // Capacitor app state change listener
+      return await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) checkForUpdate();
+      });
+    };
+    const listenerPromise = setupListener();
+
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
 
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(initial);
-      document.removeEventListener('visibilitychange', onVisibility);
+      listenerPromise.then(l => l.remove());
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };

@@ -37,7 +37,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
@@ -45,7 +45,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
-  
+
   const { setCurrentUser } = useUserStore();
 
   useEffect(() => {
@@ -107,12 +107,12 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       setUpdatingPassword(false);
     }
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
       if (isLogin) {
         const { user } = await signIn(email, password);
@@ -122,13 +122,16 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             .select('*')
             .eq('id', user.id)
             .single();
-          
+
           if (profile) {
             setCurrentUser(profile);
           }
           onSuccess();
         }
       } else {
+        if (!agreed) {
+          throw new Error('请先勾选同意用户协议');
+        }
         if (!username.trim()) {
           throw new Error('请输入用户名');
         }
@@ -142,7 +145,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           throw new Error(`邮件发送太频繁，请 ${seconds} 秒后再试`);
         }
 
-        const { betaJoinOrder } = await signUp(email, password, username, inviteCode);
+        const { betaJoinOrder } = await signUp(email, password, username, '');
         markEmailActionTriggered('signup', email);
         setError(`✅ 注册成功！你是第 ${betaJoinOrder}/50 位内测用户，请前往邮箱点击验证链接，再回来登录。`);
         setIsLogin(true);
@@ -206,23 +209,12 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       style={isLightMode ? { backdropFilter: 'blur(6px)' } : undefined}
     >
       {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div 
-          className="absolute inset-0 opacity-40"
-          style={{
-            background: `
-              radial-gradient(circle at 30% 20%, rgba(255, 20, 147, 0.35) 0%, transparent 50%),
-              radial-gradient(circle at 70% 80%, rgba(192, 38, 211, 0.25) 0%, transparent 45%),
-              radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.15) 0%, transparent 60%)
-            `
-          }}
-        />
-      </div>
-      
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" />
+
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={`relative w-full max-w-md glass-card rounded-3xl p-8 ${isLightMode ? 'bg-white border border-neutral-200 text-neutral-900' : ''}`}
+        className={`relative w-full max-w-md glass-card rounded-3xl p-8 ${isLightMode ? 'bg-white border border-neutral-200 text-neutral-900' : 'bg-[#121212] border border-white/10 text-white'}`}
       >
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
@@ -237,7 +229,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Orbit 轨迹</h1>
           <p className={`${textMuted}`}>记录与好友的每一个足迹 ✨</p>
         </div>
-        
+
         {/* 表单 */}
         <form onSubmit={isRecoveryMode ? handleCompleteRecovery : handleSubmit} className="space-y-4">
           {isRecoveryMode ? (
@@ -276,55 +268,43 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             </>
           ) : (
             <>
-          {!isLogin && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-            >
-              <label className={`block ${textMuted} text-sm mb-2`}>用户名</label>
-              <div className="relative">
-                <FaUser className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="input-glass pl-12"
-                  placeholder="你的昵称"
-                />
+              {!isLogin && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                >
+                  <label className={`block ${textMuted} text-sm mb-2`}>用户名</label>
+                  <div className="relative">
+                    <FaUser className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="input-glass pl-12"
+                      placeholder="你的昵称"
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              <div>
+                <label className={`block ${textMuted} text-sm mb-2`}>邮箱</label>
+                <div className="relative">
+                  <FaEnvelope className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="input-glass pl-12"
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
               </div>
-              <label className={`block ${textMuted} text-sm mb-2 mt-4`}>邀请码 / 口令</label>
-              <div className="relative">
-                <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  className="input-glass pl-12"
-                  placeholder="向邀请人索取专属口令"
-                  autoComplete="off"
-                />
-              </div>
-            </motion.div>
-          )}
-          
-          <div>
-            <label className={`block ${textMuted} text-sm mb-2`}>邮箱</label>
-            <div className="relative">
-              <FaEnvelope className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="input-glass pl-12"
-                placeholder="your@email.com"
-                required
-              />
-            </div>
-          </div>
             </>
           )}
-          
+
           <div>
             <label className={`block ${textMuted} text-sm mb-2`}>密码</label>
             <div className="relative">
@@ -340,27 +320,46 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
               />
             </div>
           </div>
-          
+
           {/* 错误提示 */}
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: error ? 'auto' : 0, opacity: error ? 1 : 0 }}
-            className={`overflow-hidden rounded-xl text-sm ${
-              error?.includes('成功') 
-                ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30'
-                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}
+            className={`overflow-hidden rounded-xl text-sm ${error?.includes('成功')
+              ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+              }`}
           >
             <p className="p-3">{error}</p>
           </motion.div>
-          
+
+          {/* 协议勾选 */}
+          {!isLogin && !isRecoveryMode && (
+            <div className="flex items-start gap-2 mt-4 px-1">
+              <input
+                type="checkbox"
+                id="agreed"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className={`mt-0.5 w-3.5 h-3.5 rounded border ${isLightMode ? 'border-neutral-300' : 'border-white/30'} bg-transparent checked:bg-current`}
+                style={{ accentColor: isLightMode ? '#171717' : '#ffffff' }}
+              />
+              <label htmlFor="agreed" className={`text-xs ${textMuted} leading-relaxed select-none`}>
+                我已阅读并同意 <a href="/terms" target="_blank" className="underline hover:opacity-80">《用户协议》</a> <a href="/privacy" target="_blank" className="underline hover:opacity-80">《隐私政策》</a> <a href="/privacy" target="_blank" className="underline hover:opacity-80">《未成年人个人信息保护规则》</a>
+              </label>
+            </div>
+          )}
+
           {/* 提交按钮 */}
           <motion.button
             type="submit"
             disabled={isRecoveryMode ? updatingPassword : loading}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg shadow-pink-500/20"
+            className={`w-full py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg ${isLightMode
+              ? 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-neutral-900/10'
+              : 'bg-white text-black hover:bg-neutral-200 shadow-white/10'
+              }`}
           >
             {(isRecoveryMode ? updatingPassword : loading) ? (
               <>
@@ -375,34 +374,35 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             )}
           </motion.button>
         </form>
-        
+
         {/* 切换登录/注册 */}
         {!isRecoveryMode && (
           <div className="text-center mt-6">
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError(null);
-            }}
-            className={`${textMuted} hover:text-pink-400 transition-colors`}
-          >
-            {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
-          </button>
-          {isLogin && (
-            <div className="mt-3 text-sm">
-              <button
-                type="button"
-                onClick={handleResetPassword}
-                disabled={resetting}
-                className={`${textMuted} hover:opacity-80 disabled:opacity-50`}
-              >
-                {resetting ? '发送中…' : '忘记密码？发送重置邮件'}
-              </button>
-            </div>
-          )}
+            <button
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError(null);
+                setAgreed(false);
+              }}
+              className={`${textMuted} hover:opacity-80 transition-colors`}
+            >
+              {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
+            </button>
+            {isLogin && (
+              <div className="mt-3 text-sm">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={resetting}
+                  className={`${textMuted} hover:opacity-80 disabled:opacity-50`}
+                >
+                  {resetting ? '发送中…' : '忘记密码？发送重置邮件'}
+                </button>
+              </div>
+            )}
           </div>
         )}
-        
+
         {/* 演示模式 */}
         <div className="mt-6 pt-6 border-t border-white/10">
           <button

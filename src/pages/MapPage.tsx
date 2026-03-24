@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft, FaComment, FaPaperPlane } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft, FaComment, FaPaperPlane, FaHeart } from 'react-icons/fa';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
 import FloatingParticles from '../components/FloatingParticles';
-import { addMemoryComment, getMemoryComments } from '../api/supabase';
+import { addMemoryComment, getMemoryComments, supabase } from '../api/supabase';
 
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 
@@ -80,6 +80,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [mapGroupBy, setMapGroupBy] = useState<'location' | 'city'>('location');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [detailLikeInfo, setDetailLikeInfo] = useState({ liked: false, likes: 0, likers: [] as any[] });
+  const [showInteractionDetail, setShowInteractionDetail] = useState(false);
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]); // 存储 Mapbox 的 Marker 实例，方便后续清理
@@ -480,26 +482,97 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
       setDetailComments([]);
       setDetailCommentText('');
       setDetailPhotoIndex(0);
+      setDetailLikeInfo({ liked: false, likes: 0, likers: [] });
+      setShowInteractionDetail(false);
       return;
     }
 
     setDetailPhotoIndex(0);
     setDetailCommentText('');
+
+    // Reset showInteractionDetail to false when a new memory is selected, 
+    // unless you want it to persist across memory selections (usually cleaner to reset).
+    setShowInteractionDetail(false);
+
     let cancelled = false;
-    getMemoryComments([selectedMemory.id])
-      .then((comments: any[]) => {
+
+    Promise.all([
+      getMemoryComments([selectedMemory.id]),
+      (async () => {
+        if (!currentUser?.id) return { liked: false, likes: 0, likers: [] };
+        // We need to properly fetch likes.
+        // First get the count and check if current user liked it
+        const { data: likesData, error } = await (supabase
+          .from('memory_likes' as any) as any)
+          .select('user_id')
+          .eq('memory_id', selectedMemory.id);
+
+        if (error || !likesData) return { liked: false, likes: 0, likers: [] };
+
+        const liked = likesData.some((l: any) => l.user_id === currentUser.id);
+        const likers = likesData.map((l: any) => l.user_id);
+
+        return {
+          liked,
+          likes: likesData.length,
+          likers
+        };
+      })()
+    ])
+      .then(([comments, likeInfo]) => {
         if (cancelled) return;
-        setDetailComments(comments || []);
+        // The first element of result array from Promise.all is comments
+        // If getMemoryComments returns an object { [id]: comments }, extract the array
+        const commentsArray = Array.isArray(comments) ? comments : (comments?.[selectedMemory.id] || []);
+        setDetailComments(commentsArray);
+        setDetailLikeInfo(likeInfo);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Error fetching detail info:", err);
         if (cancelled) return;
         setDetailComments([]);
+        setDetailLikeInfo({ liked: false, likes: 0, likers: [] });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedMemory?.id]);
+  }, [selectedMemory?.id, currentUser?.id]);
+
+  const handleToggleLike = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!selectedMemory?.id || !currentUser?.id) return;
+    const { liked, likes, likers } = detailLikeInfo;
+    const isLiking = !liked;
+
+    // Optimistic update
+    const newLikers = isLiking
+      ? [...likers, currentUser.id]
+      : likers.filter(id => id !== currentUser.id);
+
+    setDetailLikeInfo({
+      liked: isLiking,
+      likes: isLiking ? likes + 1 : Math.max(0, likes - 1),
+      likers: newLikers
+    });
+
+    try {
+      if (isLiking) {
+        await (supabase.from('memory_likes' as any) as any).insert({
+          memory_id: selectedMemory.id,
+          user_id: currentUser.id
+        });
+      } else {
+        await (supabase.from('memory_likes' as any) as any)
+          .delete()
+          .match({ memory_id: selectedMemory.id, user_id: currentUser.id });
+      }
+    } catch (err) {
+      console.error('Toggle like failed', err);
+      // rollback
+      setDetailLikeInfo({ liked, likes, likers });
+    }
+  };
 
   const goPrevPhoto = () => {
     const len = selectedMemory?.photos?.length || 0;
@@ -651,23 +724,26 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[72vh] flex flex-col bg-orbit-black rounded-3xl border shadow-2xl"
-              style={{ borderColor: 'var(--orbit-border)' }}
+              className="w-full max-w-lg max-h-[72vh] flex flex-col rounded-3xl border shadow-2xl"
+              style={{
+                backgroundColor: 'var(--orbit-surface)',
+                borderColor: 'var(--orbit-border)'
+              }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5">
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b shrink-0" style={{ borderColor: 'var(--orbit-border)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#00FFB3]/20 flex items-center justify-center shrink-0">
                     <FaMapMarkerAlt className="w-5 h-5 text-[#00FFB3]" />
                   </div>
                   <div>
-                    <h2 className="text-white font-bold">{(selectedPin as any).location?.name || (selectedPin as any).city}</h2>
-                    <p className="text-white/40 text-xs truncate max-w-[200px]">
+                    <h2 className="font-bold" style={{ color: 'var(--orbit-text)' }}>{(selectedPin as any).location?.name || (selectedPin as any).city}</h2>
+                    <p className="text-xs truncate max-w-[200px]" style={{ color: 'var(--orbit-text-muted)' }}>
                       {selectedPin.location?.address || `${pinMemories.length} 条记忆`}
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setShowMemoryDetail(false)} className="p-2 rounded-full bg-white/10 text-white">
+                <button onClick={() => setShowMemoryDetail(false)} className="p-2 rounded-full bg-black/5 dark:bg-white/10 transition-colors" style={{ color: 'var(--orbit-text)' }}>
                   <FaTimes />
                 </button>
               </div>
@@ -675,7 +751,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               {/* Memory list */}
               <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3 hide-scrollbar">
                 {pinMemories.length === 0 ? (
-                  <p className="text-center text-white/40 py-10">暂无记忆</p>
+                  <p className="text-center py-10" style={{ color: 'var(--orbit-text-muted)' }}>暂无记忆</p>
                 ) : pinMemories.map((memory: any) => {
                   const date = new Date(memory.memory_date || memory.created_at);
                   const taggedNames = getVisibleTaggedFriendIds(
@@ -691,29 +767,33 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                       key={memory.id}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setSelectedMemory(memory)}
-                      className="flex gap-3 p-3 rounded-2xl bg-white/5 border border-white/8 cursor-pointer hover:bg-white/10 transition-colors active:bg-white/15"
+                      className="flex gap-3 p-3 rounded-2xl border cursor-pointer transition-colors active:scale-[0.98]"
+                      style={{
+                        backgroundColor: 'var(--orbit-card)',
+                        borderColor: 'var(--orbit-border)'
+                      }}
                     >
                       {memory.photos?.[0] ? (
                         <img
                           src={memory.photos[0]}
                           alt=""
-                          className="w-16 h-16 rounded-xl object-cover shrink-0"
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 bg-black/5 dark:bg-white/5"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center shrink-0 text-2xl">
+                        <div className="w-16 h-16 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center shrink-0 text-2xl">
                           {memory.location?.category === '咖啡厅' ? '☕' : memory.location?.category === '美食' ? '🍜' : '📍'}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-white/40 text-xs">
+                          <span className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>
                             {date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
                           </span>
                           {memory.has_ledger && (
                             <span className="px-1.5 py-0.5 rounded-full bg-[#FF9F43]/20 text-[#FF9F43] text-[10px]">含账单</span>
                           )}
                         </div>
-                        <p className="text-white text-sm line-clamp-2 leading-relaxed">
+                        <p className="text-sm line-clamp-2 leading-relaxed" style={{ color: 'var(--orbit-text)' }}>
                           {decodeMemoryContent(memory.content || '').text || '（无文字记录）'}
                         </p>
                         {taggedNames.length > 0 && (
@@ -743,8 +823,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: 'spring', damping: 20, stiffness: 250 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar bg-orbit-black rounded-3xl border shadow-2xl"
-              style={{ borderColor: 'var(--orbit-border)' }}
+              className="w-full max-w-lg max-h-[75vh] overflow-y-auto hide-scrollbar rounded-3xl border shadow-2xl"
+              style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)' }}
             >
               {/* 照片 */}
               {selectedMemory.photos?.length > 0 && (
@@ -803,16 +883,17 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                 </div>
               )}
 
-              <div className="px-5 py-4">
+              <div className="px-5 pt-4 pb-28">
                 {/* Back + close */}
                 <div className="flex items-center justify-between mb-4">
                   <button
                     onClick={() => setSelectedMemory(null)}
-                    className="flex items-center gap-1 text-white/50 hover:text-white text-sm"
+                    className="flex items-center gap-1 text-sm transition-colors hover:opacity-80"
+                    style={{ color: 'var(--orbit-text-muted)' }}
                   >
                     <FaChevronLeft className="text-xs" /> 返回列表
                   </button>
-                  <button onClick={() => { setSelectedMemory(null); setShowMemoryDetail(false); }} className="p-2 rounded-full bg-white/10 text-white">
+                  <button onClick={() => { setSelectedMemory(null); setShowMemoryDetail(false); }} className="p-2 rounded-full bg-black/5 dark:bg-white/10" style={{ color: 'var(--orbit-text)' }}>
                     <FaTimes className="text-sm" />
                   </button>
                 </div>
@@ -820,73 +901,46 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                 {/* Location */}
                 <div className="flex items-center gap-2 mb-3">
                   <FaMapMarkerAlt className="text-[#00FFB3] text-sm shrink-0" />
-                  <span className="text-white font-semibold truncate">{selectedMemory.location?.name}</span>
-                  <span className="text-white/30 text-xs shrink-0">{selectedMemory.location?.address?.split(/[市区]/)[0]}</span>
+                  <span className="font-semibold truncate" style={{ color: 'var(--orbit-text)' }}>{selectedMemory.location?.name}</span>
+                  <span className="text-xs shrink-0" style={{ color: 'var(--orbit-text-muted)' }}>{selectedMemory.location?.address?.split(/[市区]/)[0]}</span>
                 </div>
 
                 {/* Date */}
-                <div className="flex items-center gap-2 mb-4 text-white/40 text-sm">
+                <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: 'var(--orbit-text-muted)' }}>
                   <FaCalendar className="text-xs" />
                   {new Date(selectedMemory.memory_date || selectedMemory.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
                 </div>
 
-                <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-sm text-white/80">
-                      <FaComment className="text-[#00FFB3]" />
-                      <span>评论</span>
-                    </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#00FFB3]/20 text-[#00FFB3]">
-                      {detailComments.length}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      value={detailCommentText}
-                      onChange={(e) => setDetailCommentText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void handleDetailCommentSubmit();
-                        }
-                      }}
-                      placeholder="说点什么..."
-                      className="flex-1 rounded-xl px-3 py-2 text-sm bg-white/10 text-white placeholder:text-white/45 border border-white/10 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void handleDetailCommentSubmit()}
-                      disabled={!detailCommentText.trim() || detailCommentSending}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-40"
-                      style={{ background: 'rgba(0,255,179,0.16)', color: '#00FFB3' }}
-                      aria-label="发送评论"
-                    >
-                      <FaPaperPlane className="text-xs" />
-                    </button>
-                  </div>
-                  <div className="max-h-28 overflow-y-auto hide-scrollbar space-y-1.5">
-                    {detailComments.length === 0 ? (
-                      <p className="text-xs text-white/45">还没有评论，来抢沙发～</p>
-                    ) : detailComments.slice(-6).map((comment: any) => (
-                      <div key={comment.id} className="text-xs text-white/75 leading-relaxed">
-                        <span className="text-[#00FFB3] mr-1">{getCommentAuthorName(comment.author_id)}:</span>
-                        <span>{comment.content}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
+                {/* Interaction Summary Button (Removed redundant top button) */}
+
 
                 {/* Content with meta decode */}
                 {(() => {
                   const { text, weather, mood, route } = decodeMemoryContent(selectedMemory.content || '');
+
                   return (
                     <div className="space-y-2 mb-4">
-                      {text && <p className="text-white/90 leading-relaxed text-base">{text}</p>}
+                      {text && (
+                        <div
+                          // 限制最大高度，超出显示滚动条，隐藏原生滚动条样式以保持美观
+                          className="max-h-24 overflow-y-auto hide-scrollbar overscroll-contain pr-1"
+                          // ⚠️ 物理隔绝：防止在文字上滑动时拖拽到底层的地图！
+                          onWheel={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchMove={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
+                          <p className="leading-relaxed text-base" style={{ color: 'var(--orbit-text)' }}>{text}</p>
+                        </div>
+                      )}
+
+                      {/* Tags 区域 */}
                       {(weather || mood || route) && (
-                        <div className="flex flex-wrap gap-2 text-sm">
-                          {weather && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">天气：{weather}</span>}
-                          {mood && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">心情：{mood}</span>}
-                          {route && <span className="px-2 py-1 rounded-full bg-white/10 text-white/70">路线：{route}</span>}
+                        <div className="flex flex-wrap gap-2 text-sm pt-1">
+                          {weather && <span className="px-2 py-1 rounded-full bg-black/5 dark:bg-white/10" style={{ color: 'var(--orbit-text-muted)' }}>天气：{weather}</span>}
+                          {mood && <span className="px-2 py-1 rounded-full bg-black/5 dark:bg-white/10" style={{ color: 'var(--orbit-text-muted)' }}>心情：{mood}</span>}
+                          {route && <span className="px-2 py-1 rounded-full bg-black/5 dark:bg-white/10" style={{ color: 'var(--orbit-text-muted)' }}>路线：{route}</span>}
                         </div>
                       )}
                     </div>
@@ -895,8 +949,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
 
                 {/* Tagged friends */}
                 {selectedMemory.tagged_friends?.length > 0 && (
-                  <div className="flex items-center gap-3 py-3 border-t border-white/8">
-                    <FaUsers className="text-white/30 text-sm shrink-0" />
+                  <div className="flex items-center gap-3 py-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                    <FaUsers className="text-sm shrink-0" style={{ color: 'var(--orbit-text-muted)' }} />
                     <div className="flex flex-wrap gap-2">
                       {getVisibleTaggedFriendIds(
                         (selectedMemory.tagged_friends as string[]) || [],
@@ -930,6 +984,170 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                     <span className="text-[#FF9F43] text-sm">此记忆附有账单</span>
                   </div>
                 )}
+
+                {/* Interaction Summary Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowInteractionDetail(!showInteractionDetail);
+                  }}
+                  className="w-full mt-4 flex items-center justify-between px-4 py-3 rounded-2xl border transition-all active:scale-[0.99] group shadow-sm"
+                  style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 transition-colors group-hover:opacity-100 opacity-90" style={{ color: 'var(--orbit-text)' }}>
+                      <FaHeart className={detailLikeInfo.liked ? "text-[#FF4D4F] drop-shadow-[0_0_8px_rgba(255,77,79,0.5)]" : "opacity-30"} />
+                      <span className="text-sm font-bold">{detailLikeInfo.likes || '赞'}</span>
+                    </div>
+                    <div className="w-px h-3 bg-black/10 dark:bg-white/10" />
+                    <div className="flex items-center gap-1.5 transition-colors group-hover:opacity-100 opacity-90" style={{ color: 'var(--orbit-text)' }}>
+                      <FaComment className="text-[#00FFB3] drop-shadow-[0_0_8px_rgba(0,255,179,0.3)]" />
+                      <span className="text-sm font-bold">{detailComments.length || '评论'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-2">
+                    <div className="flex items-center -space-x-2.5">
+                      {detailLikeInfo.likers.slice(0, 3).map((uid: string) => {
+                        const u = getFriendDisplay(uid) || (uid === currentUser?.id ? { username: currentUser.username, avatar_url: currentUser.avatar_url } : null);
+                        if (!u) return null;
+                        return <img key={uid} src={u.avatar_url} className="w-5 h-5 rounded-full ring-2 ring-[var(--orbit-bg)] object-cover bg-black/5 dark:bg-white/10" />;
+                      })}
+                    </div>
+                    <FaChevronLeft
+                      className={`text-xs ml-0.5 transition-transform opacity-30 ${showInteractionDetail ? '-rotate-90' : 'rotate-180 group-hover:translate-x-0.5'}`}
+                      style={{ color: 'var(--orbit-text)' }}
+                    />
+                  </div>
+                </button>
+
+                {/* Inline Interaction Detail (Replaces Sheet) */}
+                <AnimatePresence>
+                  {showInteractionDetail && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden space-y-4 pt-1"
+                    >
+                      {/* Likes Section (Simplified) */}
+                      <div className="p-3 rounded-2xl border bg-[var(--orbit-card)]" style={{ borderColor: 'var(--orbit-border)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xs font-bold flex items-center gap-1.5" style={{ color: 'var(--orbit-text)' }}>
+                            <FaHeart className="text-[#FF4D4F]" />
+                            {detailLikeInfo.likes} 人点赞
+                          </h3>
+                          <button
+                            onClick={(e) => handleToggleLike(e)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-medium border ${detailLikeInfo.liked
+                              ? 'bg-[#FF4D4F]/20 text-[#FF4D4F] border-[#FF4D4F]/30'
+                              : 'border-opacity-10 opacity-70'
+                              }`}
+                            style={!detailLikeInfo.liked ? {
+                              borderColor: 'var(--orbit-border)',
+                              color: 'var(--orbit-text)'
+                            } : {}}
+                          >
+                            {detailLikeInfo.liked ? '已赞' : '点赞'}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {detailLikeInfo.likers.length === 0 && (
+                            <p className="text-xs opacity-40" style={{ color: 'var(--orbit-text)' }}>快来点亮爱心吧～</p>
+                          )}
+                          {detailLikeInfo.likers.map((uid: string) => {
+                            const u = getFriendDisplay(uid) || (uid === currentUser?.id ? { username: currentUser.username, avatar_url: currentUser.avatar_url } : null);
+                            if (!u) return null;
+                            return (
+                              <img key={uid} src={u.avatar_url} className="w-6 h-6 rounded-full object-cover ring-1 ring-[var(--orbit-border)]" title={u.username} />
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Comments Section */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--orbit-text)' }}>
+                          <FaComment className="text-[#00FFB3]" />
+                          <h3>{detailComments.length} 条评论</h3>
+                        </div>
+
+                        {/* Comments List */}
+                        <div className="space-y-3 max-h-60 overflow-y-auto hide-scrollbar pr-1"
+                          onWheel={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchMove={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
+                          {detailComments.length === 0 && (
+                            <p className="text-xs text-center py-4 opacity-30" style={{ color: 'var(--orbit-text)' }}>还没有评论，来发表第一条评论吧！</p>
+                          )}
+                          {detailComments.map((comment: any) => {
+                            const authorName = getCommentAuthorName(comment.author_id);
+                            const author = friends.find((f: any) => f.friend?.id === comment.author_id)?.friend
+                              || (comment.author_id === currentUser?.id ? currentUser : null);
+                            return (
+                              <div key={comment.id} className="flex gap-2.5">
+                                <img
+                                  src={author?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${authorName}`}
+                                  className="w-7 h-7 rounded-full object-cover shrink-0 bg-black/5 dark:bg-white/10 mt-0.5"
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-baseline justify-between">
+                                    <span className="text-[#00FFB3] text-xs font-medium">{authorName}</span>
+                                    <span className="text-[10px] opacity-30" style={{ color: 'var(--orbit-text)' }}>
+                                      {new Date(comment.created_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs mt-0.5 leading-relaxed opacity-90" style={{ color: 'var(--orbit-text)' }}>{comment.content}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="flex items-center gap-2 pt-1 relative">
+                          <input
+                            value={detailCommentText}
+                            onChange={(e) => setDetailCommentText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                void handleDetailCommentSubmit();
+                              }
+                            }}
+                            onFocus={(e) => {
+                              setTimeout(() => {
+                                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }, 300); // 延迟300ms等键盘完全弹起
+                            }}
+                            // 防止点击输入框时触发地图事件
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            placeholder="写下你的评论..."
+                            className="flex-1 rounded-full px-3 py-2 text-xs outline-none transition-colors border"
+                            style={{
+                              backgroundColor: 'rgba(0,0,0,0.03)',
+                              color: 'var(--orbit-text)',
+                              borderColor: 'var(--orbit-border)',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleDetailCommentSubmit()}
+                            disabled={!detailCommentText.trim() || detailCommentSending}
+                            className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity shrink-0"
+                            style={{ background: '#00FFB3', color: '#000' }}
+                          >
+                            <FaPaperPlane className="text-xs" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           </motion.div>

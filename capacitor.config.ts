@@ -22,19 +22,11 @@ const config: CapacitorConfig = {
       overlaysWebView: true,
     },
     SplashScreen: {
-      // 原生启动图显示的时长（毫秒），建议设为 2000ms 左右
-      launchAutoHide: false,
-      backgroundColor: "#0b1324", // 确保原生启动图的背景色和你的 React 层一致，避免启动闪白
-      showSpinner: false, // 禁用原生转圈圈，因为你已经在 React 里写了漂亮的动画
+      launchShowDuration: 0, // 设置为 0，意味着我们要用代码手动隐藏
+      backgroundColor: "#111827", // 填你 App 的背景色，防止闪瞎眼
+      showSpinner: true,
+      androidSplashResourceName: "splash",
       iosSpinnerStyle: "small",
-      splashFullScreen: true,
-      splashImmersive: true,
-      androidSplashResourceName: 'splash',
-      androidScaleType: 'CENTER_CROP',
-
-      // 如果你的 App 是深色背景，建议把状态栏文字设为白色 (LIGHT)
-      // 如果是浅色背景，设为 DARK
-      // style: 'LIGHT',
     },
 
     Keyboard: {
