@@ -1358,6 +1358,7 @@ export default function MemoryStreamPage() {
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
   const [activeMenuMemoryId, setActiveMenuMemoryId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showNotificationSheet, setShowNotificationSheet] = useState(false);
   const [reportingFriend, setReportingFriend] = useState<any>(null);
 
   const handleBlockUser = async (targetUser: any) => {
@@ -1798,6 +1799,22 @@ export default function MemoryStreamPage() {
     return result;
   }, [memories, searchQuery, filterFriendIds, currentMonth, sortOrder]);
 
+  const unreadCommentItems = useMemo(() => {
+    return memories
+      .filter((m: any) => hasUnreadComments(m))
+      .map((m: any) => {
+        const comments = commentsByMemory[m.id] || [];
+        const latestComment = [...comments].reverse().find(c => c.author_id !== currentUser?.id);
+        if (!latestComment) return null;
+        return {
+          memory: m,
+          comment: latestComment,
+          author: getCommentAuthor(m, latestComment.author_id)
+        };
+      })
+      .filter((item: any): item is NonNullable<typeof item> => item !== null);
+  }, [memories, commentsByMemory, currentUser, memoryCommentReadMarkers]);
+
   // 首次进入时若存在历史好友筛选，自动清空避免进来就空白
   useEffect(() => {
     if (initialFilterClearedRef.current) return;
@@ -2196,10 +2213,15 @@ export default function MemoryStreamPage() {
                   : `共 ${memories.length} 条记忆`}
               </p>
               {settings.notifyComment && memoryCommentUnreadCount > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/15 px-2 py-0.5 text-[10px] font-semibold text-[#FF8A8A] border border-[#FF6B6B]/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B]" />
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowNotificationSheet(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/15 px-2 py-0.5 text-[10px] font-semibold text-[#FF8A8A] border border-[#FF6B6B]/20"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B] animate-pulse" />
                   {memoryCommentUnreadCount} 条新评论
-                </span>
+                </motion.button>
               )}
             </div>
           </div>
@@ -3187,6 +3209,72 @@ export default function MemoryStreamPage() {
             friends={friends}
             currentUser={currentUser}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showNotificationSheet && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowNotificationSheet(false)}
+              className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed bottom-20 left-0 right-0 z-[191] flex flex-col rounded-t-3xl border-t shadow-2xl safe-bottom"
+              style={{
+                backgroundColor: 'var(--orbit-surface)',
+                borderColor: 'var(--orbit-border)',
+                maxHeight: '70vh'
+              }}
+            >
+              <div className="w-full flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => setShowNotificationSheet(false)}>
+                <div className="w-12 h-1.5 rounded-full bg-gray-400/30" />
+              </div>
+
+              <div className="px-6 pb-4 flex-1 overflow-hidden flex flex-col">
+                <h2 className="text-lg font-bold mb-4 shrink-0" style={{ color: 'var(--orbit-text)' }}>新评论</h2>
+
+                <div className="overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-6 flex-1">
+                  {unreadCommentItems.length === 0 ? (
+                    <p className="text-sm text-center py-8" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>暂无未读评论</p>
+                  ) : (
+                    unreadCommentItems.map(({ memory, comment, author }: any) => {
+                      const decoded = decodeCommentContent(comment.content);
+                      return (
+                        <div
+                          key={comment.id}
+                          className="p-3 rounded-2xl flex gap-3 items-start border cursor-pointer hover:opacity-80 transition-opacity"
+                          style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                          onClick={() => {
+                            setShowNotificationSheet(false);
+                            setSelectedMemory(memory);
+                            markCommentsAsRead(memory.id);
+                          }}
+                        >
+                          <img src={author.avatar} className="w-8 h-8 rounded-full bg-gray-200 object-cover shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold truncate" style={{ color: 'var(--orbit-text)' }}>{author.name}</p>
+                              <span className="text-[10px]" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{formatTime(comment.created_at)}</span>
+                            </div>
+                            <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                              {decoded.audioUrl ? '🎤 [语音评论]' : decoded.text}
+                            </p>
+                          </div>
+                          {memory.photos?.[0] && (
+                            <img src={memory.photos[0]} className="w-10 h-10 rounded-lg object-cover ml-1 opacity-80" />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

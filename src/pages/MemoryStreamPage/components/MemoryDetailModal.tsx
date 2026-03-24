@@ -428,7 +428,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[120] backdrop-blur-sm flex items-center justify-center"
+                className="fixed inset-0 z-[120] backdrop-blur-sm flex items-center justify-center touch-none"
                 style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 94%, transparent)' }}
                 onClick={() => setIsLightboxOpen(false)}
               >

@@ -101,8 +101,8 @@ export default function BottomNav() {
           paddingTop: '6px',
           // 仅使用 safe-area-inset-bottom，不再增加额外 padding，让它自然贴合物理底部
           paddingBottom: 'env(safe-area-inset-bottom, 20px)',
-          marginBottom: '-40px',
-          zIndex: 9999,
+          marginBottom: '0px',
+          zIndex: 5,
           touchAction: 'manipulation',
         }}
       >

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { FaEdit, FaChevronRight, FaChevronLeft, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaUserPlus, FaBars, FaShareAlt, FaCopy, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt, FaComment, FaPaperPlane, FaInfoCircle, FaHeadset, FaEllipsisH, FaFont, FaMoon, FaWifi, FaAt, FaBell, FaUserShield, FaUserLock, FaStore, FaUndoAlt, FaTicketAlt, FaClipboardList, FaTruck, FaTrash, FaMicrophone } from 'react-icons/fa';
 import { FiLogOut, FiTrash2, FiInfo, FiHeadphones, FiMoreHorizontal } from 'react-icons/fi';
@@ -4152,16 +4152,39 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
     }
   };
 
-  // 2. 增强型左滑行组件
+  // 2. 增强型左滑行组件 — Accordion Reveal (仿 iOS/WeChat)
   const SwipeableFriendRow = ({
     friendship, index, total, isDarkMode,
     onFriendClick, onDelete, onReport, onBlock
   }: any) => {
     const friend = friendship?.friend || {};
     const displayName = friend?.username || friendship?.friend_name || '好友';
+    const isVirtual = friendship.status === 'virtual' || String(friend.id || '').startsWith('temp-');
+
+    // 按钮数量：如果是虚拟好友，只有删除(1个)；否则有举报、屏蔽、删除(3个)。
+    const buttonCount = isVirtual ? 1 : 3;
+    const buttonWidthPx = 70;
+    const totalWidth = buttonWidthPx * buttonCount;
 
     // 按钮宽度：举报(70)+屏蔽(70)+删除(70) = 210
-    const dragThreshold = -210;
+    const dragThreshold = -totalWidth;
+    const x = useMotionValue(0);
+
+    // Accordion effect: 
+    // width per button ~ x / buttonCount
+    const buttonWidth = useTransform(x, (latest) => Math.min(80, Math.max(0, -latest / buttonCount))); // max 80 just in case overdrag
+    const buttonOpacity = useTransform(x, [-50, 0], [1, 0]);
+    const iconScale = useTransform(x, [-50, 0], [1, 0.5]);
+
+    const handleDragEnd = () => {
+      const currentX = x.get();
+      // Snap logic: if dragged more than 50px, snap open
+      if (currentX < -50) {
+        animate(x, dragThreshold, { type: 'spring', stiffness: 400, damping: 25 });
+      } else {
+        animate(x, 0, { type: 'spring', stiffness: 400, damping: 25 });
+      }
+    };
 
     return (
       <div
@@ -4169,39 +4192,53 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
         style={{ borderBottom: index === total - 1 ? 'none' : `0.5px solid ${isDarkMode ? '#1f2937' : '#f3f4f6'}` }}
       >
         {/* 底部按钮层 */}
-        <div className="absolute inset-0 flex justify-end items-stretch z-0">
-          <button
-            onClick={() => onReport(friendship)}
-            className="w-[70px] bg-orange-500 text-white flex flex-col items-center justify-center gap-1 active:opacity-70"
+        <div className="absolute inset-y-0 right-0 flex items-stretch z-0">
+          {!isVirtual && (
+            <>
+              <motion.button
+                style={{ width: buttonWidth, opacity: buttonOpacity }}
+                onClick={() => { onReport(friendship); animate(x, 0); }}
+                className="bg-orange-500 text-white flex flex-col items-center justify-center gap-1 overflow-hidden whitespace-nowrap"
+              >
+                <motion.div style={{ scale: iconScale }} className="flex flex-col items-center justify-center w-[70px]">
+                  <FaInfoCircle className="text-sm" />
+                  <span className="text-[10px] font-bold">举报</span>
+                </motion.div>
+              </motion.button>
+
+              <motion.button
+                style={{ width: buttonWidth, opacity: buttonOpacity }}
+                onClick={() => { onBlock(friendship); animate(x, 0); }}
+                className="bg-gray-500 text-white flex flex-col items-center justify-center gap-1 overflow-hidden whitespace-nowrap"
+              >
+                <motion.div style={{ scale: iconScale }} className="flex flex-col items-center justify-center w-[70px]">
+                  <FaUserLock className="text-sm" />
+                  <span className="text-[10px] font-bold">屏蔽</span>
+                </motion.div>
+              </motion.button>
+            </>
+          )}
+
+          <motion.button
+            style={{ width: buttonWidth, opacity: buttonOpacity }}
+            onClick={() => { onDelete(friendship.id, displayName); animate(x, 0); }}
+            className="bg-red-500 text-white flex flex-col items-center justify-center gap-1 overflow-hidden whitespace-nowrap"
           >
-            <FaInfoCircle className="text-sm" />
-            <span className="text-[10px] font-bold">举报</span>
-          </button>
-          <button
-            onClick={() => onBlock(friendship)}
-            className="w-[70px] bg-gray-500 text-white flex flex-col items-center justify-center gap-1 active:opacity-70"
-          >
-            <FaUserLock className="text-sm" />
-            <span className="text-[10px] font-bold">屏蔽</span>
-          </button>
-          <button
-            onClick={() => onDelete(friendship.id, displayName)}
-            className="w-[70px] bg-red-500 text-white flex flex-col items-center justify-center gap-1 active:opacity-70"
-          >
-            <FaTrash className="text-sm" />
-            <span className="text-[10px] font-bold">删除</span>
-          </button>
+            <motion.div style={{ scale: iconScale }} className="flex flex-col items-center justify-center w-[70px]">
+              <FaTrash className="text-sm" />
+              <span className="text-[10px] font-bold">删除</span>
+            </motion.div>
+          </motion.button>
         </div>
 
         {/* 顶层内容层 */}
         <motion.div
+          style={{ x, background: isDarkMode ? '#0d1626' : '#ffffff' }}
           drag="x"
           dragConstraints={{ left: dragThreshold, right: 0 }}
-          dragElastic={0.05}
+          dragElastic={0.1}
+          onDragEnd={handleDragEnd}
           className="absolute inset-0 z-10 flex items-center gap-3 px-4 touch-pan-y"
-          style={{
-            background: isDarkMode ? '#0d1626' : '#ffffff',
-          }}
         >
           <img
             src={friend?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=orbit'}
@@ -4726,124 +4763,127 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
       <div className="relative z-10 px-4 pb-10" />
 
       {/* 左侧抽屉菜单 */}
-      <AnimatePresence>
-        {showSideMenu && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/25"
-            onClick={() => setShowSideMenu(false)}
-          >
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showSideMenu && (
             <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-              className="h-full w-[72%] max-w-[300px] px-3 pb-2 flex flex-col pt-[calc(env(safe-area-inset-top)+16px)]"
-              // className="h-full w-[72%] max-w-[300px] px-3 pt-4 pb-4 flex flex-col"
-              style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] bg-black/25"
+              onClick={() => setShowSideMenu(false)}
             >
-              <div className="mb-2 px-1">
-                <p className="text-[13px] font-medium" style={{ color: isDarkMode ? '#94a3b8' : '#c4c4c8' }}>{currentUser?.username || '设置'}</p>
-              </div>
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+                className="h-full w-[72%] max-w-[300px] px-3 pb-2 flex flex-col pt-[calc(env(safe-area-inset-top)+16px)]"
+                // className="h-full w-[72%] max-w-[300px] px-3 pt-4 pb-4 flex flex-col"
+                style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', fontFamily: '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-2 px-1">
+                  <p className="text-[13px] font-medium" style={{ color: isDarkMode ? '#94a3b8' : '#c4c4c8' }}>{currentUser?.username || '设置'}</p>
+                </div>
 
-              <div className="flex-1 overflow-y-auto pr-1">
-                <div className="space-y-2">
-                  <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>显示</p>
+                <div className="flex-1 overflow-y-auto pr-1">
+                  <div className="space-y-2">
+                    <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>显示</p>
 
-                    <button
-                      onClick={() => { setShowFontSizePage(true); }}
-                      className="w-full mt-1.5 py-2 flex items-center justify-between"
-                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-                    >
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaFont className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />字体大小</span>
-                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                    </button>
-
-                    <button
-                      onClick={() => { setShowDarkModePage(true); }}
-                      className="w-full py-2 flex items-center justify-between"
-                      style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
-                    >
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaMoon className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />深色模式</span>
-                      <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
-                    </button>
-
-                    <div className="py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaWifi className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />仅 Wi‑Fi 上传</span>
-                      <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.wifiOnlyUpload ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
-                        <motion.div animate={{ x: settings.wifiOnlyUpload ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                      <button
+                        onClick={() => { setShowFontSizePage(true); }}
+                        className="w-full mt-1.5 py-2 flex items-center justify-between"
+                        style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                      >
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaFont className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />字体大小</span>
+                        <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                       </button>
+
+                      <button
+                        onClick={() => { setShowDarkModePage(true); }}
+                        className="w-full py-2 flex items-center justify-between"
+                        style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
+                      >
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaMoon className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />深色模式</span>
+                        <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                      </button>
+
+                      <div className="py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaWifi className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />仅 Wi‑Fi 上传</span>
+                        <button onClick={() => updateSettings({ wifiOnlyUpload: !settings.wifiOnlyUpload })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.wifiOnlyUpload ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                          <motion.div animate={{ x: settings.wifiOnlyUpload ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                        </button>
+                      </div>
+
+                      <div className="pt-2 pb-1 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaSyncAlt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />仅 Wi‑Fi 刷新</span>
+                        <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.wifiOnlyRefresh ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                          <motion.div animate={{ x: settings.wifiOnlyRefresh ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="pt-2 pb-1 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaSyncAlt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />仅 Wi‑Fi 刷新</span>
-                      <button onClick={() => updateSettings({ wifiOnlyRefresh: !settings.wifiOnlyRefresh })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.wifiOnlyRefresh ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
-                        <motion.div animate={{ x: settings.wifiOnlyRefresh ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
-                      </button>
+                    <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通知设置</p>
+                      <div className="mt-1.5 py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaAt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />@ 通知</span>
+                        <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyAt ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                          <motion.div animate={{ x: settings.notifyAt ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                        </button>
+                      </div>
+                      <div className="py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaComment className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />评论通知</span>
+                        <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyComment ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                          <motion.div animate={{ x: settings.notifyComment ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                        </button>
+                      </div>
+                      <div className="pt-2 pb-1 flex items-center justify-between">
+                        <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaBell className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />好友申请通知</span>
+                        <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyFriendRequest ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
+                          <motion.div animate={{ x: settings.notifyFriendRequest ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通知设置</p>
-                    <div className="mt-1.5 py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaAt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />@ 通知</span>
-                      <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyAt ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
-                        <motion.div animate={{ x: settings.notifyAt ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
+                    <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                      <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000', borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                        <FaInfoCircle className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} /> 社区公约
+                      </button>
+                      <button onClick={() => setShowAccountDiagnostics(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>
+                        <FaSearch className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} /> 网络诊断
                       </button>
                     </div>
-                    <div className="py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaComment className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />评论通知</span>
-                      <button onClick={() => updateSettings({ notifyComment: !settings.notifyComment })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyComment ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
-                        <motion.div animate={{ x: settings.notifyComment ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
-                      </button>
-                    </div>
-                    <div className="pt-2 pb-1 flex items-center justify-between">
-                      <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaBell className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />好友申请通知</span>
-                      <button onClick={() => updateSettings({ notifyFriendRequest: !settings.notifyFriendRequest })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyFriendRequest ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
-                        <motion.div animate={{ x: settings.notifyFriendRequest ? 20 : 2 }} className="w-4 h-4 rounded-full shadow" style={{ background: isDarkMode ? '#0b1324' : '#ffffff' }} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                    <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000', borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <FaInfoCircle className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} /> 社区公约
-                    </button>
-                    <button onClick={() => setShowAccountDiagnostics(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>
-                      <FaSearch className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} /> 网络诊断
-                    </button>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-auto pt-4 flex items-start justify-around pb-24">
-                <button className="flex flex-col items-center gap-2" onClick={() => setShowAboutOrbit(true)}>
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
-                    <FiInfo className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
-                  </div>
-                  <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>关于Orbit</span>
-                </button>
-                <button className="flex flex-col items-center gap-2" onClick={() => setShowHelpSupport(true)}>
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
-                    <FiHeadphones className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
-                  </div>
-                  <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>帮助与客服</span>
-                </button>
-                <button className="flex flex-col items-center gap-2" onClick={() => setShowMoreQuickMenu(true)}>
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
-                    <FiMoreHorizontal className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
-                  </div>
-                  <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>更多</span>
-                </button>
-              </div>
+                <div className="mt-auto pt-4 flex items-start justify-around pb-24">
+                  <button className="flex flex-col items-center gap-2" onClick={() => setShowAboutOrbit(true)}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
+                      <FiInfo className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
+                    </div>
+                    <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>关于Orbit</span>
+                  </button>
+                  <button className="flex flex-col items-center gap-2" onClick={() => setShowHelpSupport(true)}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
+                      <FiHeadphones className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
+                    </div>
+                    <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>帮助与客服</span>
+                  </button>
+                  <button className="flex flex-col items-center gap-2" onClick={() => setShowMoreQuickMenu(true)}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: isDarkMode ? '#000000' : '#e9eaec', border: `1px solid ${isDarkMode ? '#1f2937' : 'transparent'}` }}>
+                      <FiMoreHorizontal className="text-[20px]" style={{ color: isDarkMode ? '#ffffff' : '#666666' }} />
+                    </div>
+                    <span className="text-[12px]" style={{ color: isDarkMode ? '#ffffff' : '#6b7280' }}>更多</span>
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* 关于 Orbit 页面 */}
       <AnimatePresence>
