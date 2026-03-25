@@ -127,6 +127,7 @@ const LedgerModal = ({
       id: editData?.id,
       amount: totalAmount,
       description,
+      items: ledgerItems,
       participants: finalParticipants,
       expenseType,
       tripName,
@@ -266,119 +267,109 @@ const LedgerDetailModal = ({
 }) => {
   if (!ledger) return null;
 
+  // 尝试解析明细数据
+  let items = [];
+  try {
+    if (typeof ledger.description === 'string' && (ledger.description.startsWith('[') || ledger.description.startsWith('{'))) {
+      items = JSON.parse(ledger.description);
+    } else {
+      // 兼容旧数据格式（纯文本）或非 JSON 格式
+      items = [{ id: 'legacy', category: '💰 支出', amount: String(ledger.total_amount), note: ledger.description || '' }];
+    }
+  } catch (e) {
+    console.warn('账单明细解析失败，回退为文本展示', e);
+    items = [{ id: 'error', category: '💰 支出', amount: String(ledger.total_amount), note: ledger.description || '' }];
+  }
+
   const isPersonal = ledger.expense_type === 'personal';
-  const participants = ledger.participants || [];
-  const memory = ledger._memory || {};
-  const date = new Date(ledger.created_at);
-
-  const getParticipantName = (userId: string) => {
-    if (userId === currentUser?.id) return '我';
-    const friend = friends.find((f: any) => f.friend?.id === userId)?.friend;
-    return friend?.username || '未知好友';
-  };
-
-  const getParticipantAvatar = (userId: string) => {
-    if (userId === currentUser?.id) return currentUser?.avatar_url;
-    const friend = friends.find((f: any) => f.friend?.id === userId)?.friend;
-    return friend?.avatar_url;
-  };
+  const myPart = isPersonal
+    ? ledger.total_amount
+    : (ledger.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0);
 
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-        className="w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl relative"
-        style={{
-          backgroundColor: 'var(--orbit-surface, #ffffff)',
-          color: 'var(--orbit-text, #0f172a)',
-          border: '1px solid var(--orbit-border, rgba(255,255,255,0.1))'
-        }}
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        className="w-full max-w-md bg-[var(--orbit-surface)] rounded-t-[2.5rem] sm:rounded-[2rem] overflow-hidden shadow-2xl pb-10"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 顶部装饰背景 */}
-        <div className="h-24 bg-gradient-to-br from-[#00FFB3]/20 to-[#00D9FF]/20 relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-[#00FFB3]/30 rounded-full blur-2xl" />
-          <div className="absolute -left-6 -bottom-6 w-32 h-32 bg-[#00D9FF]/30 rounded-full blur-2xl" />
+        {/* 小票装饰线 */}
+        <div className="h-2 w-16 bg-neutral-300 rounded-full mx-auto mt-4 mb-2 opacity-20" />
+
+        <div className="px-8 pt-6">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">消费明细</h2>
+              <p className="text-xs text-neutral-400 mt-1 uppercase tracking-widest">
+                {new Date(ledger.created_at).toLocaleDateString()} · {ledger._memory?.location?.name || '未知地点'}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${isPersonal ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/5' : 'border-blue-500/30 text-blue-500 bg-blue-500/5'
+                }`}>
+                {isPersonal ? '独享' : '均摊'}
+              </span>
+            </div>
+          </div>
+
+          {/* 我的支出大字报 */}
+          <div className="mb-10 p-6 rounded-[2rem] bg-neutral-50 dark:bg-white/5 border border-dashed border-neutral-200 dark:border-neutral-800 flex flex-col items-center">
+            <span className="text-xs text-neutral-400 mb-2">我的实际支付</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-medium">¥</span>
+              <span className="text-5xl font-mono font-bold">{myPart.toFixed(2)}</span>
+            </div>
+            {!isPersonal && (
+              <p className="text-[10px] text-neutral-400 mt-3 italic">
+                费用由 {ledger.participants?.length || 1} 人均摊
+              </p>
+            )}
+          </div>
+
+          {/* 分类列表（当初是怎么记的） */}
+          <div className="space-y-6">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">原始记录清单</p>
+            <div className="space-y-4">
+              {items.map((item: any, idx: number) => (
+                <div key={idx} className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    <span className="text-xl">{item.category.split(' ')[0]}</span>
+                    <div>
+                      <p className="text-sm font-medium">{item.category.split(' ')[1] || item.category}</p>
+                      {item.note && <p className="text-xs text-neutral-400 mt-0.5">{item.note}</p>}
+                    </div>
+                  </div>
+                  <span className="font-mono text-sm">¥{parseFloat(item.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 参与人（稍微弱化） */}
+          {!isPersonal && (
+            <div className="mt-10 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+              <div className="flex -space-x-2">
+                {ledger.participants?.map((p: any) => (
+                  <img
+                    key={p.user_id}
+                    src={friends.find(f => f.friend?.id === p.user_id)?.friend?.avatar_url || currentUser?.avatar_url}
+                    className="w-6 h-6 rounded-full border-2 border-[var(--orbit-surface)] object-cover"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/5 hover:bg-black/10 transition-colors backdrop-blur-sm"
+            className="w-full mt-10 py-4 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-black font-bold text-sm transition-transform active:scale-95"
           >
-            <FaTimes className="text-sm opacity-60" />
+            收起账单
           </button>
-        </div>
-
-        <div className="px-6 pb-8 -mt-12 relative">
-          {/* 图标 */}
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-white shadow-lg flex items-center justify-center mb-4 relative z-10" style={{ backgroundColor: 'var(--orbit-surface)' }}>
-            <span className="text-4xl">💰</span>
-          </div>
-
-          <div className="text-center space-y-1 mb-6">
-            <h2 className="text-lg font-bold truncate px-4">{ledger.description?.replace(/^[^\s]+\s/, '') || '未命名账单'}</h2>
-            <p className="text-xs opacity-60">
-              {date.getFullYear()}/{date.getMonth() + 1}/{date.getDate()} · {memory?.location?.name || '未知地点'}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center justify-center mb-8">
-            <p className="text-xs opacity-60 mb-1">总金额</p>
-            <div className="text-4xl font-mono font-bold tracking-tight">
-              <span className="text-2xl align-top mr-1">¥</span>
-              {ledger.total_amount.toFixed(2)}
-            </div>
-            <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium border ${isPersonal
-              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-              : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-              }`}>
-              {isPersonal ? '个人消费' : `多人均摊 · ${participants.length + (participants.some((p: any) => p.user_id === ledger.creator_id) ? 0 : 1)} 人`}
-            </div>
-          </div>
-
-          {/* 参与者列表 */}
-          <div className="space-y-3">
-            <p className="text-xs font-medium opacity-40 px-1">费用组成</p>
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--orbit-border, #e5e7eb)', backgroundColor: 'var(--orbit-card, #f8fafc)' }}>
-              {/* 如果是个人消费 */}
-              {isPersonal && (
-                <div className="flex items-center justify-between p-3">
-                  <div className="flex items-center gap-3">
-                    <img src={currentUser?.avatar_url} className="w-8 h-8 rounded-full bg-gray-200" />
-                    <span className="text-sm font-medium">我</span>
-                  </div>
-                  <span className="font-mono font-medium">¥ {ledger.total_amount.toFixed(2)}</span>
-                </div>
-              )}
-
-              {/* 如果是多人均摊，遍历 participants + creator(如果不在 list 里需特殊处理，这里假设后端返回完整 list 或者前端需要补) */}
-              {!isPersonal && (
-                <>
-                  {/* 先显示创建者（如果参与了） */}
-                  {/* 注：通常 participants 包含所有分摊人。如果 creator 也在分摊，会在里面。 */}
-                  {participants.map((p: any) => (
-                    <div key={p.user_id} className="flex items-center justify-between p-3 border-b border-dashed last:border-0" style={{ borderColor: 'var(--orbit-border)' }}>
-                      <div className="flex items-center gap-3">
-                        <img src={getParticipantAvatar(p.user_id)} className="w-8 h-8 rounded-full bg-gray-200" />
-                        <span className="text-sm font-medium">{getParticipantName(p.user_id)}</span>
-                        {p.user_id === ledger.creator_id && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">发起人</span>
-                        )}
-                      </div>
-                      <span className="font-mono font-medium">¥ {p.amount.toFixed(2)}</span>
-                    </div>
-                  ))}
-                  {/* 如果 participants 为空（异常情况），显示“等待分摊” */}
-                  {participants.length === 0 && (
-                    <div className="p-4 text-center text-xs opacity-50">暂无分摊信息</div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
         </div>
       </motion.div>
     </motion.div>
@@ -501,6 +492,10 @@ export default function LedgerPage() {
     if (!currentUser) return;
     try {
       const { createLedger, updateLedger } = await import('../api/supabase');
+
+      // 关键：将明细对象转为字符串/JSON存入 description
+      const structuredDescription = data.items ? JSON.stringify(data.items) : data.description;
+
       const realParticipantIds = (data.participants as string[]).filter(id => !id.startsWith('temp-'));
       const total = data.amount;
       const share = total / (realParticipantIds.length + 1);
@@ -511,9 +506,9 @@ export default function LedgerPage() {
           ...realParticipantIds.map((id: string) => ({ userId: id, amount: share }))
         ];
       if (data.id) {
-        await updateLedger(data.id, currentUser.id, total, participants, data.memoryId, data.expenseType);
+        await updateLedger(data.id, currentUser.id, total, participants, data.memoryId, data.expenseType, structuredDescription);
       } else {
-        await createLedger(currentUser.id, total, participants, data.memoryId, data.expenseType);
+        await createLedger(currentUser.id, total, participants, data.memoryId, data.expenseType, structuredDescription);
       }
       await fetchLedgers();
     } catch (e) {
@@ -652,9 +647,16 @@ export default function LedgerPage() {
                     {cg.ledgers.map((item: any) => {
                       const isPersonal = item.expense_type === 'personal';
                       const myPart = isPersonal ? item.total_amount : item.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
-                      // 移除旧版的 Emoji，直接展示干净的文字
-                      // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
-                      const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
+
+                      let displayDesc = item.description || '';
+                      if (displayDesc.startsWith('[')) {
+                        try {
+                          displayDesc = JSON.parse(displayDesc)[0].category;
+                        } catch (e) { }
+                      } else {
+                        displayDesc = displayDesc.replace(/^[^\s]+\s/, '');
+                      }
+
                       return (
                         <div
                           key={item.id}
@@ -662,7 +664,7 @@ export default function LedgerPage() {
                           onClick={() => setViewingLedger(item)}
                         >
                           <div className="flex-1 min-w-0 pr-4">
-                            <p className="text-base font-medium truncate">{cleanDesc || item.description}</p>
+                            <p className="text-base font-medium truncate">{displayDesc}</p>
                             <div className={`flex items-center gap-2 mt-1 text-xs ${textSecondary}`}>
                               <span>{isPersonal ? '个人消费' : '多人均摊'}</span>
                               {item._memory?.location?.name && <span>· {item._memory.location.name}</span>}
@@ -710,8 +712,16 @@ export default function LedgerPage() {
                       {group.ledgers.map((item: any) => {
                         const isPersonal = item.expense_type === 'personal';
                         const myPart = isPersonal ? item.total_amount : item.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0;
-                        // const cleanDesc = item.description.replace(/^[^\s]+\s/, ''); 
-                        const cleanDesc = (item.description || '').replace(/^[^\s]+\s/, '');
+
+                        let displayDesc = item.description || '';
+                        if (displayDesc.startsWith('[')) {
+                          try {
+                            displayDesc = JSON.parse(displayDesc)[0].category;
+                          } catch (e) { }
+                        } else {
+                          displayDesc = displayDesc.replace(/^[^\s]+\s/, '');
+                        }
+
                         return (
                           <div
                             key={item.id}
@@ -719,8 +729,8 @@ export default function LedgerPage() {
                             onClick={() => setViewingLedger({ ...item, _memory: memory })}
                           >
                             <div className="flex-1 pr-4">
-                              <p className="text-base">{cleanDesc || item.description}</p>
-                              <p className={`text-xs mt-1 ${textSecondary}`}>{isPersonal ? '个人消费' : `总花费 ¥${item.total_amount}`}</p>
+                              <p className="text-base">{displayDesc}</p>
+                              <p className={`text-xs mt-1 ${textSecondary}`}>{isPersonal ? '个人消费' : '多人均摊'}</p>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               <span className="font-mono text-base font-medium">¥ {myPart.toFixed(2)}</span>

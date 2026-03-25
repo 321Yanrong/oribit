@@ -125,93 +125,11 @@ const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
   }
 };
 
-const usePWAKeeper = (onResume: () => void) => {
-  const lastHiddenAtRef = useRef<number>(Date.now());
-  const hasReloadedRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const HARD_RELOAD_THRESHOLD_MS = 30 * 1000;
-    const SESSION_TIMEOUT_MS = 5000;
-
-    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
-      return Promise.race([
-        promise,
-        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('pwa-keeper-timeout')), ms)),
-      ]);
-    };
-
-    const shouldHardReload = () => {
-      const hiddenFor = Date.now() - lastHiddenAtRef.current;
-      const isPickingMedia = sessionStorage.getItem('orbit_picking_media') === 'true';
-      if (!hasReloadedRef.current && hiddenFor > HARD_RELOAD_THRESHOLD_MS && !isPickingMedia) {
-        return true;
-      }
-      return false;
-    };
-
-    const handleWake = async (reason: string) => {
-      if (shouldHardReload()) {
-        hasReloadedRef.current = true;
-        window.location.reload();
-        return;
-      }
-
-      sessionStorage.removeItem('orbit_picking_media');
-
-      try {
-        await withTimeout(supabase.removeAllChannels(), 4000);
-      } catch (err) {
-        console.warn('[PWA keeper] removeAllChannels failed:', reason, err);
-      }
-      try {
-        await withTimeout(supabase.auth.getSession(), SESSION_TIMEOUT_MS);
-      } catch (err) {
-        console.warn('[PWA keeper] getSession failed:', reason, err);
-      }
-      try {
-        await withTimeout(supabase.auth.refreshSession(), SESSION_TIMEOUT_MS);
-      } catch (err) {
-        console.warn('[PWA keeper] refreshSession failed:', reason, err);
-      }
-      onResume();
-    };
-
-    const handleVisibility = () => {
-      // Logic for background state
-      lastHiddenAtRef.current = Date.now();
-    };
-
-    const handleOnline = () => {
-      sessionStorage.removeItem('orbit_picking_media');
-      void handleWake('online');
-    };
-
-    // Use Capacitor App state change instead of visibilitychange
-    const setupListener = async () => {
-      return await CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          void handleWake('appStateChange');
-        } else {
-          handleVisibility();
-        }
-      });
-    };
-    const listenerPromise = setupListener();
-
-    window.addEventListener('online', handleOnline);
-
-    return () => {
-      listenerPromise.then(l => l.remove());
-      window.removeEventListener('online', handleOnline);
-    };
-  }, [onResume]);
-};
-
 function App() {
-  // 注入心脏起搏器
-  useAppWakeUp();
+  const triggerResume = useAppStore((state) => state.triggerResume);
+  const resumeTrigger = useAppStore((state) => state.resumeTrigger);
+  // 注入心脏起搏器，代替之前的 usePWAKeeper(triggerResume)
+  useAppWakeUp(triggerResume);
 
   const { currentPage } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
@@ -233,24 +151,11 @@ function App() {
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
-  const triggerResume = useAppStore((state) => state.triggerResume);
-  usePWAKeeper(triggerResume);
   useAegisMonitor();
   usePushSetup();
   useNativeStatusBar();
   useNativeKeyboardGuard();
 
-  // Hide native splash screen on mount
-  useEffect(() => {
-    const hideNativeSplash = async () => {
-      try {
-        await CapacitorSplashScreen.hide();
-      } catch (e) {
-        // ignore
-      }
-    };
-    hideNativeSplash();
-  }, []);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -430,14 +335,40 @@ function App() {
   }, []);
 
   // 只有当加载完成且最短展示时间结束后才收起闪屏，避免加载过程外露
+  // 🚀 修复版：让原生图与 React 闪屏进行“无缝换岗”
   useEffect(() => {
+    // 只有当所有条件都准备好了
     if (!splashMinimumElapsed || loading || !firstScreenReady || !showSplash) return;
-    const AUTH_DELAY = 500;
-    setShowSplash(false);
-    const authTimer = window.setTimeout(() => setAllowAuthModal(true), AUTH_DELAY);
-    return () => window.clearTimeout(authTimer);
-  }, [splashMinimumElapsed, loading, firstScreenReady, showSplash]);
 
+    const performHandover = async () => {
+      try {
+        // 🚀 核心修复：增加对 App 是否在后台的判断，防止切屏时进入死循环
+        if (document.visibilityState !== 'visible') {
+          console.log('⏳ App 处于后台，推迟闪屏隐藏流程');
+          return;
+        }
+
+        // 1. 此时 React 的 Splash 界面已经完全渲染在 WebView 里了
+        // 我们给原生层发指令：你可以退下了
+        // 增加 100-200ms 的极短延迟，确保渲染帧已经提交给 GPU
+        setTimeout(async () => {
+          await CapacitorSplashScreen.hide();
+          console.log("🟢 原生图撤离，底下已经铺好了 React 画面");
+
+          // 2. 原生图撤掉后，现在看的是 React 写的 Splash 界面，淡出进入 App
+          setShowSplash(false);
+
+          // 3. 处理登录弹窗逻辑
+          const AUTH_DELAY = 500;
+          window.setTimeout(() => setAllowAuthModal(true), AUTH_DELAY);
+        }, 150);
+      } catch (e) {
+        setShowSplash(false);
+      }
+    };
+
+    performHandover();
+  }, [splashMinimumElapsed, loading, firstScreenReady, showSplash]);
   // 非登录态或演示模式下不阻塞闪屏
   useEffect(() => {
     if (loading) return;
@@ -478,18 +409,71 @@ function App() {
     }
   }, [loading, currentUser, isDemoMode]);
 
-  // 前台可见即尝试刷新 Session + 重拉核心数据，解决短暂后台后假连接的问题
+  // 🚀 全局唤醒响应（终极融合版）：彻底解决切后台回来无限转圈的问题
   useEffect(() => {
-    const setupListener = async () => {
-      return await CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) void refreshSessionAndData('appStateChange');
-      });
+    if (resumeTrigger === 0) return;
+
+    let isCancelled = false;
+    // 取消之前的定时器，防止多次触发
+    if (resumeTimerRef.current) {
+      window.clearTimeout(resumeTimerRef.current);
+    }
+
+    const performSafeResume = async () => {
+      if (isDemoMode || !currentUser) return;
+      console.log('⚡️ 接收到唤醒信标，等待底层网络恢复...');
+
+      // 1. 强制阻断：给手机系统分配 IP 和恢复 TCP 连接的时间 (极度重要)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      if (isCancelled) return;
+
+      // 如果 800ms 后依然没网，直接放弃，避免制造 Pending 死请求，或者只尝试回填缓存
+      if (!navigator.onLine) {
+        console.log('📴 当前无网络，仅执行本地缓存回填');
+        hydrateUserCache(currentUser.id);
+        return;
+      }
+
+      console.log('🔄 网络已就绪，开始执行数据抢救...');
+
+      // 2. 刷新会话防掉线 (限流：30秒内不重复刷)
+      const now = Date.now();
+      if (now - lastRefreshRef.current > 30 * 1000) {
+        lastRefreshRef.current = now;
+        try {
+          await Promise.race([
+            Promise.all([
+              supabase.auth.getSession(),
+              supabase.auth.refreshSession()
+            ]),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh Timeout')), 3000))
+          ]);
+        } catch (e) {
+          console.warn("唤醒时刷新 Session 失败, 但允许继续拉取数据", e);
+        }
+      }
+
+      // 3. 清理废弃的 WebSockets 连接 (防止内存泄漏和消息重复)
+      try {
+        await supabase.removeAllChannels();
+      } catch (e) { }
+
+      // 4. 安全地重新拉取核心数据 (此时网络已通，绝对不会掉进黑洞)
+      // 回填本地缓存
+      hydrateUserCache(currentUser.id);
+      // 拉取最新数据
+      fetchCoreData();
     };
-    const listenerPromise = setupListener();
+
+    performSafeResume();
+
     return () => {
-      listenerPromise.then(l => l.remove());
+      isCancelled = true;
+      if (resumeTimerRef.current) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
     };
-  }, [refreshSessionAndData]);
+  }, [resumeTrigger, currentUser, isDemoMode, fetchCoreData]);
 
   const attemptReconnect = async () => {
     setSessionInvalid(false);
@@ -531,92 +515,6 @@ function App() {
       if (action === 'prev') setGuideStepIndex(Math.max(index - 1, 0));
     }
   };
-
-  // 登录态兜底：应用重开时保证缓存回填 + 核心数据拉取
-  useEffect(() => {
-    if (!currentUser?.id || isDemoMode) return;
-    if (bootstrappedUserRef.current === currentUser.id) return;
-    bootstrappedUserRef.current = currentUser.id;
-
-    hydrateUserCache(currentUser.id);
-    if (shouldAllowRefresh()) {
-      useMemoryStore.getState().fetchMemories();
-      useUserStore.getState().fetchFriends();
-      useUserStore.getState().fetchPendingRequests();
-      useLedgerStore.getState().fetchLedgers();
-    }
-  }, [currentUser?.id, isDemoMode]);
-
-  // 页面从后台 / bfcache 回到前台时，若状态被系统回收则自动重拉
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const rehydrateIfEmpty = async () => {
-      const { currentUser } = useUserStore.getState();
-      if (!currentUser) return;
-
-      // 尝试从缓存回填
-      hydrateUserCache(currentUser.id);
-
-      if (!shouldAllowRefresh()) return;
-
-      // 前台恢复时先刷新会话，避免“断线”后全部清空
-      const now = Date.now();
-      // 缩短会话刷新节流，移动端唤醒 30s 内也刷新一次
-      if (now - lastRefreshRef.current > 30 * 1000) {
-        lastRefreshRef.current = now;
-        try {
-          await supabase.auth.getSession();
-          await supabase.auth.refreshSession();
-        } catch {
-          // ignore
-        }
-      }
-
-      const { memories, fetchMemories } = useMemoryStore.getState();
-      if (!memories || memories.length === 0) fetchMemories();
-
-      const { friends, fetchFriends } = useUserStore.getState();
-      if (!friends || friends.length === 0) fetchFriends();
-
-      const { ledgers, fetchLedgers } = useLedgerStore.getState();
-      if (!ledgers || ledgers.length === 0) fetchLedgers();
-    };
-
-    const setupListener = async () => {
-      // appStateChange listener replaces pageshow/visibilitychange logic
-      return await CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          if (resumeTimerRef.current) {
-            window.clearTimeout(resumeTimerRef.current);
-          }
-          resumeTimerRef.current = window.setTimeout(() => {
-            void rehydrateIfEmpty();
-            triggerResume();
-          }, 800);
-        }
-      });
-    };
-
-    const listenerPromise = setupListener();
-
-    const handleOnline = () => {
-      void rehydrateIfEmpty();
-      triggerResume();
-    };
-
-    window.addEventListener('online', handleOnline);
-
-    return () => {
-      listenerPromise.then(l => l.remove());
-      window.removeEventListener('online', handleOnline);
-      if (resumeTimerRef.current) {
-        window.clearTimeout(resumeTimerRef.current);
-      }
-    };
-  }, [triggerResume]);
-
-
 
   const handleDemo = () => {
     // 演示用户
@@ -935,10 +833,15 @@ function App() {
         if (event === 'INITIAL_SESSION') return;
 
         if (event === 'SIGNED_IN' && session?.user) {
+          const currentUserId = useUserStore.getState().currentUser?.id;
+          const isSameUser = currentUserId === session.user.id;
           // Clear previous user's data immediately
-          useMemoryStore.setState({ memories: [] });
-          useLedgerStore.setState({ ledgers: [] });
-          useUserStore.setState({ friends: [] });
+          // 只有在真正“切换账号”时，才清空老数据
+          if (!isSameUser) {
+            useMemoryStore.setState({ memories: [] });
+            useLedgerStore.setState({ ledgers: [] });
+            useUserStore.setState({ friends: [] });
+          }
           try {
             const profile = await getProfile(session.user.id, session.user.email || undefined);
             if (profile) {

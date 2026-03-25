@@ -64,6 +64,38 @@ const decodeMemoryContent = (content: string): { text: string; weather: string; 
   return { text, weather, mood, route };
 };
 
+const REPLY_PREFIX = '[reply=';
+const AUDIO_PREFIX = '[audio]';
+const AUDIO_SPLIT = '||';
+
+const decodeReplyContent = (content: string): { text: string; replyTo?: { commentId: string; authorId: string; authorName: string } } => {
+  if (!content?.startsWith(REPLY_PREFIX)) return { text: content };
+  const end = content.indexOf(']');
+  if (end === -1) return { text: content };
+  const metaRaw = content.slice(REPLY_PREFIX.length, end);
+  const text = content.slice(end + 1);
+  try {
+    const parsed = JSON.parse(atob(metaRaw));
+    return { text, replyTo: parsed };
+  } catch {
+    return { text: content };
+  }
+};
+
+const decodeCommentContent = (content: string) => {
+  let rest = content || '';
+  let audioUrl: string | undefined;
+  if (rest.startsWith(AUDIO_PREFIX)) {
+    const idx = rest.indexOf(AUDIO_SPLIT);
+    if (idx !== -1) {
+      audioUrl = rest.slice(AUDIO_PREFIX.length, idx);
+      rest = rest.slice(idx + AUDIO_SPLIT.length);
+    }
+  }
+  const decoded = decodeReplyContent(rest);
+  return { ...decoded, audioUrl };
+};
+
 export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: () => void }) {
   const { selectedPin, setSelectedPin } = useMapStore();
   const { memories, fetchMemories, selectedFriendIds, setSelectedFriendIds } = useMemoryStore();
@@ -99,6 +131,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     toastTimerRef.current = window.setTimeout(() => setToastMessage(null), 2000);
   }, []);
 
+
+
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     if (typeof document === 'undefined') return true;
     const theme = document.documentElement.dataset.theme;
@@ -124,6 +158,24 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
       window.removeEventListener('settings:update', update as EventListener);
     };
   }, []);
+
+  // 当主题发生变化时，更新地图样式（例如深色/浅色切换）
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const desired = isDarkTheme ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12';
+    try {
+      // 只有在样式不同的时候才切换，避免重复调用
+      if ((map.getStyle() as any)?.sprite !== desired) {
+        map.setStyle(desired);
+        // style 变更后，styledata/load 会触发，我们仍需再次应用中文标注
+        map.once('styledata', () => applyChineseLabels(map));
+      }
+    } catch (err) {
+      // fallback: 直接 setStyle
+      try { map.setStyle(desired); map.once('styledata', () => applyChineseLabels(map)); } catch { }
+    }
+  }, [isDarkTheme]);
 
   // When MapPage mounts, make the app root background transparent so the map can extend into the
   // system safe area / status bar. Restore previous value on unmount.
@@ -282,6 +334,22 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   }) || [];
 
   // 初始化 Mapbox (只执行一次)
+  const applyChineseLabels = (mp: mapboxgl.Map | null) => {
+    if (!mp) return;
+    try {
+      const zhName = ['coalesce', ['get', 'name_zh'], ['get', 'name_zh-Hans'], ['get', 'name_zh-Hant'], ['get', 'name'], ['get', 'name_en']];
+      const style = mp.getStyle();
+      if (!style?.layers) return;
+      style.layers
+        .filter((layer) => layer.type === 'symbol' && (layer.layout as any)?.['text-field'])
+        .forEach((layer) => {
+          try { mp.setLayoutProperty(layer.id, 'text-field', zhName as any); } catch { /* ignore per-layer failures */ }
+        });
+    } catch (err) {
+      console.warn('切换中文标注失败', err);
+    }
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -305,20 +373,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     }
 
     try {
-      const applyChineseLabels = (mp: mapboxgl.Map) => {
-        try {
-          const zhName = ['coalesce', ['get', 'name_zh'], ['get', 'name_zh-Hans'], ['get', 'name_zh-Hant'], ['get', 'name'], ['get', 'name_en']];
-          const style = mp.getStyle();
-          if (!style?.layers) return;
-          style.layers
-            .filter((layer) => layer.type === 'symbol' && (layer.layout as any)?.['text-field'])
-            .forEach((layer) => {
-              mp.setLayoutProperty(layer.id, 'text-field', zhName as any);
-            });
-        } catch (err) {
-          console.warn('切换中文标注失败', err);
-        }
-      };
+      // applyChineseLabels is defined above and reused
 
       const map = new mapboxgl.Map({
         container: containerRef.current,
@@ -1087,20 +1142,36 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                             const authorName = getCommentAuthorName(comment.author_id);
                             const author = friends.find((f: any) => f.friend?.id === comment.author_id)?.friend
                               || (comment.author_id === currentUser?.id ? currentUser : null);
+
+                            const { text, audioUrl, replyTo } = decodeCommentContent(comment.content);
+
                             return (
                               <div key={comment.id} className="flex gap-2.5">
                                 <img
                                   src={author?.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${authorName}`}
                                   className="w-7 h-7 rounded-full object-cover shrink-0 bg-black/5 dark:bg-white/10 mt-0.5"
                                 />
-                                <div className="flex-1">
+                                <div className="flex-1 overflow-hidden">
                                   <div className="flex items-baseline justify-between">
                                     <span className="text-[#00FFB3] text-xs font-medium">{authorName}</span>
                                     <span className="text-[10px] opacity-30" style={{ color: 'var(--orbit-text)' }}>
                                       {new Date(comment.created_at).toLocaleDateString()}
                                     </span>
                                   </div>
-                                  <p className="text-xs mt-0.5 leading-relaxed opacity-90" style={{ color: 'var(--orbit-text)' }}>{comment.content}</p>
+
+                                  {replyTo && (
+                                    <div className="text-[10px] opacity-60 bg-white/5 p-1 rounded mb-1 border-l-2 border-[#00FFB3]/30 truncate">
+                                      @{replyTo.authorName}: ...
+                                    </div>
+                                  )}
+
+                                  {audioUrl && (
+                                    <div className="mt-1 mb-1">
+                                      <audio controls src={audioUrl} className="h-8 w-full max-w-[200px]" />
+                                    </div>
+                                  )}
+
+                                  {text && <p className="text-xs mt-0.5 leading-relaxed opacity-90 break-words" style={{ color: 'var(--orbit-text)' }}>{text}</p>}
                                 </div>
                               </div>
                             );

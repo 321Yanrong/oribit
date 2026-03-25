@@ -114,6 +114,10 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
     setError(null);
 
     try {
+      if (!agreed && !isRecoveryMode) {
+        throw new Error('请阅读并勾选同意用户协议及隐私政策');
+      }
+
       if (isLogin) {
         const { user } = await signIn(email, password);
         if (user) {
@@ -129,9 +133,6 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           onSuccess();
         }
       } else {
-        if (!agreed) {
-          throw new Error('请先勾选同意用户协议');
-        }
         if (!username.trim()) {
           throw new Error('请输入用户名');
         }
@@ -334,7 +335,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           </motion.div>
 
           {/* 协议勾选 */}
-          {!isLogin && !isRecoveryMode && (
+          {!isRecoveryMode && (
             <div className="flex items-start gap-2 mt-4 px-1">
               <input
                 type="checkbox"

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { FaEdit, FaChevronRight, FaChevronLeft, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaUserPlus, FaBars, FaShareAlt, FaCopy, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt, FaComment, FaPaperPlane, FaInfoCircle, FaHeadset, FaEllipsisH, FaFont, FaMoon, FaWifi, FaAt, FaBell, FaUserShield, FaUserLock, FaStore, FaUndoAlt, FaTicketAlt, FaClipboardList, FaTruck, FaTrash, FaMicrophone } from 'react-icons/fa';
 import { FiLogOut, FiTrash2, FiInfo, FiHeadphones, FiMoreHorizontal } from 'react-icons/fi';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
+import { useAppStore } from '../store/app';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment, submitHelpQuestionFeedback } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
@@ -13,6 +14,7 @@ import { BOTTOM_NAV_CONTENT_GAP } from '../components/BottomNav';
 import { useScrollLock } from '../hooks/useScrollLock';
 import imageCompression from 'browser-image-compression';
 import ReportPage from '../components/ReportPage';
+import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import PhotoUploader from '../components/PhotoUploader';
 import AdminReportsPage from '../components/AdminReportsPage';
 
@@ -2063,234 +2065,238 @@ const RandomMemoryModal = ({
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: 'spring', damping: 20, stiffness: 250 }}
-        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] min-h-[50vh] overflow-y-auto overflow-x-hidden touch-pan-y"
+        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] min-h-[50vh] relative overflow-hidden flex flex-col touch-pan-y"
         style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-start p-5 pb-3">
-          <div>
-            <p className="text-[#0f9f6e] text-xs font-semibold tracking-wide mb-1">🎲 随机回忆</p>
-            <h2 className="font-bold text-lg text-[color:var(--orbit-text)]">
-              {date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </h2>
-            {memory.location && <p className="text-sm mt-0.5 text-[color:var(--orbit-text-muted)]">📍 {memory.location.name}</p>}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pb-12">
+          <div className="flex justify-between items-start p-5 pb-3">
+            <div>
+              <p className="text-[#0f9f6e] text-xs font-semibold tracking-wide mb-1">🎲 随机回忆</p>
+              <h2 className="font-bold text-lg text-[color:var(--orbit-text)]">
+                {date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </h2>
+              {memory.location && <p className="text-sm mt-0.5 text-[color:var(--orbit-text-muted)]">📍 {memory.location.name}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              {currentUser?.id !== memory.user_id && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="p-2 rounded-full shadow-sm"
+                    style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+                    aria-label="更多"
+                  >
+                    <FaEllipsisH />
+                  </button>
+                  {showMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-32 rounded-xl shadow-xl overflow-hidden z-[110] animate-in fade-in zoom-in-95 duration-200" style={{ background: 'var(--orbit-card)', border: '1px solid var(--orbit-border)' }}>
+                      <button
+                        onClick={() => { setShowMenu(false); onReport?.(memory); }}
+                        className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                        style={{ color: '#ef4444' }}
+                      >
+                        举报该内容
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); onBlock?.(memory.user_id); }}
+                        className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                        style={{ color: 'var(--orbit-text)' }}
+                      >
+                        屏蔽作者
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={() => onShuffle?.()}
+                className="p-2 rounded-full shadow-sm"
+                style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+                title="换一条"
+                aria-label="换一条随机回忆"
+              >
+                <FaSyncAlt />
+              </button>
+              <button
+                onClick={() => handleOpenComments()}
+                className="relative p-2 rounded-full shadow-sm"
+                style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: '#0f9f6e' }}
+                aria-label="查看评论"
+              >
+                <FaComment />
+                {commentCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#0f9f6e] text-white text-[10px] leading-4 font-bold text-center">
+                    {commentCount > 99 ? '99+' : commentCount}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full shadow-sm"
+                style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
+              >
+                <FaTimes />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {currentUser?.id !== memory.user_id && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 rounded-full shadow-sm"
-                  style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
-                  aria-label="更多"
-                >
-                  <FaEllipsisH />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-32 rounded-xl shadow-xl overflow-hidden z-[110] animate-in fade-in zoom-in-95 duration-200" style={{ background: 'var(--orbit-card)', border: '1px solid var(--orbit-border)' }}>
+          <div className="px-5 pb-35 w-full break-words">
+            {photos.length > 0 && (
+              <div
+                className="relative w-full mb-4 overflow-hidden rounded-2xl border"
+                style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 60%, transparent)' }}
+                onTouchStart={(e) => {
+                  touchStartXRef.current = e.touches[0]?.clientX ?? null;
+                }}
+                onTouchEnd={(e) => {
+                  if (touchStartXRef.current == null) return;
+                  const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+                  const delta = endX - touchStartXRef.current;
+                  touchStartXRef.current = null;
+                  if (Math.abs(delta) < 35) return;
+                  if (delta > 0) goPrevPhoto(); else goNextPhoto();
+                }}
+              >
+                <img src={photos[photoIndex]} className="w-full object-cover max-h-72" />
+                {photos.length > 1 && (
+                  <>
                     <button
-                      onClick={() => { setShowMenu(false); onReport?.(memory); }}
-                      className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
-                      style={{ color: '#ef4444' }}
+                      onClick={goPrevPhoto}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ background: 'rgba(17,24,39,0.45)', color: '#fff' }}
+                      aria-label="上一张"
                     >
-                      举报该内容
+                      <FaChevronLeft className="text-xs" />
                     </button>
                     <button
-                      onClick={() => { setShowMenu(false); onBlock?.(memory.user_id); }}
-                      className="w-full text-left px-4 py-3 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
-                      style={{ color: 'var(--orbit-text)' }}
+                      onClick={goNextPhoto}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ background: 'rgba(17,24,39,0.45)', color: '#fff' }}
+                      aria-label="下一张"
                     >
-                      屏蔽作者
+                      <FaChevronRight className="text-xs" />
                     </button>
+                    <div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
+                      {photos.map((_: any, i: number) => (
+                        <span key={`random-dot-${i}`} className="w-1.5 h-1.5 rounded-full" style={{ background: i === photoIndex ? '#ffffff' : 'rgba(255,255,255,0.45)' }} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {(text || weather || mood || route) && (
+              <div className="space-y-3 mb-4">
+                {text && <p className="leading-relaxed whitespace-pre-wrap text-[color:var(--orbit-text)]">{text}</p>}
+                {(weather || mood || route) && (
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {weather && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>天气：{weather}</span>}
+                    {mood && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>心情：{mood}</span>}
+                    {route && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>路线：{route}</span>}
                   </div>
                 )}
               </div>
             )}
-            <button
-              onClick={() => onShuffle?.()}
-              className="p-2 rounded-full shadow-sm"
-              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
-              title="换一条"
-              aria-label="换一条随机回忆"
-            >
-              <FaSyncAlt />
-            </button>
-            <button
-              onClick={() => handleOpenComments()}
-              className="relative p-2 rounded-full shadow-sm"
-              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: '#0f9f6e' }}
-              aria-label="查看评论"
-            >
-              <FaComment />
-              {commentCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#0f9f6e] text-white text-[10px] leading-4 font-bold text-center">
-                  {commentCount > 99 ? '99+' : commentCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full shadow-sm"
-              style={{ background: 'color-mix(in srgb, var(--orbit-surface) 90%, rgba(255,255,255,0.9))', border: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
-            >
-              <FaTimes />
-            </button>
+            {(showQuickComment || showCommentsPanel) && (
+              <div className="mb-4 pt-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                {showCommentsPanel && (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>全部评论</p>
+                      <div className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>{loadingComments ? '加载中…' : `${commentCount} 条`}</div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto pr-1 space-y-3">
+                      {loadingComments ? (
+                        <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>正在加载评论…</p>
+                      ) : comments.length ? (
+                        comments.map((c) => {
+                          const { text: commentText, audioUrl } = decodeCommentContent(c.content || c.text || '');
+                          return (
+                            <div key={c.id || c.created_at} className="flex gap-2">
+                              <div className="w-9 h-9 rounded-full overflow-hidden bg-[color:var(--orbit-card)] border" style={{ borderColor: 'var(--orbit-border)' }}>
+                                {c.user_avatar ? <img src={c.user_avatar} alt={c.username || '用户'} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: 'var(--orbit-text-muted)' }}>{(c.username || '?')[0]}</div>}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>{c.username || '用户'}</span>
+                                  <span className="text-[11px]" style={{ color: 'var(--orbit-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                                </div>
+                                {commentText && (
+                                  <p className="text-sm mt-0.5 whitespace-pre-wrap" style={{ color: 'var(--orbit-text)' }}>{commentText}</p>
+                                )}
+                                {audioUrl && (
+                                  <audio controls className="mt-1 w-full" src={audioUrl} preload="metadata" />
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReplyTo({ id: c.user_id || c.userId, name: c.username || '用户' });
+                                    setQuickCommentText((prev) => `@${c.username || '用户'} ${prev}`.trim());
+                                  }}
+                                  className="text-xs mt-1"
+                                  style={{ color: '#0f9f6e' }}
+                                >
+                                  回复
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>还没有评论，来抢沙发吧～</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    value={quickCommentText}
+                    onChange={(e) => setQuickCommentText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleSubmitComment();
+                      }
+                    }}
+                    placeholder={replyTo ? `回复 ${replyTo.name}...` : '写点什么，支持语音转文字'}
+                    className="flex-1 rounded-xl px-3 py-2 text-sm border outline-none"
+                    style={{ background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVoiceToText}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: listening ? 'rgba(59,130,246,0.16)' : 'rgba(15,159,110,0.12)', color: listening ? '#2563eb' : '#0f9f6e' }}
+                    aria-label="语音转文字"
+                  >
+                    <FaMicrophone className="text-sm" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmitComment()}
+                    disabled={!quickCommentText.trim() || sendingComment}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40"
+                    style={{ background: 'rgba(15,159,110,0.16)', color: '#0f9f6e' }}
+                    aria-label="发送评论"
+                  >
+                    <FaPaperPlane className="text-sm" />
+                  </button>
+                </div>
+              </div>
+            )}
+            {memory.tagged_friends?.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {getVisibleTags().map((id: string) => {
+                  const name = getTagName(id);
+                  if (!name) return null;
+                  return <span key={id} className="text-[#0f9f6e] text-sm font-semibold">@{name}</span>;
+                })}
+              </div>
+            )}
           </div>
         </div>
-        <div className="px-5 pb-35 w-full break-words">
-          {photos.length > 0 && (
-            <div
-              className="relative w-full mb-4 overflow-hidden rounded-2xl border"
-              style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 60%, transparent)' }}
-              onTouchStart={(e) => {
-                touchStartXRef.current = e.touches[0]?.clientX ?? null;
-              }}
-              onTouchEnd={(e) => {
-                if (touchStartXRef.current == null) return;
-                const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
-                const delta = endX - touchStartXRef.current;
-                touchStartXRef.current = null;
-                if (Math.abs(delta) < 35) return;
-                if (delta > 0) goPrevPhoto(); else goNextPhoto();
-              }}
-            >
-              <img src={photos[photoIndex]} className="w-full object-cover max-h-72" />
-              {photos.length > 1 && (
-                <>
-                  <button
-                    onClick={goPrevPhoto}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(17,24,39,0.45)', color: '#fff' }}
-                    aria-label="上一张"
-                  >
-                    <FaChevronLeft className="text-xs" />
-                  </button>
-                  <button
-                    onClick={goNextPhoto}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(17,24,39,0.45)', color: '#fff' }}
-                    aria-label="下一张"
-                  >
-                    <FaChevronRight className="text-xs" />
-                  </button>
-                  <div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
-                    {photos.map((_: any, i: number) => (
-                      <span key={`random-dot-${i}`} className="w-1.5 h-1.5 rounded-full" style={{ background: i === photoIndex ? '#ffffff' : 'rgba(255,255,255,0.45)' }} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          {(text || weather || mood || route) && (
-            <div className="space-y-3 mb-4">
-              {text && <p className="leading-relaxed whitespace-pre-wrap text-[color:var(--orbit-text)]">{text}</p>}
-              {(weather || mood || route) && (
-                <div className="flex flex-wrap gap-2 text-sm">
-                  {weather && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>天气：{weather}</span>}
-                  {mood && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>心情：{mood}</span>}
-                  {route && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>路线：{route}</span>}
-                </div>
-              )}
-            </div>
-          )}
-          {(showQuickComment || showCommentsPanel) && (
-            <div className="mb-4 pt-3 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
-              {showCommentsPanel && (
-                <div className="mb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>全部评论</p>
-                    <div className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>{loadingComments ? '加载中…' : `${commentCount} 条`}</div>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto pr-1 space-y-3">
-                    {loadingComments ? (
-                      <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>正在加载评论…</p>
-                    ) : comments.length ? (
-                      comments.map((c) => {
-                        const { text: commentText, audioUrl } = decodeCommentContent(c.content || c.text || '');
-                        return (
-                          <div key={c.id || c.created_at} className="flex gap-2">
-                            <div className="w-9 h-9 rounded-full overflow-hidden bg-[color:var(--orbit-card)] border" style={{ borderColor: 'var(--orbit-border)' }}>
-                              {c.user_avatar ? <img src={c.user_avatar} alt={c.username || '用户'} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: 'var(--orbit-text-muted)' }}>{(c.username || '?')[0]}</div>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold" style={{ color: 'var(--orbit-text)' }}>{c.username || '用户'}</span>
-                                <span className="text-[11px]" style={{ color: 'var(--orbit-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                              </div>
-                              {commentText && (
-                                <p className="text-sm mt-0.5 whitespace-pre-wrap" style={{ color: 'var(--orbit-text)' }}>{commentText}</p>
-                              )}
-                              {audioUrl && (
-                                <audio controls className="mt-1 w-full" src={audioUrl} preload="metadata" />
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setReplyTo({ id: c.user_id || c.userId, name: c.username || '用户' });
-                                  setQuickCommentText((prev) => `@${c.username || '用户'} ${prev}`.trim());
-                                }}
-                                className="text-xs mt-1"
-                                style={{ color: '#0f9f6e' }}
-                              >
-                                回复
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-xs" style={{ color: 'var(--orbit-text-muted)' }}>还没有评论，来抢沙发吧～</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <input
-                  value={quickCommentText}
-                  onChange={(e) => setQuickCommentText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      void handleSubmitComment();
-                    }
-                  }}
-                  placeholder={replyTo ? `回复 ${replyTo.name}...` : '写点什么，支持语音转文字'}
-                  className="flex-1 rounded-xl px-3 py-2 text-sm border outline-none"
-                  style={{ background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
-                />
-                <button
-                  type="button"
-                  onClick={handleVoiceToText}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: listening ? 'rgba(59,130,246,0.16)' : 'rgba(15,159,110,0.12)', color: listening ? '#2563eb' : '#0f9f6e' }}
-                  aria-label="语音转文字"
-                >
-                  <FaMicrophone className="text-sm" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSubmitComment()}
-                  disabled={!quickCommentText.trim() || sendingComment}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40"
-                  style={{ background: 'rgba(15,159,110,0.16)', color: '#0f9f6e' }}
-                  aria-label="发送评论"
-                >
-                  <FaPaperPlane className="text-sm" />
-                </button>
-              </div>
-            </div>
-          )}
-          {memory.tagged_friends?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {getVisibleTags().map((id: string) => {
-                const name = getTagName(id);
-                if (!name) return null;
-                return <span key={id} className="text-[#0f9f6e] text-sm font-semibold">@{name}</span>;
-              })}
-            </div>
-          )}
-        </div>
+        {/* Scroll Hint Mask */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[var(--orbit-surface)] to-transparent pointer-events-none rounded-b-3xl" />
       </motion.div>
     </motion.div>
   );
@@ -2468,7 +2474,15 @@ const MemoirMemoryModal = ({
         <div className="px-5 pb-5">
           {(text || weather || mood || route) && (
             <div className="space-y-3 mb-4">
-              {text && <p className="leading-relaxed whitespace-pre-wrap text-[color:var(--orbit-text)]">{text}</p>}
+              {text && (
+                <div className="relative group max-h-[144px]">
+                  <div className="max-h-[144px] overflow-y-auto pr-1 pb-6 custom-scrollbar">
+                    <p className="leading-relaxed whitespace-pre-wrap text-[color:var(--orbit-text)]">{text}</p>
+                  </div>
+                  {/* Fade-out mask at the bottom to indicate more text */}
+                  <div className="pointer-events-none absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-[var(--orbit-surface)] via-[var(--orbit-surface)]/80 to-transparent" />
+                </div>
+              )}
               {(weather || mood || route) && (
                 <div className="flex flex-wrap gap-2 text-sm">
                   {weather && <span className="px-2 py-1 rounded-full border" style={{ borderColor: 'var(--orbit-border)', background: 'color-mix(in srgb, var(--orbit-card) 70%, transparent)', color: 'var(--orbit-text)' }}>天气：{weather}</span>}
@@ -2915,6 +2929,7 @@ export default function ProfilePage() {
   const [showAccountDiagnostics, setShowAccountDiagnostics] = useState(false);
   const [randomMemory, setRandomMemory] = useState<any>(null);
   const [memoirMemory, setMemoirMemory] = useState<any>(null);
+  const [detailMemory, setDetailMemory] = useState<any>(null);
   const [friendSearch, setFriendSearch] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [editingRemarkId, setEditingRemarkId] = useState<string | null>(null);
@@ -3198,9 +3213,10 @@ export default function ProfilePage() {
     ]);
   }, []);
 
+  const resumeTrigger = useAppStore((state) => state.resumeTrigger);
+
   useEffect(() => {
     const tryAutoRefresh = () => {
-      if (document.visibilityState !== 'visible') return;
       if (!navigator.onLine) return;
       const now = Date.now();
       if (now - lastAutoRefreshRef.current < 30000) return;
@@ -3211,19 +3227,15 @@ export default function ProfilePage() {
     const interval = window.setInterval(tryAutoRefresh, 60000);
     window.addEventListener('online', tryAutoRefresh);
 
-    const setupListener = async () => {
-      return await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) tryAutoRefresh();
-      });
-    };
-    const listenerPromise = setupListener();
+    if (resumeTrigger > 0) {
+      tryAutoRefresh();
+    }
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('online', tryAutoRefresh);
-      listenerPromise.then(l => l.remove());
     };
-  }, [refreshProfileData]);
+  }, [refreshProfileData, resumeTrigger]);
 
   const handleSubmitEmail = async (nextEmail: string, currentPwd: string) => {
     if (!currentUser?.email) {
@@ -4717,7 +4729,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                   type="button"
                   className="aspect-square rounded-xl overflow-hidden relative text-left"
                   style={{ background: '#f3f4f6' }}
-                  onClick={() => setMemoirMemory(item.memory)}
+                  onClick={() => setDetailMemory(item.memory)}
                   title="查看这条回忆"
                 >
                   <img src={item.cover} alt={`recent-memory-${idx + 1}`} className="w-full h-full object-cover" />
@@ -5562,6 +5574,15 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
               setShowReportModal(true);
             }}
             onBlock={(userId: string) => handleBlockUser({ id: userId, username: '此用户' })}
+          />
+        )}
+        {detailMemory && (
+          <MemoryDetailModal
+            key={`detail-${detailMemory.id || detailMemory.created_at || 'mem'}`}
+            memory={detailMemory}
+            onClose={() => setDetailMemory(null)}
+            friends={friends}
+            currentUser={currentUser}
           />
         )}
         {showAccountDiagnostics && (

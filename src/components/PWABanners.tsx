@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { App } from '@capacitor/app';
+import { useAppStore } from '../store/app';
 import { registerSW } from 'virtual:pwa-register';
 
 type BeforeInstallPromptEvent = Event & {
@@ -103,17 +104,13 @@ export default function PWABanners() {
     };
   }, []);
 
+  const resumeTrigger = useAppStore((state) => state.resumeTrigger);
+
   useEffect(() => {
     if (!swRegistration) return;
 
     const checkForUpdate = () => {
       swRegistration.update().catch(() => undefined);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        checkForUpdate();
-      }
     };
 
     const onOnline = () => {
@@ -126,13 +123,9 @@ export default function PWABanners() {
     const interval = window.setInterval(checkForUpdate, 5 * 60 * 1000);
     const initial = window.setTimeout(checkForUpdate, 4000);
 
-    const setupListener = async () => {
-      // Capacitor app state change listener
-      return await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) checkForUpdate();
-      });
-    };
-    const listenerPromise = setupListener();
+    if (resumeTrigger > 0) {
+      checkForUpdate();
+    }
 
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
@@ -140,11 +133,10 @@ export default function PWABanners() {
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(initial);
-      listenerPromise.then(l => l.remove());
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
-  }, [swRegistration]);
+  }, [swRegistration, resumeTrigger]);
 
   useEffect(() => {
     if (!needRefresh || !updateServiceWorker) return;

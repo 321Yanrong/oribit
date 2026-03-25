@@ -38,7 +38,7 @@ export interface Friend {
   friend_name?: string;
   remark?: string;
   status: string;
-  friend?: {                
+  friend?: {
     id: string;
     username: string;      // 优先显示备注，无备注时为真实名
     real_username: string; // 永远是真实账号名/马甲名，用于详情页
@@ -240,6 +240,7 @@ export const getUserById = (userId: string): any | undefined => {
 // ==========================================
 interface MemoryState {
   memories: any[];
+  isLoading: boolean;
   selectedMemory: Memory | null;
   selectedFriendIds: string[];
   setSelectedFriendIds: (friendIds: string[]) => void;
@@ -251,12 +252,15 @@ interface MemoryState {
 
 export const useMemoryStore = create<MemoryState>((set) => ({
   memories: [],
+  isLoading: false,
   selectedMemory: null,
   selectedFriendIds: [],
   setSelectedFriendIds: (friendIds) => set({ selectedFriendIds: friendIds }),
   fetchMemories: async () => {
-    const userId = useUserStore.getState().currentUser?.id; 
+    const userId = useUserStore.getState().currentUser?.id;
     if (!userId || !isRealUUID(userId)) return;
+
+    set({ isLoading: true });
     try {
       const data = await getMemories(userId);
       set({ memories: data || [] });
@@ -265,6 +269,8 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       console.error('拉取记忆失败:', error?.message || error);
       const fallback = readCache<any[]>(buildCacheKey('memories', userId), []);
       if (fallback.length > 0) set({ memories: fallback });
+    } finally {
+      set({ isLoading: false });
     }
   },
   addMemory: (memory) => set((state) => {

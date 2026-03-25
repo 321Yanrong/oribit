@@ -1,10 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 const config: CapacitorConfig = {
   appId: 'com.wehihi.orbit',
   appName: 'Orbit 轨迹',
   webDir: 'dist',
-  backgroundColor: '#0b1324', // 关键：确保 Capacitor 原生层的背景色和你的 React 层一致，避免启动闪白
+  // backgroundColor: '#0b1324', // 关键：确保 Capacitor 原生层的背景色和你的 React 层一致，避免启动闪白
   // // iOS 平台专属配置
   ios: {
     // 由前端自行处理 safe-area，允许页面真正贴到底部
@@ -22,15 +23,24 @@ const config: CapacitorConfig = {
       overlaysWebView: true,
     },
     SplashScreen: {
-      launchShowDuration: 0, // 设置为 0，意味着我们要用代码手动隐藏
-      backgroundColor: "#111827", // 填你 App 的背景色，防止闪瞎眼
-      showSpinner: true,
+      // 给一个保底时间（比如 3 秒），防止你的 React 彻底卡死导致永远卡在启动页
+      launchShowDuration: 3000,
+
+      // 🚀 核心命脉：禁止系统自动隐藏！死死举着这张图，直到 React 喊停！
+      launchAutoHide: false,
+
+      // 统一背景色：换成和你外层一模一样的暗蓝色，彻底消灭闪白！
+      // backgroundColor: "#0b1324",
+
+      // 强烈建议关掉系统自带的转轮，原生转轮通常很丑，破坏沉浸感
+      showSpinner: false,
+
       androidSplashResourceName: "splash",
       iosSpinnerStyle: "small",
     },
 
     Keyboard: {
-      resize: 'none',
+      resize: KeyboardResize.None,
     },
   },
 };

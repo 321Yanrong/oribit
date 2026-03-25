@@ -6,7 +6,7 @@ import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment } from '../api/supabase';
+import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
@@ -1451,63 +1451,40 @@ export default function MemoryStreamPage() {
   const refreshSessionQuick = useCallback(async (label: string) => {
     if (!shouldAllowRefresh()) return true;
     try {
+      // 🚀 优化：先检查本地会话是否有效，无需每次都调 refreshSession
+      const { data } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('getSession-timeout')), 2000))
+      ]);
+      if (data?.session?.user) {
+        // 如果 session 还有效（比如有效期内切后台），就不必硬刷新
+        const expiresAt = data.session.expires_at || 0;
+        const now = Math.floor(Date.now() / 1000);
+        // 剩 10 分钟以上才算安全
+        if (expiresAt - now > 600) {
+          return true;
+        }
+      }
+
       await Promise.race([
         supabase.auth.refreshSession(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('refresh-timeout')), 5000)),
       ]);
       setSessionInvalid(false);
       return true;
-    } catch (err) {
-      console.warn('[memory-stream] refreshSession failed:', label, err);
-      setSessionInvalid(true);
-      return false;
+    } catch (err: any) {
+      if (Object.keys(err || {}).length > 0) {
+        console.warn('[memory-stream] refreshSession failed:', label, err);
+      } else {
+        console.log('[memory-stream] refreshSession silent retry:', label);
+      }
+
+      // 🚨 极度重要：即便刷新超时或失败，也不能返回 false 阻塞后续流程！
+      // 若 Token 真的过期，后续真正的 API 请求 (如 createMemory) 会自然抛出 401 触发下线。
+      // 这里如果因为 5G 网络刚恢复时的几秒钟延迟而报错拦截，会导致用户怎么点发布都发不出去。
+      return true;
     }
   }, [shouldAllowRefresh]);
-
-  // 前台可见/获得焦点时快速刷新会话并拉取关键数据，避免短后台后卡死
-  useEffect(() => {
-    const handleResume = async () => {
-      setResuming(true);
-      const ok = await refreshSessionQuick('visibility-resume');
-      if (ok) {
-        try {
-          await Promise.all([
-            useMemoryStore.getState().fetchMemories(),
-            useUserStore.getState().fetchFriends(),
-          ]);
-          const latestIds = (useMemoryStore.getState().memories || []).map((m: any) => m.id).filter(Boolean);
-          if (latestIds.length > 0) {
-            const comments = await getMemoryComments(latestIds);
-            const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
-              const memoryId = item.memory_id;
-              if (!memoryId) return acc;
-              if (!acc[memoryId]) acc[memoryId] = [];
-              acc[memoryId].push(item as MemoryCommentItem);
-              return acc;
-            }, {});
-            setCommentsByMemory(grouped);
-          }
-        } catch (err) {
-          console.warn('[visibility-resume] refresh data failed:', err);
-        }
-      }
-      setResuming(false);
-    };
-
-    const setupListener = async () => {
-      return await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          handleResume();
-        }
-      });
-    };
-
-    const listenerPromise = setupListener();
-
-    return () => {
-      listenerPromise.then(l => l.remove());
-    };
-  }, [refreshSessionQuick]);
 
   useEffect(() => {
     if (showStoryEntry) {
@@ -1524,6 +1501,7 @@ export default function MemoryStreamPage() {
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>({});
   const [commentsByMemory, setCommentsByMemory] = useState<Record<string, MemoryCommentItem[]>>({});
   const [roastInput, setRoastInput] = useState<Record<string, string>>({});
+  const [submittingRoasts, setSubmittingRoasts] = useState<Record<string, boolean>>({});
   const [activeInteractionMemoryId, setActiveInteractionMemoryId] = useState<string | null>(null);
 
   const shouldLockBackgroundScroll =
@@ -1613,6 +1591,27 @@ export default function MemoryStreamPage() {
           memory_id: memoryId,
           user_id: currentUser.id
         });
+
+        // 触发点赞通知！
+        const targetMemory = memories.find(m => m.id === memoryId);
+        // 如果是赞别人的动态才发通知
+        if (targetMemory && targetMemory.user_id && targetMemory.user_id !== currentUser.id) {
+          const fromName = currentUser.username || currentUser.full_name || '好友';
+          // 不 await 它，让它后台发，别阻塞前端交互哦
+          supabase.functions.invoke('send-notifications', {
+            body: {
+              user_ids: [targetMemory.user_id],
+              headings: '新的赞 ❤️',
+              contents: `${fromName} 赞了你的动态！`,
+              type: 'general',
+              data: {
+                type: 'new_like',
+                memory_id: memoryId
+              }
+            }
+          }).catch(err => console.error('发送点赞通知失败:', err));
+        }
+
       } else {
         // 取消赞
         await (supabase.from('memory_likes' as any) as any)
@@ -1633,46 +1632,47 @@ export default function MemoryStreamPage() {
 
   const addRoast = async (memoryId: string) => {
     const text = (roastInput[memoryId] || '').trim();
-    if (!text || !currentUser?.id || resuming) return;
+    if (!text || !currentUser?.id || resuming || submittingRoasts[memoryId]) return;
 
     const target = replyTarget[memoryId] || undefined;
     const audioUrl = (commentAudios[memoryId] || [])[0];
     const payload = encodeCommentContent(text, target || undefined, audioUrl);
 
-    const ok = await refreshSessionQuick('addRoast');
-    if (!ok) {
-      alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
-      return;
-    }
-
+    setSubmittingRoasts(prev => ({ ...prev, [memoryId]: true }));
     try {
+      const isHealthy = await checkSessionIsHealthy();
+      if (!isHealthy) {
+        refreshSessionQuick('recovery');
+        return;
+      }
+
       const comment = await addMemoryComment(memoryId, currentUser.id, payload);
       setCommentsByMemory(prev => ({
         ...prev,
         [memoryId]: [...(prev[memoryId] || []), comment as MemoryCommentItem],
       }));
+      setRoastInput(prev => ({ ...prev, [memoryId]: '' }));
+      setReplyTarget(prev => ({ ...prev, [memoryId]: null }));
+      setCommentAudios(prev => ({ ...prev, [memoryId]: [] }));
     } catch (error) {
       console.error('发表评论失败:', error);
-      alert(`评论发送失败：${(error as any)?.message || '请稍后重试'}`);
-      return;
+      // alert(`评论发送失败：${(error as any)?.message || '请稍后重试'}`); // Silent error or toast preferred
+    } finally {
+      setSubmittingRoasts(prev => ({ ...prev, [memoryId]: false }));
     }
-
-    setRoastInput(prev => ({ ...prev, [memoryId]: '' }));
-    setReplyTarget(prev => ({ ...prev, [memoryId]: null }));
-    setCommentAudios(prev => ({ ...prev, [memoryId]: [] }));
   };
 
   const deleteRoast = async (memoryId: string, commentId: string) => {
     if (!window.confirm('确定删除这条评论吗？')) return;
     if (resuming) return;
 
-    const ok = await refreshSessionQuick('deleteRoast');
-    if (!ok) {
-      alert('登录状态需要刷新，请稍后重试或点击底部“重新连接”。');
-      return;
-    }
-
     try {
+      const isHealthy = await checkSessionIsHealthy();
+      if (!isHealthy) {
+        refreshSessionQuick('recovery');
+        return;
+      }
+
       await deleteMemoryComment(commentId);
       setCommentsByMemory(prev => ({
         ...prev,
@@ -1680,7 +1680,7 @@ export default function MemoryStreamPage() {
       }));
     } catch (error) {
       console.error('删除评论失败:', error);
-      alert(`删除评论失败：${(error as any)?.message || '请稍后重试'}`);
+      // alert(`删除评论失败：${(error as any)?.message || '请稍后重试'}`);
     }
   };
 
@@ -1996,7 +1996,7 @@ export default function MemoryStreamPage() {
     fetchCommentsSafe(0);
 
     return () => { cancelled = true; };
-  }, [memories, resumeTrigger]);
+  }, [memories, refreshSessionQuick]);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -2122,7 +2122,6 @@ export default function MemoryStreamPage() {
   // 前台/联网时自动轻量刷新，避免卡在旧界面
   useEffect(() => {
     const tryAutoRefresh = () => {
-      if (document.visibilityState !== 'visible') return;
       if (!navigator.onLine) return;
       const now = Date.now();
       if (now - lastAutoRefreshRef.current < 30000) return;
@@ -2133,18 +2132,9 @@ export default function MemoryStreamPage() {
     const interval = window.setInterval(tryAutoRefresh, 60000);
     window.addEventListener('online', tryAutoRefresh);
 
-    // Replace visibilitychange with Capacitor appStateChange
-    const setupListener = async () => {
-      return await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) tryAutoRefresh();
-      });
-    };
-    const listenerPromise = setupListener();
-
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('online', tryAutoRefresh);
-      listenerPromise.then(l => l.remove());
     };
   }, [refreshMemoryStream]);
 
@@ -2637,12 +2627,16 @@ export default function MemoryStreamPage() {
 
                       <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="flex items-center gap-4">
-                          <button onClick={() => toggleLike(memory.id)} className={`transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
                             <FaHeart className="text-[22px]" />
+                            {reaction.likes > 0 && <span className="text-sm font-medium">{reaction.likes}</span>}
                           </button>
-                          <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
-                            <FaComment className="text-[22px] scale-x-[-1]" />
-                            {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                          <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="flex items-center gap-1 text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
+                            <div className="relative">
+                              <FaComment className="text-[22px] scale-x-[-1]" />
+                              {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                            </div>
+                            {(reaction.roasts?.length || 0) > 0 && <span className="text-sm font-medium">{reaction.roasts.length}</span>}
                           </button>
                           <button onClick={() => handleShareMemory(memory)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors">
                             <FaShareAlt className="text-[20px]" />
@@ -2682,9 +2676,7 @@ export default function MemoryStreamPage() {
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-semibold" style={{ color: 'var(--orbit-text)' }}>
-                              {new Set([...(reaction.likers || []), ...(reaction.roasts?.map((r: any) => r.author_id) || [])]).size} 人互动
-                            </span>
+
                             <FaChevronRight className="ml-auto text-xs opacity-30" />
                           </div>
                         </div>
@@ -2809,9 +2801,9 @@ export default function MemoryStreamPage() {
                                     />
                                     <button
                                       onClick={() => void addRoast(memory.id)}
-                                      disabled={!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)}
+                                      disabled={(!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)) || submittingRoasts[memory.id]}
                                       className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
-                                    >发</button>
+                                    >{submittingRoasts[memory.id] ? <FaSpinner className="animate-spin" /> : '发'}</button>
                                   </div>
                                   <VoiceRecorder
                                     userId={currentUser?.id || ''}
@@ -2957,12 +2949,16 @@ export default function MemoryStreamPage() {
 
                       <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="flex items-center gap-4">
-                          <button onClick={() => toggleLike(memory.id)} className={`transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
                             <FaHeart className="text-[22px]" />
+                            {reaction.likes > 0 && <span className="text-sm font-medium">{reaction.likes}</span>}
                           </button>
-                          <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
-                            <FaComment className="text-[22px] scale-x-[-1]" />
-                            {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                          <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="flex items-center gap-1 text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
+                            <div className="relative">
+                              <FaComment className="text-[22px] scale-x-[-1]" />
+                              {settings.notifyComment && hasUnreadComments(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                            </div>
+                            {(reaction.roasts?.length || 0) > 0 && <span className="text-sm font-medium">{reaction.roasts.length}</span>}
                           </button>
                           <button onClick={() => handleShareMemory(memory)} className="text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors">
                             <FaShareAlt className="text-[20px]" />
@@ -3002,9 +2998,7 @@ export default function MemoryStreamPage() {
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-semibold" style={{ color: 'var(--orbit-text)' }}>
-                              {new Set([...(reaction.likers || []), ...(reaction.roasts?.map((r: any) => r.author_id) || [])]).size} 人互动
-                            </span>
+
                             <FaChevronRight className="ml-auto text-xs opacity-30" />
                           </div>
                         </div>
@@ -3129,9 +3123,9 @@ export default function MemoryStreamPage() {
                                     />
                                     <button
                                       onClick={() => void addRoast(memory.id)}
-                                      disabled={!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)}
+                                      disabled={(!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)) || submittingRoasts[memory.id]}
                                       className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
-                                    >发</button>
+                                    >{submittingRoasts[memory.id] ? <FaSpinner className="animate-spin" /> : '发'}</button>
                                   </div>
                                   <VoiceRecorder
                                     userId={currentUser?.id || ''}
@@ -3607,9 +3601,9 @@ export default function MemoryStreamPage() {
                           />
                           <button
                             onClick={() => void addRoast(memory.id)}
-                            disabled={!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)}
+                            disabled={(!roastInput[memory.id]?.trim() && !(commentAudios[memory.id]?.length)) || submittingRoasts[memory.id]}
                             className="text-[#00FFB3] text-sm font-semibold disabled:opacity-30 shrink-0"
-                          >发送</button>
+                          >{submittingRoasts[memory.id] ? <FaSpinner className="animate-spin text-lg" /> : '发送'}</button>
                         </div>
                         <VoiceRecorder
                           userId={currentUser?.id || ''}

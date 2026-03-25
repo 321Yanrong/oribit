@@ -51,9 +51,53 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs = UPLOAD_TIMEOUT_MS
   return Promise.race([promise, timeoutPromise])
 }
 
+// 增强版：检测 Session 是否真的有效，避免在高频率切屏时进入假死
+export const checkSessionIsHealthy = async () => {
+  try {
+    // 0. 网络预检：如果 navigator 说离线，大概率是真的
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return false;
+    }
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) return false;
+
+    // 1. 本地检查：令牌有效期是否充足
+    const expiresAt = session.expires_at || 0;
+    const now = Math.floor(Date.now() / 1000);
+
+    // 如果 token 离过期还不到 10 分钟，强制刷新一下
+    if (expiresAt - now < 600) {
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) return false;
+    }
+
+    // 2. Ping 检查 (确认底层网络连通性，防止虽然有 Session 但发不出请求的死锁)
+    try {
+      // 设置 3 秒超时，避免挂起
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+      const pingPromise = supabase.from('profiles').select('id').eq('id', session.user.id).limit(1).single();
+
+      const { error: pingError } = await Promise.race([pingPromise, timeoutPromise]) as any;
+      if (pingError) {
+        console.warn('Session ping check failed, marking as unhealthy');
+        return false;
+      }
+    } catch (err) {
+      console.warn('Session ping check threw error:', err);
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 const ensureOnlineForWrite = (action: string) => {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    throw new Error(`当前离线，暂时无法${action}。请联网后重试。`)
+  // 仅在明确离线时抛出错误，增加容错，避免 navigator.onLine 在切屏后的误报
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error(`当前离线，暂时无法${action}。请联网后重试。`);
   }
 }
 
@@ -837,7 +881,8 @@ export const createLedger = async (
   totalAmount: number,
   participants: { userId: string; amount: number }[],
   memoryId?: string,
-  expenseType: 'shared' | 'personal' = 'shared'
+  expenseType: 'shared' | 'personal' = 'shared',
+  description?: string
 ) => {
   ensureOnlineForWrite('创建账单')
   // 创建账单
@@ -850,6 +895,7 @@ export const createLedger = async (
       currency: 'RMB',
       status: 'pending',
       expense_type: expenseType,
+      description: description
     })
     .select()
     .single()
@@ -913,7 +959,8 @@ export const updateLedger = async (
   totalAmount: number,
   participants: { userId: string; amount: number }[],
   memoryId?: string,
-  expenseType: 'shared' | 'personal' = 'shared'
+  expenseType: 'shared' | 'personal' = 'shared',
+  description?: string
 ) => {
   ensureOnlineForWrite('更新账单')
   // 1. 更新账单主表
@@ -923,6 +970,7 @@ export const updateLedger = async (
       total_amount: totalAmount,
       memory_id: memoryId,
       expense_type: expenseType,
+      description: description
     })
     .eq('id', ledgerId)
   if (ledgerError) throw ledgerError
