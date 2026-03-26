@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     // 关键：原生底层的背景色。当网页还没加载出来，或者你下拉回弹时，显示的颜色
     // 请确保这里的颜色和你 index.html 里的 #121212 完全一致
-    backgroundColor: '#0b1324',
+    backgroundColor: '#111111',
     // 禁用原生 WebView 的橡皮筋回弹
     scrollEnabled: false,
   },
@@ -23,24 +23,19 @@ const config: CapacitorConfig = {
       overlaysWebView: true,
     },
     SplashScreen: {
-      // 给一个保底时间（比如 3 秒），防止你的 React 彻底卡死导致永远卡在启动页
       launchShowDuration: 3000,
-
-      // 🚀 核心命脉：禁止系统自动隐藏！死死举着这张图，直到 React 喊停！
       launchAutoHide: false,
-
-      // 统一背景色：换成和你外层一模一样的暗蓝色，彻底消灭闪白！
-      // backgroundColor: "#0b1324",
-
-      // 强烈建议关掉系统自带的转轮，原生转轮通常很丑，破坏沉浸感
+      backgroundColor: "#111111",
       showSpinner: false,
-
       androidSplashResourceName: "splash",
       iosSpinnerStyle: "small",
     },
+    "CapacitorHttp": {
+      "enabled": true
+    },
 
     Keyboard: {
-      resize: KeyboardResize.None,
+      resize: KeyboardResize.Body,
     },
   },
 };

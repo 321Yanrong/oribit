@@ -13,23 +13,23 @@
         <scene sceneID="EHf-IW-A2E">
             <objects>
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
-                    <view key="view" contentMode="scaleToFill" id="Lho-LB-mjQ">
+                    <view key="view" multipleTouchEnabled="YES" contentMode="scaleToFill" id="q0l-QF-fuh">
                         <rect key="frame" x="0.0" y="0.0" width="430" height="932"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="icon-384.png" translatesAutoresizingMaskIntoConstraints="NO" id="F6o-Ff-XQG">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashLogo" translatesAutoresizingMaskIntoConstraints="NO" id="5NW-pi-ARf">
                                 <rect key="frame" x="175" y="426" width="80" height="80"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="80" id="M2V-0q-mUZ"/>
-                                    <constraint firstAttribute="height" constant="80" id="ilt-mu-04e"/>
+                                    <constraint firstAttribute="height" constant="80" id="1Ix-JU-IHw"/>
+                                    <constraint firstAttribute="width" constant="80" id="mNN-py-1n3"/>
                                 </constraints>
                             </imageView>
                         </subviews>
-                        <viewLayoutGuide key="safeArea" id="gNb-6N-ovB"/>
+                        <viewLayoutGuide key="safeArea" id="3lK-bq-fpe"/>
                         <color key="backgroundColor" name="LaunchBackground"/>
                         <constraints>
-                            <constraint firstItem="F6o-Ff-XQG" firstAttribute="centerY" secondItem="Lho-LB-mjQ" secondAttribute="centerY" id="V8W-U6-1ah"/>
-                            <constraint firstItem="F6o-Ff-XQG" firstAttribute="centerX" secondItem="Lho-LB-mjQ" secondAttribute="centerX" id="cWe-7n-H9H"/>
+                            <constraint firstItem="5NW-pi-ARf" firstAttribute="centerX" secondItem="q0l-QF-fuh" secondAttribute="centerX" id="OAP-a5-ucH"/>
+                            <constraint firstItem="5NW-pi-ARf" firstAttribute="centerY" secondItem="q0l-QF-fuh" secondAttribute="centerY" id="fHe-CE-5lp"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -40,7 +40,7 @@
     </scenes>
     <color key="tintColor" name="LaunchBackground"/>
     <resources>
-        <image name="icon-384.png" width="384" height="384"/>
+        <image name="SplashLogo" width="96" height="96"/>
         <namedColor name="LaunchBackground">
             <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>

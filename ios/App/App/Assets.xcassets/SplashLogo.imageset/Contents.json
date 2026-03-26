@@ -1,52 +1,56 @@
 {
-  "images" : [
+  "images": [
     {
-      "idiom" : "universal",
-      "scale" : "1x"
+      "filename": "logo-96@1x.png",
+      "idiom": "universal",
+      "scale": "1x"
     },
     {
-      "appearances" : [
+      "appearances": [
         {
-          "appearance" : "luminosity",
-          "value" : "dark"
+          "appearance": "luminosity",
+          "value": "dark"
         }
       ],
-      "idiom" : "universal",
-      "scale" : "1x"
+      "filename": "logo-96@1x-dark.png",
+      "idiom": "universal",
+      "scale": "1x"
     },
     {
-      "filename" : "icon-384 1.png",
-      "idiom" : "universal",
-      "scale" : "2x"
+      "filename": "logo-192@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
     },
     {
-      "appearances" : [
+      "appearances": [
         {
-          "appearance" : "luminosity",
-          "value" : "dark"
+          "appearance": "luminosity",
+          "value": "dark"
         }
       ],
-      "idiom" : "universal",
-      "scale" : "2x"
+      "filename": "logo-192@2x-dark.png",
+      "idiom": "universal",
+      "scale": "2x"
     },
     {
-      "filename" : "icon-384.png",
-      "idiom" : "universal",
-      "scale" : "3x"
+      "filename": "logo-288@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
     },
     {
-      "appearances" : [
+      "appearances": [
         {
-          "appearance" : "luminosity",
-          "value" : "dark"
+          "appearance": "luminosity",
+          "value": "dark"
         }
       ],
-      "idiom" : "universal",
-      "scale" : "3x"
+      "filename": "logo-288@3x-dark.png",
+      "idiom": "universal",
+      "scale": "3x"
     }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
+  "info": {
+    "author": "xcode",
+    "version": 1
   }
 }

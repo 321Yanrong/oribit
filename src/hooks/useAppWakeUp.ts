@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
-import { checkSessionIsHealthy } from '../api/supabase';
 
 export function useAppWakeUp(onResume?: () => void) {
     useEffect(() => {
@@ -10,7 +9,8 @@ export function useAppWakeUp(onResume?: () => void) {
         const setupListener = async () => {
             appListener = await CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
                 if (isActive) {
-                    console.log('🟢 App 刚刚从假死中苏醒！(Heartbeat Check)');
+                    (window as any).__orbit_foreground_at = Date.now();
+                    console.log('[App] 回到前台 (appStateChange) → 将触发 performSafeResume 与全局面络探针（与是否在发布页无关）');
 
                     // 🚀 直接触发全局唤醒，由 App.tsx 统一接管（包含 800ms 网络缓冲和所有恢复逻辑）
                     if (onResume) {
@@ -35,6 +35,7 @@ export function useAppWakeUp(onResume?: () => void) {
                     } catch (e) { }
 
                 } else {
+                    (window as any).__orbit_background_at = Date.now();
                     console.log('🔴 App 退到了后台，准备冬眠...');
                 }
             });

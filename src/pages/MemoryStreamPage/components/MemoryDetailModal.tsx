@@ -8,8 +8,10 @@ import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, Fa
 import { decodeMemoryContent, formatDateGroup, formatTime, MOOD_OPTIONS, WEATHER_OPTIONS } from '../utils';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../../../utils/tagVisibility';
 import { getMemoryComments, addMemoryComment, deleteMemoryComment } from '../../../api/supabase';
-import { useScrollLock } from '../../../hooks/useScrollLock';    // Add useScrollLock
-import { App } from '@capacitor/app';                            // Add Capacitor App for backButton handling
+import { useScrollLock } from '../../../hooks/useScrollLock';
+import { App } from '@capacitor/app';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 
 interface MemoryDetailModalProps {
   memory: any;
@@ -79,6 +81,14 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; isSelf: boolean; userId?: string } | null>(null);
   const avatarFileRef = useRef<HTMLInputElement>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const showH = Keyboard.addListener('keyboardWillShow', (info) => setKbHeight(info.keyboardHeight));
+    const hideH = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { showH.then(h => h.remove()); hideH.then(h => h.remove()); };
+  }, []);
   const setCurrentUser = useUserStore((s) => s.setCurrentUser);
   const userStoreUser = useUserStore((s) => s.currentUser);
   useScrollLock(true);
@@ -385,7 +395,12 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 backdrop-blur-xl overflow-y-auto memory-modal-backdrop"
-      style={{ backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.55))', color: 'var(--orbit-text)' }}
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.55))',
+        color: 'var(--orbit-text)',
+        paddingBottom: kbHeight > 0 ? `${kbHeight}px` : undefined,
+        transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+      }}
       onClick={onClose}
     >
       <div className="min-h-screen" onClick={(e) => e.stopPropagation()}>
@@ -776,6 +791,10 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 <input
                   value={commentInput}
                   onChange={(e) => setCommentInput(e.target.value)}
+                  onFocus={(e) => {
+                    const el = e.target;
+                    setTimeout(() => { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350);
+                  }}
                   placeholder={currentUser?.id ? '文字 + 表情 或 留空配语音' : '登录后可评论'}
                   disabled={!currentUser?.id || isSending}
                   className="flex-1 px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 placeholder:text-[color:var(--orbit-text-muted,#9ca3af)]"

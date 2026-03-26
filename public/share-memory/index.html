@@ -1,416 +1,460 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Orbit 回忆分享</title>
-    <meta name="description" content="你的朋友在 Orbit 分享了一条真实回忆，打开即可查看照片、内容和互动。" />
-    <meta name="theme-color" content="#121212" />
-    <meta property="og:title" content="Orbit 回忆分享" />
-    <meta property="og:description" content="打开即可查看照片、地点和互动，加入一起记录。" />
-    <meta property="og:image" content="https://wehihi.com/icons/icon-384.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://wehihi.com/share-memory/" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Orbit 回忆分享" />
-    <meta name="twitter:description" content="打开即可查看照片、地点和互动，加入一起记录。" />
-    <meta name="twitter:image" content="https://wehihi.com/icons/icon-384.png" />
-    <style>
-      :root {
-        --bg: #121212;
-        --card: #1b1f29;
-        --line: rgba(255,255,255,.1);
-        --text: #f5f7ff;
-        --muted: rgba(245,247,255,.58);
-        --brand: #00ffb3;
-        --brand2: #00d9ff;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        background:
-          radial-gradient(1100px 600px at -15% -20%, rgba(0,217,255,.14), transparent 60%),
-          radial-gradient(900px 520px at 120% 130%, rgba(0,255,179,.12), transparent 60%),
-          var(--bg);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 18px;
-      }
-      .wrap {
-        width: min(520px, 100%);
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-        backdrop-filter: blur(10px);
-        overflow: hidden;
-        box-shadow: 0 24px 50px rgba(0,0,0,.38);
-      }
-      .head {
-        padding: 24px 22px 14px;
-      }
-      .logo {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: rgba(255,255,255,.88);
-        font-size: 13px;
-        margin-bottom: 14px;
-      }
-      .logo img { width: 22px; height: 22px; }
-      .title {
-        margin: 0;
-        font-size: clamp(22px, 5vw, 30px);
-        line-height: 1.35;
-        font-weight: 800;
-        letter-spacing: .2px;
-      }
-      .friend { color: #9be9ff; }
-      .sub {
-        margin: 10px 0 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
-      .card {
-        margin: 12px 14px 0;
-        border-radius: 18px;
-        border: 1px solid var(--line);
-        background: rgba(255,255,255,.03);
-        overflow: hidden;
-      }
-      .card-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 14px;
-        border-bottom: 1px solid var(--line);
-      }
-      .chip {
-        font-size: 12px;
-        color: #b5bdcf;
-      }
-      .tag {
-        font-size: 11px;
-        color: #7deccf;
-        padding: 2px 8px;
-        border: 1px solid rgba(0,255,179,.3);
-        border-radius: 999px;
-      }
-      .detail {
-        padding: 12px 14px 14px;
-        display: grid;
-        gap: 10px;
-      }
-      .author {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        object-fit: cover;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.08);
-      }
-      .author-name {
-        font-size: 14px;
-        font-weight: 700;
-      }
-      .author-sub {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 2px;
-      }
-      .memory-title {
-        font-size: 18px;
-        line-height: 1.5;
-        font-weight: 700;
-        margin: 2px 0 0;
-      }
-      .memory-text {
-        margin: 0;
-        color: rgba(245,247,255,.86);
-        font-size: 14px;
-        line-height: 1.75;
-        white-space: pre-wrap;
-      }
-      .meta-row,
-      .tag-row,
-      .stats-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.05);
-        border: 1px solid var(--line);
-        color: rgba(245,247,255,.72);
-        font-size: 12px;
-      }
-      .pill.friend {
-        color: #7deccf;
-        border-color: rgba(0,255,179,.18);
-      }
-      .thumbs {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-        justify-items: center;
-        gap: 10px;
-        margin: 6px auto 0;
-        max-width: 360px;
-      }
-      .thumb {
-        width: 100%;
-        max-width: 110px;
-        aspect-ratio: 1 / 1;
-        border-radius: 12px;
-        border: 1px solid var(--line);
-        background: rgba(255,255,255,.04);
-        overflow: hidden;
-      }
-      .thumb img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
-      .comments {
-        display: grid;
-        gap: 8px;
-      }
-      .comment {
-        border: 1px solid var(--line);
-        background: rgba(255,255,255,.03);
-        border-radius: 14px;
-        padding: 10px 12px;
-      }
-      .comment-author {
-        font-size: 12px;
-        color: #9be9ff;
-        font-weight: 700;
-        margin-bottom: 4px;
-      }
-      .comment-text {
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.65;
-        color: rgba(245,247,255,.78);
-      }
-      .empty {
-        color: rgba(245,247,255,.45);
-        font-size: 13px;
-      }
-      .foot {
-        padding: 16px 14px 18px;
-      }
-      .cta {
-        width: 100%;
-        border: 0;
-        border-radius: 14px;
-        padding: 14px 16px;
-        font-size: 15px;
-        font-weight: 700;
-        color: #04251c;
-        background: linear-gradient(90deg, var(--brand), var(--brand2));
-        text-decoration: none;
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .tip {
-        margin: 10px 2px 0;
-        text-align: center;
-        color: rgba(255,255,255,.45);
-        font-size: 12px;
-      }
-    </style>
-  </head>
-  <body>
-    <main class="wrap">
-      <section class="head">
-        <div class="logo">
-          <img src="/icons/icon-384.png" alt="Orbit" />
-          <span>Orbit 回忆分享</span>
-        </div>
-        <h1 class="title" id="heroTitle">你的朋友 <span class="friend" id="friendName">[好友]</span> 分享了一条真实回忆</h1>
-        <p class="sub" id="subText">打开后可查看回忆正文、照片和最近互动。</p>
-      </section>
 
-      <section class="card" aria-label="回忆详情预览">
-        <div class="card-head">
-          <span class="chip" id="cardMode">[单条真实回忆预览]</span>
-          <span class="tag" id="dayChip">周六聚会</span>
-        </div>
-        <div class="detail">
-          <div class="author">
-            <img id="authorAvatar" class="avatar" src="/icons/icon-384.png" alt="分享者头像" />
-            <div>
-              <div class="author-name" id="authorName">好友</div>
-              <div class="author-sub" id="authorSub">在 Orbit 记录了这段故事</div>
-            </div>
-          </div>
-          <div class="memory-title" id="memoryTitle">这是一条值得被分享的回忆</div>
-          <p class="memory-text" id="memoryText">打开这条分享后，你会看到真实回忆的正文、地点、照片和最近互动。</p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Orbit 回忆分享</title>
+  <meta name="description" content="你的朋友在 Orbit 分享了一条真实回忆，打开即可查看照片、内容和互动。" />
+  <meta name="theme-color" content="#121212" />
+  <meta property="og:title" content="Orbit 回忆分享" />
+  <meta property="og:description" content="打开即可查看照片、地点和互动，加入一起记录。" />
+  <meta property="og:image" content="https://wehihi.com/icons/.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://wehihi.com/share-memory/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Orbit 回忆分享" />
+  <meta name="twitter:description" content="打开即可查看照片、地点和互动，加入一起记录。" />
+  <meta name="twitter:image" content="https://wehihi.com/icons/.png" />
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1b1f29;
+      --line: rgba(255, 255, 255, .1);
+      --text: #f5f7ff;
+      --muted: rgba(245, 247, 255, .58);
+      --brand: #00ffb3;
+      --brand2: #00d9ff;
+    }
 
-          <div class="meta-row" id="metaRow"></div>
-          <div class="tag-row" id="tagRow"></div>
+    * {
+      box-sizing: border-box;
+    }
 
-          <div class="thumbs" id="photoGrid" hidden></div>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(1100px 600px at -15% -20%, rgba(0, 217, 255, .14), transparent 60%),
+        radial-gradient(900px 520px at 120% 130%, rgba(0, 255, 179, .12), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+    }
 
-          <div class="stats-row" id="statsRow"></div>
+    .wrap {
+      width: min(520px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      box-shadow: 0 24px 50px rgba(0, 0, 0, .38);
+    }
 
+    .head {
+      padding: 24px 22px 14px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 255, 255, .88);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .logo img {
+      width: 22px;
+      height: 22px;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(22px, 5vw, 30px);
+      line-height: 1.35;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    .friend {
+      color: #9be9ff;
+    }
+
+    .sub {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      margin: 12px 14px 0;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .03);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chip {
+      font-size: 12px;
+      color: #b5bdcf;
+    }
+
+    .tag {
+      font-size: 11px;
+      color: #7deccf;
+      padding: 2px 8px;
+      border: 1px solid rgba(0, 255, 179, .3);
+      border-radius: 999px;
+    }
+
+    .detail {
+      padding: 12px 14px 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .author {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, .12);
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .author-name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .author-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .memory-title {
+      font-size: 18px;
+      line-height: 1.5;
+      font-weight: 700;
+      margin: 2px 0 0;
+    }
+
+    .memory-text {
+      margin: 0;
+      color: rgba(245, 247, 255, .86);
+      font-size: 14px;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+
+    .meta-row,
+    .tag-row,
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid var(--line);
+      color: rgba(245, 247, 255, .72);
+      font-size: 12px;
+    }
+
+    .pill.friend {
+      color: #7deccf;
+      border-color: rgba(0, 255, 179, .18);
+    }
+
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      justify-items: center;
+      gap: 10px;
+      margin: 6px auto 0;
+      max-width: 360px;
+    }
+
+    .thumb {
+      width: 100%;
+      max-width: 110px;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .04);
+      overflow: hidden;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .comments {
+      display: grid;
+      gap: 8px;
+    }
+
+    .comment {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .03);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .comment-author {
+      font-size: 12px;
+      color: #9be9ff;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .comment-text {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.65;
+      color: rgba(245, 247, 255, .78);
+    }
+
+    .empty {
+      color: rgba(245, 247, 255, .45);
+      font-size: 13px;
+    }
+
+    .foot {
+      padding: 16px 14px 18px;
+    }
+
+    .cta {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #04251c;
+      background: linear-gradient(90deg, var(--brand), var(--brand2));
+      text-decoration: none;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .tip {
+      margin: 10px 2px 0;
+      text-align: center;
+      color: rgba(255, 255, 255, .45);
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <section class="head">
+      <div class="logo">
+        <img src="/assets/icons/.png" alt="Orbit" />
+        <span>Orbit 回忆分享</span>
+      </div>
+      <h1 class="title" id="heroTitle">你的朋友 <span class="friend" id="friendName">[好友]</span> 分享了一条真实回忆</h1>
+      <p class="sub" id="subText">打开后可查看回忆正文、照片和最近互动。</p>
+    </section>
+
+    <section class="card" aria-label="回忆详情预览">
+      <div class="card-head">
+        <span class="chip" id="cardMode">[单条真实回忆预览]</span>
+        <span class="tag" id="dayChip">周六聚会</span>
+      </div>
+      <div class="detail">
+        <div class="author">
+          <img id="authorAvatar" class="avatar" src="/assets/icons/icon-384.png" alt="分享者头像" />
           <div>
-            <div class="chip" style="margin-bottom: 8px;">最近互动</div>
-            <div class="comments" id="commentList">
-              <div class="empty">注册后可继续参与评论互动。</div>
-            </div>
+            <div class="author-name" id="authorName">好友</div>
+            <div class="author-sub" id="authorSub">在 Orbit 记录了这段故事</div>
           </div>
         </div>
-      </section>
+        <div class="memory-title" id="memoryTitle">这是一条值得被分享的回忆</div>
+        <p class="memory-text" id="memoryText">打开这条分享后，你会看到真实回忆的正文、地点、照片和最近互动。</p>
 
-      <section class="foot">
-        <a class="cta" id="ctaBtn" href="https://wehihi.com/">点击注册并领取这条回忆</a>
-        <p class="tip">* 进入后可在“回忆流”继续查看完整内容与更多互动</p>
-      </section>
-    </main>
+        <div class="meta-row" id="metaRow"></div>
+        <div class="tag-row" id="tagRow"></div>
 
-    <script>
-      (function () {
-        var params = new URLSearchParams(window.location.search);
-        var payloadParam = params.get('payload');
+        <div class="thumbs" id="photoGrid" hidden></div>
 
-        function decodePayload(value) {
-          if (!value) return null;
-          try {
-            var base64 = value.replace(/-/g, '+').replace(/_/g, '/');
-            while (base64.length % 4) base64 += '=';
-            var binary = atob(base64);
-            var bytes = Uint8Array.from(binary, function (char) { return char.charCodeAt(0); });
-            return JSON.parse(new TextDecoder().decode(bytes));
-          } catch (error) {
-            console.error('share payload decode failed:', error);
-            return null;
-          }
+        <div class="stats-row" id="statsRow"></div>
+
+        <div>
+          <div class="chip" style="margin-bottom: 8px;">最近互动</div>
+          <div class="comments" id="commentList">
+            <div class="empty">注册后可继续参与评论互动。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="foot">
+      <a class="cta" id="ctaBtn" href="https://wehihi.com/">点击注册并领取这条回忆</a>
+      <p class="tip">* 进入后可在“回忆流”继续查看完整内容与更多互动</p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var payloadParam = params.get('payload');
+
+      function decodePayload(value) {
+        if (!value) return null;
+        try {
+          var base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+          while (base64.length % 4) base64 += '=';
+          var binary = atob(base64);
+          var bytes = Uint8Array.from(binary, function (char) { return char.charCodeAt(0); });
+          return JSON.parse(new TextDecoder().decode(bytes));
+        } catch (error) {
+          console.error('share payload decode failed:', error);
+          return null;
+        }
+      }
+
+      function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = value;
+      }
+
+      function createPill(text, cls) {
+        var span = document.createElement('span');
+        span.className = 'pill' + (cls ? ' ' + cls : '');
+        span.textContent = text;
+        return span;
+      }
+
+      var payload = decodePayload(payloadParam);
+      var inviter = (payload && payload.inviter) || params.get('inviter') || '好友';
+      var day = (payload && payload.day) || params.get('day') || '周六聚会';
+      var location = (payload && payload.location) || params.get('location') || '';
+
+      var safeInviter = inviter.length > 10 ? inviter.slice(0, 10) + '…' : inviter;
+      setText('friendName', '[' + safeInviter + ']');
+      setText('dayChip', day);
+
+      var metaRow = document.getElementById('metaRow');
+      var tagRow = document.getElementById('tagRow');
+      var photoGrid = document.getElementById('photoGrid');
+      var statsRow = document.getElementById('statsRow');
+      var commentList = document.getElementById('commentList');
+
+      if (payload) {
+        var heroTitle = document.getElementById('heroTitle');
+        if (heroTitle) {
+          heroTitle.innerHTML = '你的朋友 <span class="friend" id="friendName">[' + safeInviter + ']</span> 分享了一条真实回忆';
+        }
+        setText('subText', location ? ('地点：' + location + ' · 打开后可查看这条回忆的真实内容与互动。') : '打开后可查看这条回忆的真实内容与互动。');
+        setText('authorName', payload.author || inviter);
+        setText('authorSub', [payload.dateText || day, location].filter(Boolean).join(' · ') || '在 Orbit 记录了这段故事');
+        setText('memoryTitle', payload.title || '这是一条值得被分享的回忆');
+        setText('memoryText', payload.content || '打开后可查看这条回忆的真实正文。');
+        setText('cardMode', '[单条真实回忆详情]');
+
+        if (payload.authorAvatar) {
+          document.getElementById('authorAvatar').src = payload.authorAvatar;
         }
 
-        function setText(id, value) {
-          var el = document.getElementById(id);
-          if (el) el.textContent = value;
-        }
+        if (payload.dateText) metaRow.appendChild(createPill('🗓 ' + payload.dateText));
+        if (payload.location) metaRow.appendChild(createPill('📍 ' + payload.location));
+        if (payload.weather) metaRow.appendChild(createPill(payload.weather));
+        if (payload.mood) metaRow.appendChild(createPill(payload.mood));
+        if (payload.route) metaRow.appendChild(createPill('路线：' + payload.route));
 
-        function createPill(text, cls) {
-          var span = document.createElement('span');
-          span.className = 'pill' + (cls ? ' ' + cls : '');
-          span.textContent = text;
-          return span;
-        }
+        (payload.taggedNames || []).forEach(function (name) {
+          tagRow.appendChild(createPill('@' + name, 'friend'));
+        });
 
-        var payload = decodePayload(payloadParam);
-        var inviter = (payload && payload.inviter) || params.get('inviter') || '好友';
-        var day = (payload && payload.day) || params.get('day') || '周六聚会';
-        var location = (payload && payload.location) || params.get('location') || '';
-
-        var safeInviter = inviter.length > 10 ? inviter.slice(0, 10) + '…' : inviter;
-        setText('friendName', '[' + safeInviter + ']');
-        setText('dayChip', day);
-
-        var metaRow = document.getElementById('metaRow');
-        var tagRow = document.getElementById('tagRow');
-        var photoGrid = document.getElementById('photoGrid');
-        var statsRow = document.getElementById('statsRow');
-        var commentList = document.getElementById('commentList');
-
-        if (payload) {
-          var heroTitle = document.getElementById('heroTitle');
-          if (heroTitle) {
-            heroTitle.innerHTML = '你的朋友 <span class="friend" id="friendName">[' + safeInviter + ']</span> 分享了一条真实回忆';
-          }
-          setText('subText', location ? ('地点：' + location + ' · 打开后可查看这条回忆的真实内容与互动。') : '打开后可查看这条回忆的真实内容与互动。');
-          setText('authorName', payload.author || inviter);
-          setText('authorSub', [payload.dateText || day, location].filter(Boolean).join(' · ') || '在 Orbit 记录了这段故事');
-          setText('memoryTitle', payload.title || '这是一条值得被分享的回忆');
-          setText('memoryText', payload.content || '打开后可查看这条回忆的真实正文。');
-          setText('cardMode', '[单条真实回忆详情]');
-
-          if (payload.authorAvatar) {
-            document.getElementById('authorAvatar').src = payload.authorAvatar;
-          }
-
-          if (payload.dateText) metaRow.appendChild(createPill('🗓 ' + payload.dateText));
-          if (payload.location) metaRow.appendChild(createPill('📍 ' + payload.location));
-          if (payload.weather) metaRow.appendChild(createPill(payload.weather));
-          if (payload.mood) metaRow.appendChild(createPill(payload.mood));
-          if (payload.route) metaRow.appendChild(createPill('路线：' + payload.route));
-
-          (payload.taggedNames || []).forEach(function (name) {
-            tagRow.appendChild(createPill('@' + name, 'friend'));
+        var photos = payload.photos || [];
+        if (photos.length > 0) {
+          photoGrid.hidden = false;
+          photos.forEach(function (src) {
+            var item = document.createElement('div');
+            item.className = 'thumb';
+            var img = document.createElement('img');
+            img.src = src;
+            img.alt = '回忆照片';
+            item.appendChild(img);
+            photoGrid.appendChild(item);
           });
-
-          var photos = payload.photos || [];
-          if (photos.length > 0) {
-            photoGrid.hidden = false;
-            photos.forEach(function (src) {
-              var item = document.createElement('div');
-              item.className = 'thumb';
-              var img = document.createElement('img');
-              img.src = src;
-              img.alt = '回忆照片';
-              item.appendChild(img);
-              photoGrid.appendChild(item);
-            });
-          }
-
-          if (photos.length > 0) statsRow.appendChild(createPill('🖼 ' + photos.length + ' 张照片'));
-          if (payload.videoCount) statsRow.appendChild(createPill('🎥 ' + payload.videoCount + ' 个视频'));
-          if (payload.audioCount) statsRow.appendChild(createPill('🎙 ' + payload.audioCount + ' 段语音'));
-          if (payload.hasLedger) statsRow.appendChild(createPill('💸 含账单'));
-
-          var comments = payload.comments || [];
-          commentList.innerHTML = '';
-          if (comments.length === 0) {
-            var empty = document.createElement('div');
-            empty.className = 'empty';
-            empty.textContent = '这条回忆暂时还没有公开的评论预览。';
-            commentList.appendChild(empty);
-          } else {
-            comments.forEach(function (comment) {
-              var node = document.createElement('div');
-              node.className = 'comment';
-
-              var author = document.createElement('div');
-              author.className = 'comment-author';
-              author.textContent = comment.author || '好友';
-
-              var text = document.createElement('p');
-              text.className = 'comment-text';
-              text.textContent = comment.content || '';
-
-              node.appendChild(author);
-              node.appendChild(text);
-              commentList.appendChild(node);
-            });
-          }
-
-          document.title = (payload.title || 'Orbit 回忆分享') + ' - Orbit';
-        } else {
-          if (location) {
-            setText('subText', '地点：' + location + ' · 注册后即可查看完整回忆与账单明细。');
-          }
         }
 
-        var cta = document.getElementById('ctaBtn');
-        cta.href = 'https://wehihi.com/?from=share_memory_lp&utm_source=wechat&utm_medium=social';
-      })();
-    </script>
-  </body>
+        if (photos.length > 0) statsRow.appendChild(createPill('🖼 ' + photos.length + ' 张照片'));
+        if (payload.videoCount) statsRow.appendChild(createPill('🎥 ' + payload.videoCount + ' 个视频'));
+        if (payload.audioCount) statsRow.appendChild(createPill('🎙 ' + payload.audioCount + ' 段语音'));
+        if (payload.hasLedger) statsRow.appendChild(createPill('💸 含账单'));
+
+        var comments = payload.comments || [];
+        commentList.innerHTML = '';
+        if (comments.length === 0) {
+          var empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = '这条回忆暂时还没有公开的评论预览。';
+          commentList.appendChild(empty);
+        } else {
+          comments.forEach(function (comment) {
+            var node = document.createElement('div');
+            node.className = 'comment';
+
+            var author = document.createElement('div');
+            author.className = 'comment-author';
+            author.textContent = comment.author || '好友';
+
+            var text = document.createElement('p');
+            text.className = 'comment-text';
+            text.textContent = comment.content || '';
+
+            node.appendChild(author);
+            node.appendChild(text);
+            commentList.appendChild(node);
+          });
+        }
+
+        document.title = (payload.title || 'Orbit 回忆分享') + ' - Orbit';
+      } else {
+        if (location) {
+          setText('subText', '地点：' + location + ' · 注册后即可查看完整回忆与账单明细。');
+        }
+      }
+
+      var cta = document.getElementById('ctaBtn');
+      cta.href = 'https://wehihi.com/?from=share_memory_lp&utm_source=wechat&utm_medium=social';
+    })();
+  </script>
+</body>
+
 </html>

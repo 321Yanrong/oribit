@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { App } from '@capacitor/app';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { FaEdit, FaChevronRight, FaChevronLeft, FaSpinner, FaHeart, FaUsers, FaCamera, FaTimes, FaCheck, FaUserPlus, FaBars, FaShareAlt, FaCopy, FaDice, FaMapMarkerAlt, FaFire, FaSearch, FaSyncAlt, FaComment, FaPaperPlane, FaInfoCircle, FaHeadset, FaEllipsisH, FaFont, FaMoon, FaWifi, FaAt, FaBell, FaUserShield, FaUserLock, FaStore, FaUndoAlt, FaTicketAlt, FaClipboardList, FaTruck, FaTrash, FaMicrophone } from 'react-icons/fa';
@@ -311,7 +313,7 @@ const CommunityGuidelinesPage = ({
           >
             <FaChevronLeft className="text-base" />
           </button>
-          <img src="/icons/icon-384.png" alt="Orbit" className="h-8 w-8 object-contain" />
+          <img src="assets/icons/icon-384.png" alt="Orbit" className="h-8 w-8 object-contain" />
         </div>
 
         <div className="px-4 pb-24">
@@ -527,7 +529,7 @@ const HelpSupportPage = ({
       const current = {
         id: String(currentUser.id),
         username: String(currentUser.username),
-        avatar_url: currentUser.avatar_url || '/icons/icon-384.png',
+        avatar_url: currentUser.avatar_url || '/assets/icons/icon-384.png',
         lastLoginAt: now,
       };
       const deduped = [current, ...filtered.filter((item) => String(item.id) !== current.id)].slice(0, 10);
@@ -946,7 +948,7 @@ const HelpSupportPage = ({
                         style={{ borderBottom: index === recentDeviceAccounts.length - 1 ? 'none' : `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}
                       >
                         <img
-                          src={account.avatar_url || '/icons/icon-384.png'}
+                          src={account.avatar_url || '/assets/icons/icon-384.png'}
                           alt="avatar"
                           className="w-10 h-10 rounded-full object-cover"
                         />
@@ -1006,7 +1008,7 @@ const HelpSupportPage = ({
                   >
                     <div className="w-[150px] h-[150px] rounded-full" style={{ background: isDarkMode ? '#0b1324' : '#fff' }} />
                     <img
-                      src={currentUser?.avatar_url || '/icons/icon-384.png'}
+                      src={currentUser?.avatar_url || '/assets/icons/icon-384.png'}
                       alt="avatar"
                       className="absolute w-[92px] h-[92px] rounded-full object-cover"
                     />
@@ -1847,6 +1849,14 @@ const RandomMemoryModal = ({
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const showH = Keyboard.addListener('keyboardWillShow', (info) => setKbHeight(info.keyboardHeight));
+    const hideH = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { showH.then(h => h.remove()); hideH.then(h => h.remove()); };
+  }, []);
   const [listening, setListening] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const speechRef = useRef<any>(null);
@@ -2060,13 +2070,23 @@ const RandomMemoryModal = ({
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-xl flex items-center justify-center p-4"
+      style={{
+        paddingBottom: kbHeight > 0 ? `${kbHeight + 16}px` : undefined,
+        transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+      }}
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: 'spring', damping: 20, stiffness: 250 }}
-        className="w-full max-w-lg rounded-3xl border shadow-2xl max-h-[85vh] min-h-[50vh] relative overflow-hidden flex flex-col touch-pan-y"
-        style={{ background: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
+        className="w-full max-w-lg rounded-3xl border shadow-2xl min-h-[50vh] relative overflow-hidden flex flex-col touch-pan-y"
+        style={{
+          background: 'var(--orbit-surface)',
+          borderColor: 'var(--orbit-border)',
+          color: 'var(--orbit-text)',
+          maxHeight: kbHeight > 0 ? `calc(100dvh - ${kbHeight + 32}px)` : '85vh',
+          transition: 'max-height 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pb-12">
@@ -2257,6 +2277,10 @@ const RandomMemoryModal = ({
                         e.preventDefault();
                         void handleSubmitComment();
                       }
+                    }}
+                    onFocus={(e) => {
+                      const el = e.target;
+                      setTimeout(() => { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350);
                     }}
                     placeholder={replyTo ? `回复 ${replyTo.name}...` : '写点什么，支持语音转文字'}
                     className="flex-1 rounded-xl px-3 py-2 text-sm border outline-none"
@@ -2973,6 +2997,7 @@ export default function ProfilePage() {
     boxSize: 0,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastAutoRefreshRef = useRef(0);
   const appVersion = import.meta.env.VITE_APP_VERSION || '0.0.0';
   const appBuildTime = import.meta.env.VITE_APP_BUILD_TIME || '';
@@ -4294,6 +4319,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
   };
   return (
     <div
+      ref={scrollContainerRef}
       className={`relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
         backgroundColor: isDarkMode ? '#070707ff' : '#f5f5f7',
@@ -4301,7 +4327,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
       }}
     >
-      {/* <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} /> */}
+      <PullToRefresh onRefresh={handleRefreshHome} isRefreshing={refreshingHome} disabled={shouldLockBackgroundScroll} scrollRef={scrollContainerRef} />
       <div
         className="absolute inset-0 overflow-hidden pointer-events-none"
         style={{ background: `radial-gradient(circle at 50% -10%, rgba(0, 0, 0, 0.04) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(0, 0, 0, 0.03) 0%, transparent 35%)` }}
@@ -4955,7 +4981,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 <div className="px-4 pt-2">
                   <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <div className="px-6 pt-12 pb-8 text-center" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <img src="/icons/icon-384.png" alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
+                      <img src="/assets/icons/icon-384.png" alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
                       <p className="mt-4 text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>v{appVersion}</p>
                       <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>更新于 {appBuildLabel}</p>
                     </div>

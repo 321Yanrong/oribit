@@ -3,12 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft, FaComment, FaPaperPlane, FaHeart } from 'react-icons/fa';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
+import { useAppStore } from '../store/app';
 import FloatingParticles from '../components/FloatingParticles';
 import { addMemoryComment, getMemoryComments, supabase } from '../api/supabase';
 import { SETTINGS_EVENT } from '../utils/settings';
 
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
+import { useScrollLock } from '../hooks/useScrollLock';
 
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
@@ -101,10 +105,14 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const { selectedPin, setSelectedPin } = useMapStore();
   const { memories, fetchMemories, selectedFriendIds, setSelectedFriendIds } = useMemoryStore();
   const { friends, currentUser } = useUserStore();
+  const resumeTrigger = useAppStore((state) => state.resumeTrigger);
 
   const [showMemoryDetail, setShowMemoryDetail] = useState(false);
-  const [selectedMemory, setSelectedMemory] = useState<any>(null); // 单条记忆详情
+  const [selectedMemory, setSelectedMemory] = useState<any>(null);
   const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
+
+  useScrollLock(showMemoryDetail && !!selectedPin && !selectedMemory);
+  useScrollLock(!!selectedMemory);
   const [detailComments, setDetailComments] = useState<any[]>([]);
   const [detailCommentText, setDetailCommentText] = useState('');
   const [detailCommentSending, setDetailCommentSending] = useState(false);
@@ -115,6 +123,21 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [detailLikeInfo, setDetailLikeInfo] = useState({ liked: false, likes: 0, likers: [] as any[] });
   const [showInteractionDetail, setShowInteractionDetail] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const showHandle = Keyboard.addListener('keyboardWillShow', (info) => {
+      setKeyboardHeight(info.keyboardHeight);
+    });
+    const hideHandle = Keyboard.addListener('keyboardWillHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showHandle.then(h => h.remove());
+      hideHandle.then(h => h.remove());
+    };
+  }, []);
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]); // 存储 Mapbox 的 Marker 实例，方便后续清理
@@ -551,55 +574,56 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
 
     setDetailPhotoIndex(0);
     setDetailCommentText('');
-
-    // Reset showInteractionDetail to false when a new memory is selected, 
-    // unless you want it to persist across memory selections (usually cleaner to reset).
     setShowInteractionDetail(false);
+
+    // Show cached comments instantly while the fresh fetch is in progress
+    const cached = useMemoryStore.getState().commentsByMemory[selectedMemory.id];
+    if (cached?.length) setDetailComments(cached);
 
     let cancelled = false;
 
-    Promise.all([
-      getMemoryComments([selectedMemory.id]),
-      (async () => {
-        if (!currentUser?.id) return { liked: false, likes: 0, likers: [] };
-        // We need to properly fetch likes.
-        // First get the count and check if current user liked it
-        const { data: likesData, error } = await (supabase
-          .from('memory_likes' as any) as any)
-          .select('user_id')
-          .eq('memory_id', selectedMemory.id);
+    const loadDetail = async (retry = 0) => {
+      try {
+        const [comments, likeInfo] = await Promise.all([
+          getMemoryComments([selectedMemory.id]),
+          (async () => {
+            if (!currentUser?.id) return { liked: false, likes: 0, likers: [] };
+            const { data: likesData, error } = await (supabase
+              .from('memory_likes' as any) as any)
+              .select('user_id')
+              .eq('memory_id', selectedMemory.id);
 
-        if (error || !likesData) return { liked: false, likes: 0, likers: [] };
+            if (error || !likesData) return { liked: false, likes: 0, likers: [] };
 
-        const liked = likesData.some((l: any) => l.user_id === currentUser.id);
-        const likers = likesData.map((l: any) => l.user_id);
+            const liked = likesData.some((l: any) => l.user_id === currentUser.id);
+            const likers = likesData.map((l: any) => l.user_id);
+            return { liked, likes: likesData.length, likers };
+          })()
+        ]);
 
-        return {
-          liked,
-          likes: likesData.length,
-          likers
-        };
-      })()
-    ])
-      .then(([comments, likeInfo]) => {
         if (cancelled) return;
-        // The first element of result array from Promise.all is comments
-        // If getMemoryComments returns an object { [id]: comments }, extract the array
         const commentsArray = Array.isArray(comments) ? comments : (comments?.[selectedMemory.id] || []);
         setDetailComments(commentsArray);
         setDetailLikeInfo(likeInfo);
-      })
-      .catch((err) => {
-        console.error("Error fetching detail info:", err);
+      } catch (err: any) {
         if (cancelled) return;
-        setDetailComments([]);
-        setDetailLikeInfo({ liked: false, likes: 0, likers: [] });
-      });
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`[MapPage] 拉取详情失败 (retry ${retry}):`, errMsg);
+        if (retry < 2) {
+          setTimeout(() => loadDetail(retry + 1), 2000);
+        } else {
+          setDetailComments([]);
+          setDetailLikeInfo({ liked: false, likes: 0, likers: [] });
+        }
+      }
+    };
+
+    loadDetail();
 
     return () => {
       cancelled = true;
     };
-  }, [selectedMemory?.id, currentUser?.id]);
+  }, [selectedMemory?.id, currentUser?.id, resumeTrigger]);
 
   const handleToggleLike = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -878,15 +902,26 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         {selectedMemory && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            style={{
+              paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined,
+              transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+            }}
             onClick={() => setSelectedMemory(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: 'spring', damping: 20, stiffness: 250 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[75vh] overflow-y-auto hide-scrollbar rounded-3xl border shadow-2xl"
-              style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)' }}
+              className="w-full max-w-lg overflow-y-auto hide-scrollbar rounded-3xl border shadow-2xl"
+              style={{
+                backgroundColor: 'var(--orbit-surface)',
+                borderColor: 'var(--orbit-border)',
+                maxHeight: keyboardHeight > 0
+                  ? `calc(100dvh - ${keyboardHeight + 32}px)`
+                  : 'calc(100dvh - 2rem)',
+                transition: 'max-height 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+              }}
             >
               {/* 照片 */}
               {selectedMemory.photos?.length > 0 && (
@@ -1197,9 +1232,10 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
                               }
                             }}
                             onFocus={(e) => {
+                              const el = e.target;
                               setTimeout(() => {
-                                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              }, 300); // 延迟300ms等键盘完全弹起
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }, 350);
                             }}
                             // 防止点击输入框时触发地图事件
                             onTouchStart={(e) => e.stopPropagation()}

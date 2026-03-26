@@ -6,7 +6,7 @@ import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy } from '../api/supabase';
+import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage } from '../api/supabase';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
@@ -16,6 +16,34 @@ import { track } from '../utils/analytics';
 import { readSettings, SETTINGS_EVENT, shouldAllowRefresh } from '../utils/settings';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import { useScrollLock } from '../hooks/useScrollLock';
+// Deduplicates concurrent refreshSessionQuick calls — both comments-subscribe and
+// fetch-comments can fire within the same tick after wake; sharing one Promise
+// halves the auth load on the just-recovered network.
+let _refreshQuickInFlight: Promise<boolean> | null = null;
+
+/** ms since last app foreground; used to relax timeouts right after wake */
+function msSinceForeground(): number | null {
+  if (typeof window === 'undefined') return null;
+  const fg = (window as any).__orbit_foreground_at as number | undefined;
+  if (!fg) return null;
+  return Date.now() - fg;
+}
+
+function memoryStreamGetSessionRaceMs(): number {
+  const ago = msSinceForeground();
+  return ago != null && ago < 120_000 ? 5500 : 2000;
+}
+
+function memoryStreamRefreshSessionRaceMs(): number {
+  const ago = msSinceForeground();
+  return ago != null && ago < 120_000 ? 8000 : 5000;
+}
+
+function memoryStreamFetchBatchRaceMs(): number {
+  const ago = msSinceForeground();
+  return ago != null && ago < 120_000 ? 45_000 : 30_000;
+}
+
 // 高德地图 API 配置
 const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
 const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
@@ -913,6 +941,14 @@ const CreateMemoryModal = ({
     setSelectedLocation(poi);
   };
 
+  // Pre-warm session as soon as the modal opens so the "publish" button
+  // doesn't need to wait for a network round-trip.
+  useEffect(() => {
+    if (isOpen) {
+      refreshSessionQuick('modal-open');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     const hasContent = content.trim().length > 0 || audios.length > 0 || photos.length > 0 || videos.length > 0;
@@ -1313,7 +1349,7 @@ const getIsDarkTheme = () => {
 };
 
 export default function MemoryStreamPage() {
-  const { memories, fetchMemories, deleteMemory } = useMemoryStore();
+  const { memories, fetchMemories, deleteMemory, commentsByMemory, prependComment, removeComment } = useMemoryStore();
   const { friends } = useUserStore();
   const {
     memoryStreamSearchQuery: searchQuery,
@@ -1429,6 +1465,7 @@ export default function MemoryStreamPage() {
 
   const scrollRestoredRef = useRef(false);
   const albumSectionRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState(readSettings());
   const lastAutoRefreshRef = useRef(0);
   const resumeTrigger = useAppStore((state) => state.resumeTrigger);
@@ -1450,40 +1487,56 @@ export default function MemoryStreamPage() {
 
   const refreshSessionQuick = useCallback(async (label: string) => {
     if (!shouldAllowRefresh()) return true;
-    try {
-      // 🚀 优化：先检查本地会话是否有效，无需每次都调 refreshSession
-      const { data } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('getSession-timeout')), 2000))
-      ]);
-      if (data?.session?.user) {
-        // 如果 session 还有效（比如有效期内切后台），就不必硬刷新
-        const expiresAt = data.session.expires_at || 0;
-        const now = Math.floor(Date.now() / 1000);
-        // 剩 10 分钟以上才算安全
-        if (expiresAt - now > 600) {
-          return true;
-        }
-      }
 
-      await Promise.race([
-        supabase.auth.refreshSession(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('refresh-timeout')), 5000)),
-      ]);
-      setSessionInvalid(false);
-      return true;
-    } catch (err: any) {
-      if (Object.keys(err || {}).length > 0) {
-        console.warn('[memory-stream] refreshSession failed:', label, err);
-      } else {
-        console.log('[memory-stream] refreshSession silent retry:', label);
-      }
-
-      // 🚨 极度重要：即便刷新超时或失败，也不能返回 false 阻塞后续流程！
-      // 若 Token 真的过期，后续真正的 API 请求 (如 createMemory) 会自然抛出 401 触发下线。
-      // 这里如果因为 5G 网络刚恢复时的几秒钟延迟而报错拦截，会导致用户怎么点发布都发不出去。
+    // Fast path: if session was validated recently (e.g. on resume or modal open),
+    // skip the network round-trip entirely — the token is still valid.
+    const validUntil = (window as any).__orbit_session_valid_until as number | undefined;
+    if (validUntil && Date.now() < validUntil) {
+      console.log(`[memory-stream] session cache hit, skipping check: ${label}`);
       return true;
     }
+
+    // If another caller already kicked off a session check, reuse that Promise
+    if (_refreshQuickInFlight) {
+      console.log(`[memory-stream] reusing in-flight session check: ${label}`);
+      return _refreshQuickInFlight;
+    }
+
+    _refreshQuickInFlight = (async () => {
+      try {
+        // Read the token directly from localStorage — instant, zero async,
+        // completely bypasses the SDK's internal state machine that can deadlock
+        // after app backgrounding (initializePromise, _useSession queue, etc.)
+        const stored = getSessionFromStorage();
+        if (stored && stored.expires_at - Math.floor(Date.now() / 1000) > 600) {
+          (window as any).__orbit_session_valid_until = Date.now() + 30_000;
+          return true;
+        }
+
+        // Token expired or missing — attempt refresh via native HTTP path
+        console.log(`[memory-stream] token expired or missing, refreshing: ${label}`);
+        const refreshMs = memoryStreamRefreshSessionRaceMs();
+        await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('refresh-timeout')), refreshMs)),
+        ]);
+        setSessionInvalid(false);
+        (window as any).__orbit_session_valid_until = Date.now() + 30_000;
+        return true;
+      } catch (err: any) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errMsg && errMsg !== '[object Object]') {
+          console.log(`[memory-stream] refreshSession silent retry: ${label} (${errMsg})`);
+        } else {
+          console.log(`[memory-stream] refreshSession silent retry: ${label}`);
+        }
+        return true;
+      } finally {
+        _refreshQuickInFlight = null;
+      }
+    })();
+
+    return _refreshQuickInFlight;
   }, [shouldAllowRefresh]);
 
   useEffect(() => {
@@ -1499,7 +1552,6 @@ export default function MemoryStreamPage() {
 
   // 点赞改为 Supabase 持久化
   const [reactions, setReactions] = useState<Record<string, MemoryReactionState>>({});
-  const [commentsByMemory, setCommentsByMemory] = useState<Record<string, MemoryCommentItem[]>>({});
   const [roastInput, setRoastInput] = useState<Record<string, string>>({});
   const [submittingRoasts, setSubmittingRoasts] = useState<Record<string, boolean>>({});
   const [activeInteractionMemoryId, setActiveInteractionMemoryId] = useState<string | null>(null);
@@ -1647,10 +1699,7 @@ export default function MemoryStreamPage() {
       }
 
       const comment = await addMemoryComment(memoryId, currentUser.id, payload);
-      setCommentsByMemory(prev => ({
-        ...prev,
-        [memoryId]: [...(prev[memoryId] || []), comment as MemoryCommentItem],
-      }));
+      prependComment(memoryId, comment as MemoryCommentItem);
       setRoastInput(prev => ({ ...prev, [memoryId]: '' }));
       setReplyTarget(prev => ({ ...prev, [memoryId]: null }));
       setCommentAudios(prev => ({ ...prev, [memoryId]: [] }));
@@ -1674,10 +1723,7 @@ export default function MemoryStreamPage() {
       }
 
       await deleteMemoryComment(commentId);
-      setCommentsByMemory(prev => ({
-        ...prev,
-        [memoryId]: (prev[memoryId] || []).filter((item) => item.id !== commentId),
-      }));
+      removeComment(memoryId, commentId);
     } catch (error) {
       console.error('删除评论失败:', error);
       // alert(`删除评论失败：${(error as any)?.message || '请稍后重试'}`);
@@ -1948,55 +1994,6 @@ export default function MemoryStreamPage() {
   // 按城市分组
   const cityGroupedMemories = useMemo(() => groupMemoriesByCity(filteredMemories), [filteredMemories]);
 
-  // 强化版：拉取评论的 useEffect（带延迟与自动重试）
-  useEffect(() => {
-    const memoryIds = memories.map((memory: any) => memory.id).filter(Boolean);
-    if (memoryIds.length === 0) return;
-
-    let cancelled = false;
-
-    const fetchCommentsSafe = async (retryCount = 0) => {
-      // 唤醒后等 800ms，给网络和底层资源预热
-      await new Promise(r => setTimeout(r, 800));
-
-      try {
-        const ok = await refreshSessionQuick('fetch-comments');
-        if (!ok) {
-          setSessionInvalid(true);
-          return;
-        }
-
-        const fetchPromise = getMemoryComments(memoryIds);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('评论拉取超时')), 5000)
-        );
-
-        const comments = await Promise.race([fetchPromise, timeoutPromise]) as any[];
-        if (cancelled) return;
-
-        const grouped = (comments || []).reduce((acc: Record<string, MemoryCommentItem[]>, item: any) => {
-          const memoryId = item.memory_id;
-          if (!acc[memoryId]) acc[memoryId] = [];
-          acc[memoryId].push(item as MemoryCommentItem);
-          return acc;
-        }, {});
-
-        setCommentsByMemory(grouped);
-      } catch (error) {
-        if (!cancelled) {
-          console.error(`第 ${retryCount + 1} 次拉取评论失败:`, error);
-          if (retryCount < 2) {
-            console.log('2秒后自动重试拉取评论...');
-            setTimeout(() => fetchCommentsSafe(retryCount + 1), 2000);
-          }
-        }
-      }
-    };
-
-    fetchCommentsSafe(0);
-
-    return () => { cancelled = true; };
-  }, [memories, refreshSessionQuick]);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -2023,14 +2020,7 @@ export default function MemoryStreamPage() {
           (payload) => {
             const item = payload.new as MemoryCommentItem;
             if (!item?.id || !item.memory_id) return;
-            setCommentsByMemory((prev) => {
-              const existing = prev[item.memory_id] || [];
-              if (existing.some((c) => c.id === item.id)) return prev;
-              return {
-                ...prev,
-                [item.memory_id]: [...existing, item],
-              };
-            });
+            prependComment(item.memory_id, item);
           }
         )
         .on(
@@ -2039,14 +2029,7 @@ export default function MemoryStreamPage() {
           (payload) => {
             const item = payload.old as MemoryCommentItem;
             if (!item?.id || !item.memory_id) return;
-            setCommentsByMemory((prev) => {
-              const existing = prev[item.memory_id] || [];
-              if (!existing.some((c) => c.id === item.id)) return prev;
-              return {
-                ...prev,
-                [item.memory_id]: existing.filter((c) => c.id !== item.id),
-              };
-            });
+            removeComment(item.memory_id, item.id);
           }
         )
         .subscribe();
@@ -2057,7 +2040,7 @@ export default function MemoryStreamPage() {
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, [memories, currentUser?.id, resumeTrigger, refreshSessionQuick]);
+  }, [memories, currentUser?.id, refreshSessionQuick]);
 
   useEffect(() => {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
@@ -2083,14 +2066,19 @@ export default function MemoryStreamPage() {
         useUserStore.getState().fetchFriends(),
       ]);
 
-      // 🚨 超时放宽到 15s，适配唤醒后的慢连接
+      const batchMs = memoryStreamFetchBatchRaceMs();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 15000)
+        setTimeout(() => reject(new Error('timeout')), batchMs)
       );
 
       await Promise.race([fetchPromise, timeoutPromise]);
-    } catch (error) {
-      console.error('拉取数据超时或被系统打断:', error);
+    } catch (error: any) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const hint =
+        msg === 'timeout'
+          ? ` （记忆流+好友拉取超过 ${memoryStreamFetchBatchRaceMs() / 1000}s，可下拉刷新；与上一条 getSession-timeout 无必然因果）`
+          : '';
+      console.error('拉取数据超时或被系统打断:', msg + hint);
       // 可选提示：alert('网络似乎开小差了，请下拉重新刷新试试');
     } finally {
       if (showLoading) setIsLoading(false);
@@ -2123,6 +2111,12 @@ export default function MemoryStreamPage() {
   useEffect(() => {
     const tryAutoRefresh = () => {
       if (!navigator.onLine) return;
+      // 切回 30s 内，performSafeResume 的 fetchCoreData 已统一接管，不重复触发
+      const foregroundAt = (window as any).__orbit_foreground_at as number | undefined;
+      if (foregroundAt && Date.now() - foregroundAt < 30_000) return;
+      // fetchCoreData 在过去 60s 内刚刚运行过，跳过以避免与正在进行的上传竞争
+      const lastCoreRefresh = (window as any).__orbit_last_core_data_refresh as number | undefined;
+      if (lastCoreRefresh && Date.now() - lastCoreRefresh < 60_000) return;
       const now = Date.now();
       if (now - lastAutoRefreshRef.current < 30000) return;
       lastAutoRefreshRef.current = now;
@@ -2242,7 +2236,7 @@ export default function MemoryStreamPage() {
             acc[memoryId].push(item as MemoryCommentItem);
             return acc;
           }, {});
-          setCommentsByMemory(grouped);
+          useMemoryStore.getState().updateCommentsByMemory(grouped);
         }
       };
 
@@ -2265,6 +2259,7 @@ export default function MemoryStreamPage() {
 
   return (
     <div
+      ref={scrollContainerRef}
       onClick={() => setActiveMenuMemoryId(null)}
       className={`memory-stream-page relative w-full flex-1 min-h-0 hide-scrollbar flex flex-col overflow-x-hidden ${shouldLockBackgroundScroll ? 'overflow-hidden touch-none' : 'overflow-y-auto'}`}
       style={{
@@ -2273,7 +2268,7 @@ export default function MemoryStreamPage() {
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
       }}
     >
-      {/* <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} /> */}
+      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} disabled={shouldLockBackgroundScroll} scrollRef={scrollContainerRef} />
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none sticky top-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00FFB3]/5 rounded-full blur-3xl" />

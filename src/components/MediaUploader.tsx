@@ -5,8 +5,18 @@ import { track } from '../utils/analytics';
 import { shouldAllowUpload } from '../utils/settings';
 import imageCompression from 'browser-image-compression';
 import { savePendingPhotos, loadPendingPhotos, clearPendingPhotos } from '../utils/pendingUploads';
+import { uploadPhoto as uploadPhotoStatic } from '../api/supabase';
+import {
+  runForegroundNetworkProbe,
+  isForegroundProbeFresh,
+  FOREGROUND_PROBE_CACHE_MS,
+} from '../utils/webViewNetworkProbe';
 
 const UPLOAD_TIMEOUT_MS = 45000;
+
+// Module-level lock: prevents concurrent restorePending runs across remounts
+// (component state resets on every unmount, so a per-instance flag is not sufficient)
+let restoreInFlight = false;
 const MAX_IMAGE_EDGE = 1600;
 const MIN_IMAGE_COMPRESS_SIZE = 0.6 * 1024 * 1024; // 600KB 以上才压缩
 const MAX_PENDING_FILES = 8;
@@ -257,25 +267,39 @@ export default function MediaUploader({
     };
   }, []);
 
-  // 恢复未完成的压缩/上传队列
+  // 恢复未完成队列 — 延迟 5s 让 App 初始化；探针由 App performSafeResume 优先启动，
+  // 此处仅在缓存未命中时补跑一次（不在这里打「从后台切回」类日志，避免误以为只有发布页才检测）
   useEffect(() => {
     const restorePending = async () => {
-      if (uploading || restoringPending) return;
-      setRestoringPending(true);
+      // Guard BEFORE any async wait: module-level flag prevents concurrent runs across
+      // remounts (component state resets on unmount; a per-instance flag would not catch this)
+      if (restoreInFlight || uploading) return;
+      restoreInFlight = true;
       try {
-        const files = await loadPendingPhotos();
-        if (files.length > 0) {
-          console.log('[MediaUploader] 自动恢复上次未完成的上传队列');
-          await handlePhotoFiles(files, null, { skipPersist: true });
+        await new Promise(r => setTimeout(r, 5000));
+        if (!isForegroundProbeFresh(FOREGROUND_PROBE_CACHE_MS)) {
+          await runForegroundNetworkProbe({ userId, source: 'media-uploader-restore' });
         }
-      } catch (err) {
-        console.warn('恢复未完成上传失败:', err);
+        // Re-check after the async waits: a manual upload may have started during probe
+        if (uploading) return;
+        setRestoringPending(true);
+        try {
+          const files = await loadPendingPhotos();
+          if (files.length > 0) {
+            console.log('[MediaUploader] 自动恢复上次未完成的上传队列');
+            await handlePhotoFiles(files, null, { skipPersist: true });
+          }
+        } catch (err) {
+          console.warn('恢复未完成上传失败:', err);
+        } finally {
+          setRestoringPending(false);
+        }
       } finally {
-        setRestoringPending(false);
+        restoreInFlight = false;
       }
     };
     void restorePending();
-  }, [uploading]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRemovePhoto = (photoUrl: string) => {
     onPhotosChange(photos.filter(url => url !== photoUrl));
@@ -314,7 +338,7 @@ export default function MediaUploader({
         const urls: string[] = [];
         for (const file of validFiles) {
           const compressed = await compressImage(file);
-          const url = await withTimeout(uploadPhoto(userId, compressed));
+          const url = await uploadPhoto(userId, compressed);
           urls.push(url);
           setUploadDone((prev) => Math.min(prev + 1, validFiles.length));
         }
@@ -358,63 +382,45 @@ export default function MediaUploader({
     setUploadTotal(files.length);
     setUploadDone(0);
 
-    // 🚨 唤醒 iOS PWA：给底层留 500ms 恢复网络/内存
-    await new Promise(resolve => setTimeout(resolve, 500));
     try {
-      // 1. 加载上传环境
-      const importPromise = import('../api/supabase');
-      const timeoutImport = new Promise((_, reject) => setTimeout(() => reject(new Error('网络初始化超时')), 5000));
-      const { uploadPhoto } = (await Promise.race([importPromise, timeoutImport])) as any;
+      const uploadPhoto = uploadPhotoStatic;
 
       const uploadedUrls: string[] = [];
       const failedFiles: File[] = [];
 
       for (const file of files) {
-        let timeoutId: NodeJS.Timeout | null = null;
-
         try {
-          // 压缩配置
           const options = {
             maxSizeMB: 0.5,
             maxWidthOrHeight: 1920,
-            useWebWorker: true, // 改回 true，性能更好
+            useWebWorker: true,
             initialQuality: 0.8
           };
 
-          // ✨ 将压缩和上传封装在一个逻辑链路中
-          const processPromise = async () => {
-            // A. 压缩阶段
-            console.log('--- 开始处理图片 ---');
-            const compressedFile = await imageCompression(file, options);
+          console.log('--- 开始处理图片 ---');
+          const compressedFile = await imageCompression(file, options);
+          console.log('压缩成功！');
+          console.log('原始体积:', (file.size / 1024).toFixed(2), 'KB');
+          console.log('压缩后体积:', (compressedFile.size / 1024).toFixed(2), 'KB');
+          console.log('压缩率:', ((1 - compressedFile.size / file.size) * 100).toFixed(2) + '%');
 
-            // 打印真实压缩报告
-            console.log('压缩成功！');
-            console.log('原始体积:', (file.size / 1024).toFixed(2), 'KB');
-            console.log('压缩后体积:', (compressedFile.size / 1024).toFixed(2), 'KB');
-            console.log('压缩率:', ((1 - compressedFile.size / file.size) * 100).toFixed(2) + '%');
-
-            // B. 上传阶段 - 确保传给 uploadPhoto 的是 compressedFile
-            console.log('开始上传到云端...');
-            return await uploadPhoto(userId, compressedFile);
-          };
-
-          // 30 秒超时控制（针对单张图片的处理+上传）
-          const timeoutPromise = new Promise<string>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('图片处理或上传超时')), 30000);
-          });
-
-          // 执行赛跑
-          const url = await Promise.race([processPromise(), timeoutPromise]);
+          const uploadStart = Date.now();
+          console.log('开始上传到云端...');
+          const url = await uploadPhoto(userId, compressedFile);
+          console.log(`上传完成，耗时 ${((Date.now() - uploadStart) / 1000).toFixed(1)}s`);
 
           uploadedUrls.push(url);
           setUploadDone(prev => Math.min(prev + 1, files.length));
           console.log('✅ 单张图片上传完成:', url);
 
-        } catch (innerErr) {
-          console.error('单张图片处理失败:', innerErr);
+        } catch (innerErr: any) {
+          const errMsg = innerErr instanceof Error ? innerErr.message : String(innerErr);
+          const isAborted = innerErr?.name === 'AbortError' || errMsg.includes('abort') || errMsg.includes('cancel');
+          console.error('单张图片处理失败:', errMsg);
+          if (isAborted) {
+            console.warn('上传被系统打断（App 切到后台），该图片已加入待处理队列');
+          }
           failedFiles.push(file);
-        } finally {
-          if (timeoutId) clearTimeout(timeoutId);
         }
       }
 
@@ -425,8 +431,20 @@ export default function MediaUploader({
 
       // 失败处理
       if (failedFiles.length > 0) {
-        await savePendingPhotos(failedFiles, 4); // 假设 MAX 是 4
-        alert(`有 ${failedFiles.length} 张图片上传失败，已转入待处理队列`);
+        await savePendingPhotos(failedFiles, MAX_PENDING_FILES);
+        const bgAtRetry = (window as any).__orbit_background_at as number | undefined;
+        if (bgAtRetry && Date.now() - bgAtRetry < 180_000) {
+          // Post-background failure is likely transient — silently retry after 15s
+          // once the network has had more time to stabilise
+          console.log(`[MediaUploader] 后台切换后上传失败，15s 后自动重试 ${failedFiles.length} 张...`);
+          setTimeout(() => {
+            loadPendingPhotos().then(pending => {
+              if (pending.length > 0) handlePhotoFiles(pending, null, { skipPersist: true });
+            });
+          }, 15_000);
+        } else {
+          alert(`有 ${failedFiles.length} 张图片上传失败，已转入待处理队列`);
+        }
       } else {
         await clearPendingPhotos();
       }

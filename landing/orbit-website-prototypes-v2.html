@@ -1,32 +1,33 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Orbit 轨迹｜地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏</title>
-    <meta name="description" content="Orbit 轨迹：把见面、旅行、聚餐变成可回看的故事。支持地图记忆、好友协作、轻量记账与聚会小游戏，PWA 可添加到桌面。" />
-    <meta name="keywords" content="Orbit,轨迹,地图记忆,好友协作,分账,聚会小游戏,PWA" />
-    <meta name="robots" content="index,follow" />
-    <link rel="canonical" href="https://wehihi.com/" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Orbit 轨迹" />
-    <meta property="og:title" content="Orbit 轨迹｜记录与好友的每一个足迹 ✨" />
-    <meta property="og:description" content="地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏，支持 PWA 添加到桌面。" />
-    <meta property="og:url" content="https://wehihi.com/" />
-    <meta property="og:image" content="https://wehihi.com/icons/icon-512.png" />
+  <title>Orbit 轨迹｜地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏</title>
+  <meta name="description" content="Orbit 轨迹：把见面、旅行、聚餐变成可回看的故事。支持地图记忆、好友协作、轻量记账与聚会小游戏，PWA 可添加到桌面。" />
+  <meta name="keywords" content="Orbit,轨迹,地图记忆,好友协作,分账,聚会小游戏,PWA" />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://wehihi.com/" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Orbit 轨迹｜记录与好友的每一个足迹 ✨" />
-    <meta name="twitter:description" content="把见面、旅行、聚餐变成可回看的故事。" />
-    <meta name="twitter:image" content="https://wehihi.com/icons/icon-512.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Orbit 轨迹" />
+  <meta property="og:title" content="Orbit 轨迹｜记录与好友的每一个足迹 ✨" />
+  <meta property="og:description" content="地图记忆 + 好友协作 + 轻量记账 + 聚会小游戏，支持 PWA 添加到桌面。" />
+  <meta property="og:url" content="https://wehihi.com/" />
+  <meta property="og:image" content="https://wehihi.com/icons/icon-512.png" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Orbit 轨迹｜记录与好友的每一个足迹 ✨" />
+  <meta name="twitter:description" content="把见面、旅行、聚餐变成可回看的故事。" />
+  <meta name="twitter:image" content="https://wehihi.com/icons/icon-512.png" />
 
-    <script type="application/ld+json">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
@@ -44,7 +45,7 @@
       }
     </script>
 
-    <script type="application/ld+json">
+  <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "FAQPage",
@@ -77,488 +78,735 @@
       }
     </script>
 
-    <style>
-      :root {
-        --bg: #0f1115;
-        --card: #171a21;
-        --card-2: #1e2330;
-        --text: #f6f7fb;
-        --muted: #a9afc3;
-        --brand: #00ffb3;
-        --brand-2: #5fd6ff;
-        --line: #2f3547;
-      }
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --card-2: #1e2330;
+      --text: #f6f7fb;
+      --muted: #a9afc3;
+      --brand: #00ffb3;
+      --brand-2: #5fd6ff;
+      --line: #2f3547;
+    }
 
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-        background: radial-gradient(circle at top right, #1b2130, var(--bg) 45%);
-        color: var(--text);
-      }
+    * {
+      box-sizing: border-box;
+    }
 
-      .container { width: min(1120px, 92vw); margin: 0 auto; }
-      .section { padding: 64px 0; }
-      .muted { color: var(--muted); }
-      .badge {
-        display: inline-flex; align-items: center; gap: 8px;
-        border: 1px solid var(--line); border-radius: 999px;
-        padding: 8px 12px; font-size: 12px; color: #d7dcf0;
-        background: rgba(255,255,255,0.02);
-      }
+    body {
+      margin: 0;
+      font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: radial-gradient(circle at top right, #1b2130, var(--bg) 45%);
+      color: var(--text);
+    }
 
-      header {
-        position: sticky; top: 0; z-index: 20;
-        backdrop-filter: blur(8px);
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-        background: rgba(15,17,21,0.72);
+    .container {
+      width: min(1120px, 92vw);
+      margin: 0 auto;
+    }
+
+    .section {
+      padding: 64px 0;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #d7dcf0;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 17, 21, 0.72);
+    }
+
+    .nav {
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .brand-wordmark {
+      height: 24px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .menu {
+      display: flex;
+      gap: 18px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .menu a {
+      color: #d9dff4;
+      text-decoration: none;
+    }
+
+    .menu a:hover {
+      color: #fff;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 32px;
+      align-items: center;
+      min-height: calc(100vh - 68px);
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 1.06;
+      margin: 18px 0;
+    }
+
+    .hero p {
+      font-size: clamp(16px, 2.2vw, 21px);
+      line-height: 1.65;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 26px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 800;
+      padding: 12px 16px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      color: #04251c;
+      border: 0;
+    }
+
+    .btn-ghost {
+      color: #e5ebff;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .phones {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .phone {
+      width: 280px;
+      border: 2px solid #2f3547;
+      border-radius: 26px;
+      overflow: hidden;
+      background: #0c0f15;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+    }
+
+    .phone img {
+      width: 100%;
+      height: 520px;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+      background: #0c0f15;
+    }
+
+    .phone:nth-child(1),
+    .phone:nth-child(3) {
+      transform: translateY(16px) rotate(-1.5deg);
+      opacity: .94;
+    }
+
+    .phone:nth-child(2) {
+      transform: translateY(-4px);
+    }
+
+    /* 简笔风「页面卡片」与截图边框 */
+    .feature-page {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 28px;
+      align-items: center;
+      padding: 28px;
+      margin-top: 18px;
+      border: 2px dashed var(--line);
+      border-radius: 24px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .feature-page h3 {
+      margin: 0 0 12px;
+      font-size: 26px;
+    }
+
+    .feature-page p {
+      margin: 0 0 10px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .feature-page ul {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: #e7ecff;
+      line-height: 1.75;
+    }
+
+    .feature-page li {
+      margin-bottom: 6px;
+    }
+
+    .page-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #d7dcf0;
+      padding: 8px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .brand-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0, 255, 179, 0.08);
+      border: 1px solid rgba(0, 255, 179, 0.35);
+      color: #7bf7d6;
+      font-weight: 800;
+    }
+
+    .brand-chip img {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+    }
+
+    .screenshot-frame {
+      position: relative;
+      border: 2px dashed #2f3547;
+      border-radius: 18px;
+      background: radial-gradient(circle at 18% 20%, rgba(0, 255, 179, 0.08), transparent 40%),
+        radial-gradient(circle at 82% 14%, rgba(95, 214, 255, 0.08), transparent 42%),
+        #0c0f15;
+      box-shadow: 0 18px 32px rgba(0, 0, 0, 0.35);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .screenshot-frame.dual {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .screenshot-frame img {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.28);
+      background: #0c0f15;
+    }
+
+    .caption {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .hand-drawn-arrow {
+      position: absolute;
+      inset: 10px auto auto 10px;
+      font-size: 18px;
+      color: #7bf7d6;
+    }
+
+    .page-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    h2 {
+      font-size: clamp(28px, 4vw, 44px);
+      margin: 0;
+    }
+
+    .sub {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .grid-2 {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-3 {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .grid-4 {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+    }
+
+    .card h3 {
+      margin: 8px 0 10px;
+      font-size: 22px;
+    }
+
+    .card p {
+      margin: 0;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .list {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: #d8dff5;
+      line-height: 1.8;
+    }
+
+    .steps {
+      counter-reset: step;
+    }
+
+    .step h3::before {
+      counter-increment: step;
+      content: "STEP " counter(step) " · ";
+      font-size: 12px;
+      color: #9ca4bd;
+    }
+
+    .faq details {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .faq details+details {
+      margin-top: 10px;
+    }
+
+    .faq summary {
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .faq p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 32px 0 44px;
+      color: #b8c0d8;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 980px) {
+      .menu {
+        display: none;
       }
-      .nav {
-        height: 68px;
-        display: flex; align-items: center; justify-content: space-between;
-      }
-      .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
-      .brand-logo {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        object-fit: contain;
-        flex-shrink: 0;
-      }
-      .brand-wordmark {
-        height: 24px;
-        width: auto;
-        object-fit: contain;
-        display: block;
-      }
-      .menu { display: flex; gap: 18px; font-weight: 700; font-size: 14px; }
-      .menu a { color: #d9dff4; text-decoration: none; }
-      .menu a:hover { color: #fff; }
 
       .hero {
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 32px;
-        align-items: center;
-        min-height: calc(100vh - 68px);
+        grid-template-columns: 1fr;
+        min-height: auto;
+        padding-top: 28px;
       }
-      .hero h1 {
-        font-size: clamp(36px, 6vw, 64px);
-        line-height: 1.06;
-        margin: 18px 0;
-      }
-      .hero p { font-size: clamp(16px, 2.2vw, 21px); line-height: 1.65; margin: 0; color: var(--muted); }
 
-      .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
-      .btn {
-        display: inline-flex; align-items: center; gap: 8px;
-        border: 1px solid var(--line); border-radius: 14px;
-        text-decoration: none; font-weight: 800;
-        padding: 12px 16px;
+      .phones {
+        grid-template-columns: 1fr 1fr;
       }
-      .btn-primary { background: linear-gradient(90deg, var(--brand), var(--brand-2)); color: #04251c; border: 0; }
-      .btn-ghost { color: #e5ebff; background: rgba(255,255,255,0.03); }
 
-      .phones { display: flex; gap: 18px; justify-content: center; align-items: flex-end; flex-wrap: wrap; }
-      .phone {
-        width: 280px;
-        border: 2px solid #2f3547;
-        border-radius: 26px;
-        overflow: hidden;
-        background: #0c0f15;
-        box-shadow: 0 16px 36px rgba(0,0,0,0.32);
+      .phone:nth-child(3) {
+        display: none;
       }
-      .phone img {
-        width: 100%;
-        height: 520px;
-        object-fit: cover;
-        object-position: center top;
-        display: block;
-        background: #0c0f15;
-      }
-      .phone:nth-child(1), .phone:nth-child(3) { transform: translateY(16px) rotate(-1.5deg); opacity: .94; }
-      .phone:nth-child(2) { transform: translateY(-4px); }
 
-      /* 简笔风「页面卡片」与截图边框 */
+      .grid-4 {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .grid-3,
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
       .feature-page {
-        display: grid;
-        grid-template-columns: 1.05fr 0.95fr;
-        gap: 28px;
-        align-items: center;
-        padding: 28px;
-        margin-top: 18px;
-        border: 2px dashed var(--line);
-        border-radius: 24px;
-        background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-        box-shadow: 0 18px 36px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05);
-      }
-      .feature-page h3 { margin: 0 0 12px; font-size: 26px; }
-      .feature-page p { margin: 0 0 10px; line-height: 1.7; color: var(--muted); }
-      .feature-page ul { margin: 10px 0 0; padding-left: 18px; color: #e7ecff; line-height: 1.75; }
-      .feature-page li { margin-bottom: 6px; }
-      .page-meta {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 13px;
-        font-weight: 800;
-        color: #d7dcf0;
-        padding: 8px 12px;
-        border: 1px dashed var(--line);
-        border-radius: 999px;
-        background: rgba(255,255,255,0.03);
-      }
-      .brand-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(0,255,179,0.08);
-        border: 1px solid rgba(0,255,179,0.35);
-        color: #7bf7d6;
-        font-weight: 800;
-      }
-      .brand-chip img { width: 20px; height: 20px; border-radius: 6px; }
-      .screenshot-frame {
-        position: relative;
-        border: 2px dashed #2f3547;
-        border-radius: 18px;
-        background: radial-gradient(circle at 18% 20%, rgba(0,255,179,0.08), transparent 40%),
-                    radial-gradient(circle at 82% 14%, rgba(95,214,255,0.08), transparent 42%),
-                    #0c0f15;
-        box-shadow: 0 18px 32px rgba(0,0,0,0.35);
-        padding: 14px;
-        display: grid;
-        gap: 12px;
-      }
-      .screenshot-frame.dual { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-      .screenshot-frame img {
-        width: 100%;
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 12px 20px rgba(0,0,0,0.28);
-        background: #0c0f15;
-      }
-      .caption { margin-top: 6px; font-size: 13px; color: var(--muted); text-align: center; }
-      .hand-drawn-arrow {
-        position: absolute;
-        inset: 10px auto auto 10px;
-        font-size: 18px;
-        color: #7bf7d6;
-      }
-      .page-grid { display: grid; gap: 18px; }
-
-      h2 { font-size: clamp(28px, 4vw, 44px); margin: 0; }
-      .sub { margin-top: 10px; color: var(--muted); font-size: 18px; }
-
-      .grid-2 { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-      .grid-3 { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-      .grid-4 { margin-top: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-
-      .card {
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 18px;
-        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      }
-      .card h3 { margin: 8px 0 10px; font-size: 22px; }
-      .card p { margin: 0; line-height: 1.65; color: var(--muted); }
-      .list { margin: 12px 0 0; padding-left: 18px; color: #d8dff5; line-height: 1.8; }
-
-      .steps { counter-reset: step; }
-      .step h3::before {
-        counter-increment: step;
-        content: "STEP " counter(step) " · ";
-        font-size: 12px;
-        color: #9ca4bd;
+        grid-template-columns: 1fr;
+        padding: 20px;
       }
 
-      .faq details {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 14px;
-        background: rgba(255,255,255,0.02);
+      .screenshot-frame.dual {
+        grid-template-columns: 1fr;
       }
-      .faq details + details { margin-top: 10px; }
-      .faq summary { cursor: pointer; font-weight: 800; }
-      .faq p { margin: 10px 0 0; color: var(--muted); line-height: 1.7; }
+    }
 
-      footer {
-        border-top: 1px solid var(--line);
-        padding: 32px 0 44px;
-        color: #b8c0d8;
-      }
-      .footer-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 20px; }
-
-      @media (max-width: 980px) {
-        .menu { display: none; }
-        .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 28px; }
-        .phones { grid-template-columns: 1fr 1fr; }
-        .phone:nth-child(3) { display: none; }
-        .grid-4 { grid-template-columns: 1fr 1fr; }
-        .grid-3, .grid-2 { grid-template-columns: 1fr; }
-        .footer-grid { grid-template-columns: 1fr; }
-        .feature-page { grid-template-columns: 1fr; padding: 20px; }
-        .screenshot-frame.dual { grid-template-columns: 1fr; }
+    @media (max-width: 560px) {
+      .section {
+        padding: 52px 0;
       }
 
-      @media (max-width: 560px) {
-        .section { padding: 52px 0; }
-        .phones { grid-template-columns: 1fr; }
-        .phone:nth-child(1), .phone:nth-child(3) { transform: none; }
-        .phone:nth-child(3) { display: block; }
-        .grid-4 { grid-template-columns: 1fr; }
+      .phones {
+        grid-template-columns: 1fr;
       }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div class="container nav">
-        <a class="brand" href="https://wehihi.com" aria-label="Orbit 首页">
-          <img class="brand-logo" src="../public/icons/icon-384.png" alt="Orbit 图形 Logo" />
-          <img class="brand-wordmark" src="../public/icons/orbit-wordmark.svg" alt="Orbit 轨迹" />
-        </a>
-        <nav class="menu" aria-label="主导航">
-          <a href="#features">功能</a>
-          <a href="#flow">流程</a>
-          <a href="#friends">好友系统</a>
-          <a href="#pwa">PWA</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-      </div>
-    </header>
 
-    <main>
-      <section class="section">
-        <div class="container hero">
-          <div>
-            <span class="badge">✨ 记录与好友的每一个足迹</span>
-            <h1>把见面、旅行、聚餐<br />都变成可回看的故事</h1>
-            <p>
-              Orbit 让地图记忆、好友协作、轻量记账和聚会小游戏自然衔接。你只要记录当下，
-              其他交给 Orbit。
-            </p>
-            <div class="actions">
-              <a class="btn btn-primary" href="https://wehihi.com">立即体验 wehihi.com</a>
-              <a class="btn btn-ghost" href="#pwa">查看添加到桌面</a>
-            </div>
-          </div>
-            <div class="phones" aria-label="产品截图预览">
-            <div class="phone"><img src="../screenshot_app/地图.jpg" alt="地图页截图" /></div>
-            <div class="phone"><img src="../screenshot_app/回忆入口.jpg" alt="回忆入口截图" /></div>
-            <div class="phone"><img src="../screenshot_app/主页2.jpg" alt="主页截图" /></div>
-          </div>
-        </div>
-      </section>
+      .phone:nth-child(1),
+      .phone:nth-child(3) {
+        transform: none;
+      }
 
-      <section class="section" id="features">
-        <div class="container page-grid">
-          <div class="page-meta">产品图解 · 简笔风</div>
+      .phone:nth-child(3) {
+        display: block;
+      }
 
-          <article class="feature-page" aria-label="记忆流页面">
-            <div class="page-text">
-              <div class="brand-chip"><img src="../public/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
-              <h3>记忆流 · 入口与发布</h3>
-              <p>从「回忆入口」进来，长按或点击即可发布图文、地点、天气与心情，@ 好友后双方同步收录。</p>
-              <ul>
-                <li>回忆入口快捷浮层，随时开写</li>
-                <li>发布页绑定地点/账单/标签，协同无摩擦</li>
-                <li>首屏回忆流支持好友筛选与随机打开</li>
-              </ul>
-            </div>
-            <div class="page-visual">
-              <div class="screenshot-frame dual">
-                <div>
-                  <img src="../screenshot_app/回忆入口.jpg" alt="回忆入口" />
-                  <div class="caption">回忆入口 · 一键开始</div>
-                </div>
-                <div>
-                  <img src="../screenshot_app/发布记忆.jpeg" alt="发布记忆" />
-                  <div class="caption">发布记忆 · 填写地点/心情/@好友</div>
-                </div>
-              </div>
-            </div>
-          </article>
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
 
-          <article class="feature-page" aria-label="友情地图">
-            <div class="page-text">
-              <div class="brand-chip"><img src="../public/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
-              <h3>友情地图 · 足迹可视化</h3>
-              <p>按好友筛选足迹，支持地点/城市双视角。点击光点即可看该地点的回忆列表与详情。</p>
-              <ul>
-                <li>好友筛选 AND 逻辑，专属足迹</li>
-                <li>城市聚合与地点精度自由切换</li>
-                <li>光点人数徽标，谁参与一目了然</li>
-              </ul>
-            </div>
-            <div class="page-visual">
-              <div class="screenshot-frame">
-                <img src="../screenshot_app/地图.jpg" alt="友情地图" />
-                <div class="caption">友情地图 · 城市/地点切换 + 按好友筛选</div>
-              </div>
-            </div>
-          </article>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="brand" href="https://wehihi.com" aria-label="Orbit 首页">
+        <img class="brand-logo" src="../public/assets/icons/icon-384.png" alt="Orbit 图形 Logo" />
+        <img class="brand-wordmark" src="../public/icons/orbit-wordmark.svg" alt="Orbit 轨迹" />
+      </a>
+      <nav class="menu" aria-label="主导航">
+        <a href="#features">功能</a>
+        <a href="#flow">流程</a>
+        <a href="#friends">好友系统</a>
+        <a href="#pwa">PWA</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+  </header>
 
-          <article class="feature-page" aria-label="财务足迹">
-            <div class="page-text">
-              <div class="brand-chip"><img src="../public/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
-              <h3>财务足迹 · 账单与回忆一体</h3>
-              <p>记忆时顺手记账，自动分摊。账单仅自己可见，但与回忆绑定，结算状态清晰。</p>
-              <ul>
-                <li>回忆绑定账单，自动均摊</li>
-                <li>应收应付与结清状态醒目展示</li>
-                <li>弱网/离线拦截，确保账单不丢</li>
-              </ul>
-            </div>
-            <div class="page-visual">
-              <div class="screenshot-frame">
-                <img src="../screenshot_app/账单.jpg" alt="账单中心" />
-                <div class="caption">账单中心 · 结算态与明细</div>
-              </div>
-            </div>
-          </article>
-
-          <article class="feature-page" aria-label="聚会小游戏">
-            <div class="page-text">
-              <div class="brand-chip"><img src="../public/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
-              <h3>聚会小游戏 · 破冰更快</h3>
-              <p>骰子、转盘、真心话等 6 款轻互动，Web Audio 实时合成 8-bit 音效，不依赖重媒体。</p>
-              <ul>
-                <li>今天谁买单、真心话、大冒险等玩法</li>
-                <li>轻量动画与音效，秒开秒玩</li>
-                <li>适配移动端手势与暗色主题</li>
-              </ul>
-            </div>
-            <div class="page-visual">
-              <div class="screenshot-frame">
-                <img src="../screenshot_app/游戏.jpg" alt="聚会小游戏" />
-                <div class="caption">聚会小游戏 · 一键破冰</div>
-              </div>
-            </div>
-          </article>
-
-          <article class="feature-page" aria-label="个人主页">
-            <div class="page-text">
-              <div class="brand-chip"><img src="../public/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
-              <h3>个人主页 · 关系与档案</h3>
-              <p>主页展示主题、头像、好友状态与应用版本，支持邀请、隐私与推送设置。</p>
-              <ul>
-                <li>好友状态与邀请码入口集中</li>
-                <li>主题/字体等偏好一键切换</li>
-                <li>版本号与更新入口可见，便于排错</li>
-              </ul>
-            </div>
-            <div class="page-visual">
-              <div class="screenshot-frame">
-                <img src="../screenshot_app/主页2.jpg" alt="个人主页" />
-                <div class="caption">个人主页 · 主题与好友一屏掌握</div>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="section" id="flow">
-        <div class="container">
-          <h2>用户流程（上手路径）</h2>
-          <p class="sub">从第一次使用到长期留存，流程清晰无门槛。</p>
-          <div class="grid-4 steps">
-            <article class="card step"><h3>登录 / 注册</h3><p>支持邮箱登录、忘记密码、演示模式。</p></article>
-            <article class="card step"><h3>添加好友</h3><p>可先创建虚拟好友，再用邀请码绑定真实账号。</p></article>
-            <article class="card step"><h3>创建回忆</h3><p>上传图片、填写地点、@好友，自动进入地图与记忆流。</p></article>
-            <article class="card step"><h3>记账结算</h3><p>同条回忆补账单，系统自动计算并展示结算状态。</p></article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="friends">
-        <div class="container">
-          <h2>好友系统（先记再绑）</h2>
-          <p class="sub">朋友没注册也能先记录，后续绑定真实账号不丢历史。</p>
-          <div class="grid-3">
-            <article class="card">
-              <h3>阶段 A：虚拟好友</h3>
-              <p>输入昵称即可创建，可参与 @ 标签和账单协作。</p>
-            </article>
-            <article class="card">
-              <h3>阶段 B：邀请码绑定</h3>
-              <p>输入邀请码后，一键关联真实账号，流程低打扰。</p>
-            </article>
-            <article class="card">
-              <h3>阶段 C：自动继承数据</h3>
-              <p>历史标签迁移、双向好友关系补齐、地图与记忆即时同步。</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="pwa">
-        <div class="container">
-          <h2>PWA 安装与离线能力</h2>
-          <p class="sub">支持 Android / iOS 安装引导，弱网可读缓存，写入离线提示。</p>
-          <div class="grid-3">
-            <article class="card">
-              <h3>🤖 Android</h3>
-              <p>检测设备后优先显示一键安装；若事件不可用，展示菜单安装指引。</p>
-            </article>
-            <article class="card">
-              <h3>🍎 iOS Safari</h3>
-              <p>引导路径：分享按钮 → 添加到主屏幕 → 添加。</p>
-            </article>
-            <article class="card">
-              <h3>📡 离线体验</h3>
-              <p>核心资源缓存可读；上传/发帖/改资料等写操作离线会明确提示。</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="faq">
-        <div class="container faq">
-          <h2>常见问题（FAQ）</h2>
-          <p class="sub">面向真实使用场景的快速答疑。</p>
-
-          <details>
-            <summary>Orbit 是免费的吗？</summary>
-            <p>当前基础功能可免费使用（以线上实际公告为准）。</p>
-          </details>
-          <details>
-            <summary>好友还没注册，我能先记录共同回忆吗？</summary>
-            <p>可以。先创建虚拟好友即可开始记录，后续邀请码绑定真实账号后会自动衔接历史数据。</p>
-          </details>
-          <details>
-            <summary>Android 和 iPhone 都能添加到桌面吗？</summary>
-            <p>支持。Android 可直接安装；iPhone Safari 可通过分享菜单添加到主屏幕。</p>
-          </details>
-          <details>
-            <summary>用户反馈账号异常，怎么排查？</summary>
-            <p>可在应用内打开“账号诊断”并一键导出报告文本，客服可快速定位会话/资料/缓存问题。</p>
-          </details>
-        </div>
-      </section>
-    </main>
-
-    <footer>
-      <div class="container footer-grid">
+  <main>
+    <section class="section">
+      <div class="container hero">
         <div>
-          <h3 style="margin:0;font-size:28px;">Orbit 轨迹</h3>
-          <p class="muted" style="margin-top:10px;line-height:1.7;">
-            把你和好友的每次相聚，沉淀为可回看的地图故事。
+          <span class="badge">✨ 记录与好友的每一个足迹</span>
+          <h1>把见面、旅行、聚餐<br />都变成可回看的故事</h1>
+          <p>
+            Orbit 让地图记忆、好友协作、轻量记账和聚会小游戏自然衔接。你只要记录当下，
+            其他交给 Orbit。
           </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://wehihi.com">立即体验 wehihi.com</a>
+            <a class="btn btn-ghost" href="#pwa">查看添加到桌面</a>
+          </div>
         </div>
-        <div>
-          <h4 style="margin:0 0 10px;">快速入口</h4>
-          <p><a style="color:#dbe3fa;" href="https://wehihi.com">访问 wehihi.com</a></p>
-          <p><a style="color:#dbe3fa;" href="https://wehihi.com">登录 / 注册</a></p>
-          <p><a style="color:#dbe3fa;" href="https://wehihi.com">忘记密码</a></p>
-        </div>
-        <div>
-          <h4 style="margin:0 0 10px;">版权信息</h4>
-          <p class="muted">© 2026 Orbit Team</p>
-          <p class="muted">Domain: wehihi.com</p>
+        <div class="phones" aria-label="产品截图预览">
+          <div class="phone"><img src="../screenshot_app/地图.jpg" alt="地图页截图" /></div>
+          <div class="phone"><img src="../screenshot_app/回忆入口.jpg" alt="回忆入口截图" /></div>
+          <div class="phone"><img src="../screenshot_app/主页2.jpg" alt="主页截图" /></div>
         </div>
       </div>
-    </footer>
-  </body>
+    </section>
+
+    <section class="section" id="features">
+      <div class="container page-grid">
+        <div class="page-meta">产品图解 · 简笔风</div>
+
+        <article class="feature-page" aria-label="记忆流页面">
+          <div class="page-text">
+            <div class="brand-chip"><img src="../public/assets/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
+            <h3>记忆流 · 入口与发布</h3>
+            <p>从「回忆入口」进来，长按或点击即可发布图文、地点、天气与心情，@ 好友后双方同步收录。</p>
+            <ul>
+              <li>回忆入口快捷浮层，随时开写</li>
+              <li>发布页绑定地点/账单/标签，协同无摩擦</li>
+              <li>首屏回忆流支持好友筛选与随机打开</li>
+            </ul>
+          </div>
+          <div class="page-visual">
+            <div class="screenshot-frame dual">
+              <div>
+                <img src="../screenshot_app/回忆入口.jpg" alt="回忆入口" />
+                <div class="caption">回忆入口 · 一键开始</div>
+              </div>
+              <div>
+                <img src="../screenshot_app/发布记忆.jpeg" alt="发布记忆" />
+                <div class="caption">发布记忆 · 填写地点/心情/@好友</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature-page" aria-label="友情地图">
+          <div class="page-text">
+            <div class="brand-chip"><img src="../public/assets/icons/icon-384.png" alt="Orbit" />Orbit 轨迹</div>
+            <h3>友情地图 · 足迹可视化</h3>
+            <p>按好友筛选足迹，支持地点/城市双视角。点击光点即可看该地点的回忆列表与详情。</p>
+            <ul>
+              <li>好友筛选 AND 逻辑，专属足迹</li>
+              <li>城市聚合与地点精度自由切换</li>
+              <li>光点人数徽标，谁参与一目了然</li>
+            </ul>
+          </div>
+          <div class="page-visual">
+            <div class="screenshot-frame">
+              <img src="../screenshot_app/地图.jpg" alt="友情地图" />
+              <div class="caption">友情地图 · 城市/地点切换 + 按好友筛选</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature-page" aria-label="财务足迹">
+          <div class="page-text">
+            <div class="brand-chip"><img src="../public/assets/icons/.png" alt="Orbit" />Orbit 轨迹</div>
+            <h3>财务足迹 · 账单与回忆一体</h3>
+            <p>记忆时顺手记账，自动分摊。账单仅自己可见，但与回忆绑定，结算状态清晰。</p>
+            <ul>
+              <li>回忆绑定账单，自动均摊</li>
+              <li>应收应付与结清状态醒目展示</li>
+              <li>弱网/离线拦截，确保账单不丢</li>
+            </ul>
+          </div>
+          <div class="page-visual">
+            <div class="screenshot-frame">
+              <img src="../screenshot_app/账单.jpg" alt="账单中心" />
+              <div class="caption">账单中心 · 结算态与明细</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature-page" aria-label="聚会小游戏">
+          <div class="page-text">
+            <div class="brand-chip"><img src="../public/assets/icons/.png" alt="Orbit" />Orbit 轨迹</div>
+            <h3>聚会小游戏 · 破冰更快</h3>
+            <p>骰子、转盘、真心话等 6 款轻互动，Web Audio 实时合成 8-bit 音效，不依赖重媒体。</p>
+            <ul>
+              <li>今天谁买单、真心话、大冒险等玩法</li>
+              <li>轻量动画与音效，秒开秒玩</li>
+              <li>适配移动端手势与暗色主题</li>
+            </ul>
+          </div>
+          <div class="page-visual">
+            <div class="screenshot-frame">
+              <img src="../screenshot_app/游戏.jpg" alt="聚会小游戏" />
+              <div class="caption">聚会小游戏 · 一键破冰</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature-page" aria-label="个人主页">
+          <div class="page-text">
+            <div class="brand-chip"><img src="../public/assets/icons/.png" alt="Orbit" />Orbit 轨迹</div>
+            <h3>个人主页 · 关系与档案</h3>
+            <p>主页展示主题、头像、好友状态与应用版本，支持邀请、隐私与推送设置。</p>
+            <ul>
+              <li>好友状态与邀请码入口集中</li>
+              <li>主题/字体等偏好一键切换</li>
+              <li>版本号与更新入口可见，便于排错</li>
+            </ul>
+          </div>
+          <div class="page-visual">
+            <div class="screenshot-frame">
+              <img src="../screenshot_app/主页2.jpg" alt="个人主页" />
+              <div class="caption">个人主页 · 主题与好友一屏掌握</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="container">
+        <h2>用户流程（上手路径）</h2>
+        <p class="sub">从第一次使用到长期留存，流程清晰无门槛。</p>
+        <div class="grid-4 steps">
+          <article class="card step">
+            <h3>登录 / 注册</h3>
+            <p>支持邮箱登录、忘记密码、演示模式。</p>
+          </article>
+          <article class="card step">
+            <h3>添加好友</h3>
+            <p>可先创建虚拟好友，再用邀请码绑定真实账号。</p>
+          </article>
+          <article class="card step">
+            <h3>创建回忆</h3>
+            <p>上传图片、填写地点、@好友，自动进入地图与记忆流。</p>
+          </article>
+          <article class="card step">
+            <h3>记账结算</h3>
+            <p>同条回忆补账单，系统自动计算并展示结算状态。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="friends">
+      <div class="container">
+        <h2>好友系统（先记再绑）</h2>
+        <p class="sub">朋友没注册也能先记录，后续绑定真实账号不丢历史。</p>
+        <div class="grid-3">
+          <article class="card">
+            <h3>阶段 A：虚拟好友</h3>
+            <p>输入昵称即可创建，可参与 @ 标签和账单协作。</p>
+          </article>
+          <article class="card">
+            <h3>阶段 B：邀请码绑定</h3>
+            <p>输入邀请码后，一键关联真实账号，流程低打扰。</p>
+          </article>
+          <article class="card">
+            <h3>阶段 C：自动继承数据</h3>
+            <p>历史标签迁移、双向好友关系补齐、地图与记忆即时同步。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="pwa">
+      <div class="container">
+        <h2>PWA 安装与离线能力</h2>
+        <p class="sub">支持 Android / iOS 安装引导，弱网可读缓存，写入离线提示。</p>
+        <div class="grid-3">
+          <article class="card">
+            <h3>🤖 Android</h3>
+            <p>检测设备后优先显示一键安装；若事件不可用，展示菜单安装指引。</p>
+          </article>
+          <article class="card">
+            <h3>🍎 iOS Safari</h3>
+            <p>引导路径：分享按钮 → 添加到主屏幕 → 添加。</p>
+          </article>
+          <article class="card">
+            <h3>📡 离线体验</h3>
+            <p>核心资源缓存可读；上传/发帖/改资料等写操作离线会明确提示。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="container faq">
+        <h2>常见问题（FAQ）</h2>
+        <p class="sub">面向真实使用场景的快速答疑。</p>
+
+        <details>
+          <summary>Orbit 是免费的吗？</summary>
+          <p>当前基础功能可免费使用（以线上实际公告为准）。</p>
+        </details>
+        <details>
+          <summary>好友还没注册，我能先记录共同回忆吗？</summary>
+          <p>可以。先创建虚拟好友即可开始记录，后续邀请码绑定真实账号后会自动衔接历史数据。</p>
+        </details>
+        <details>
+          <summary>Android 和 iPhone 都能添加到桌面吗？</summary>
+          <p>支持。Android 可直接安装；iPhone Safari 可通过分享菜单添加到主屏幕。</p>
+        </details>
+        <details>
+          <summary>用户反馈账号异常，怎么排查？</summary>
+          <p>可在应用内打开“账号诊断”并一键导出报告文本，客服可快速定位会话/资料/缓存问题。</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-grid">
+      <div>
+        <h3 style="margin:0;font-size:28px;">Orbit 轨迹</h3>
+        <p class="muted" style="margin-top:10px;line-height:1.7;">
+          把你和好友的每次相聚，沉淀为可回看的地图故事。
+        </p>
+      </div>
+      <div>
+        <h4 style="margin:0 0 10px;">快速入口</h4>
+        <p><a style="color:#dbe3fa;" href="https://wehihi.com">访问 wehihi.com</a></p>
+        <p><a style="color:#dbe3fa;" href="https://wehihi.com">登录 / 注册</a></p>
+        <p><a style="color:#dbe3fa;" href="https://wehihi.com">忘记密码</a></p>
+      </div>
+      <div>
+        <h4 style="margin:0 0 10px;">版权信息</h4>
+        <p class="muted">© 2026 Orbit Team</p>
+        <p class="muted">Domain: wehihi.com</p>
+      </div>
+    </div>
+  </footer>
+</body>
+
 </html>

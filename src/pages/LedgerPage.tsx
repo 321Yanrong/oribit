@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaClock, FaUsers, FaUser, FaMapMarkerAlt, FaWallet, FaPlus, FaTimes, FaSpinner, FaImages, FaChevronRight, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa';
 import { useLedgerStore, useUserStore, getUserById, useMemoryStore } from '../store';
@@ -438,6 +438,7 @@ export default function LedgerPage() {
     return { filteredLedgers: filtered, monthlyTotal: total };
   }, [ledgers, memories, currentMonth, currentUser]);
   const [isRefreshingPull, setIsRefreshingPull] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteLedger = async (id: string) => {
     if (!window.confirm('确定删除这笔账单？')) return;
@@ -548,7 +549,8 @@ export default function LedgerPage() {
   const borderLine = isDarkMode ? 'border-neutral-800' : 'border-neutral-200';
 
   return (
-    <div className={`relative flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-36 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
+    <div ref={scrollContainerRef} className={`relative flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-36 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
+      <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} disabled={showLedgerModal || !!editingLedger} scrollRef={scrollContainerRef} />
       {/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
       <div
         className={`sticky top-0 z-20 px-6 pb-5 ${bgMain} border-b ${borderLine}`}

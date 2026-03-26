@@ -15,31 +15,26 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
-		DF4FD8FF2F6D3A270048D8C2 /* playstore.png in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8FB2F6D3A270048D8C2 /* playstore.png */; };
-		DF4FD9002F6D3A270048D8C2 /* ic_launcher.png in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8F62F6D3A270048D8C2 /* ic_launcher.png */; };
-		DF4FD9012F6D3A270048D8C2 /* appstore.png in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8F92F6D3A270048D8C2 /* appstore.png */; };
-		DF4FD9032F6D3A270048D8C2 /* Assets 2.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF4FD8FA2F6D3A270048D8C2 /* Assets 2.xcassets */; };
+		DF01DBC72F756F5200E7E99B /* NativeUploaderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF01DBC62F756F5200E7E99B /* NativeUploaderPlugin.swift */; };
+		DF01DBC82F756F5200E7E99B /* NativeUploaderPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = DF01DBC52F756F5200E7E99B /* NativeUploaderPlugin.m */; };
+		DF02AAC12F76A00000E7E99B /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF02AAC02F76A00000E7E99B /* MainViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
-		504EC3041FED79650016851F /* Orbit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orbit.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = AppDelegate.swift; sourceTree = "<group>"; usesTabs = 0; };
+		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
-		DF4FD8EE2F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
-		DF4FD8F02F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
-		DF4FD8F22F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
-		DF4FD8F42F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
-		DF4FD8F62F6D3A270048D8C2 /* ic_launcher.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_launcher.png; sourceTree = "<group>"; };
-		DF4FD8F92F6D3A270048D8C2 /* appstore.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = appstore.png; sourceTree = "<group>"; };
-		DF4FD8FA2F6D3A270048D8C2 /* Assets 2.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets 2.xcassets"; sourceTree = "<group>"; };
-		DF4FD8FB2F6D3A270048D8C2 /* playstore.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = playstore.png; sourceTree = "<group>"; };
+		DF01DBC52F756F5200E7E99B /* NativeUploaderPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeUploaderPlugin.m; sourceTree = "<group>"; };
+		DF01DBC62F756F5200E7E99B /* NativeUploaderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeUploaderPlugin.swift; sourceTree = "<group>"; };
+		DF02AAC02F76A00000E7E99B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		DFBD76482F75503000C99756 /* App-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "App-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,13 +55,14 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				DFBD76482F75503000C99756 /* App-Bridging-Header.h */,
 			);
 			sourceTree = "<group>";
 		};
 		504EC3051FED79650016851F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				504EC3041FED79650016851F /* Orbit.app */,
+				504EC3041FED79650016851F /* App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -78,8 +74,10 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
-				DF4FD8FC2F6D3A270048D8C2 /* AppIcons */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
+				DF01DBC52F756F5200E7E99B /* NativeUploaderPlugin.m */,
+				DF01DBC62F756F5200E7E99B /* NativeUploaderPlugin.swift */,
+				DF02AAC02F76A00000E7E99B /* MainViewController.swift */,
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
@@ -87,75 +85,12 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		DF4FD8EF2F6D3A270048D8C2 /* mipmap-hdpi */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8EE2F6D3A270048D8C2 /* ic_launcher.png */,
-			);
-			path = "mipmap-hdpi";
-			sourceTree = "<group>";
-		};
-		DF4FD8F12F6D3A270048D8C2 /* mipmap-mdpi */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8F02F6D3A270048D8C2 /* ic_launcher.png */,
-			);
-			path = "mipmap-mdpi";
-			sourceTree = "<group>";
-		};
-		DF4FD8F32F6D3A270048D8C2 /* mipmap-xhdpi */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8F22F6D3A270048D8C2 /* ic_launcher.png */,
-			);
-			path = "mipmap-xhdpi";
-			sourceTree = "<group>";
-		};
-		DF4FD8F52F6D3A270048D8C2 /* mipmap-xxhdpi */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8F42F6D3A270048D8C2 /* ic_launcher.png */,
-			);
-			path = "mipmap-xxhdpi";
-			sourceTree = "<group>";
-		};
-		DF4FD8F72F6D3A270048D8C2 /* mipmap-xxxhdpi */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8F62F6D3A270048D8C2 /* ic_launcher.png */,
-			);
-			path = "mipmap-xxxhdpi";
-			sourceTree = "<group>";
-		};
-		DF4FD8F82F6D3A270048D8C2 /* android */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8EF2F6D3A270048D8C2 /* mipmap-hdpi */,
-				DF4FD8F12F6D3A270048D8C2 /* mipmap-mdpi */,
-				DF4FD8F32F6D3A270048D8C2 /* mipmap-xhdpi */,
-				DF4FD8F52F6D3A270048D8C2 /* mipmap-xxhdpi */,
-				DF4FD8F72F6D3A270048D8C2 /* mipmap-xxxhdpi */,
-			);
-			path = android;
-			sourceTree = "<group>";
-		};
-		DF4FD8FC2F6D3A270048D8C2 /* AppIcons */ = {
-			isa = PBXGroup;
-			children = (
-				DF4FD8F82F6D3A270048D8C2 /* android */,
-				DF4FD8F92F6D3A270048D8C2 /* appstore.png */,
-				DF4FD8FA2F6D3A270048D8C2 /* Assets 2.xcassets */,
-				DF4FD8FB2F6D3A270048D8C2 /* playstore.png */,
-			);
-			path = AppIcons;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		504EC3031FED79650016851F /* Orbit */ = {
+		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "Orbit" */;
+			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
 			buildPhases = (
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
@@ -165,12 +100,12 @@
 			);
 			dependencies = (
 			);
-			name = Orbit;
+			name = App;
 			packageProductDependencies = (
 				4D22ABE82AF431CB00220026 /* CapApp-SPM */,
 			);
 			productName = App;
-			productReference = 504EC3041FED79650016851F /* Orbit.app */;
+			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -179,18 +114,17 @@
 		504EC2FC1FED79650016851F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = NO;
 				LastSwiftUpdateCheck = 0920;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 0920;
 				TargetAttributes = {
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
-						LastSwiftMigration = 1100;
+						LastSwiftMigration = 2620;
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "Orbit" */;
+			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
 			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -206,7 +140,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				504EC3031FED79650016851F /* Orbit */,
+				504EC3031FED79650016851F /* App */,
 			);
 		};
 /* End PBXProject section */
@@ -222,10 +156,6 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
-				DF4FD8FF2F6D3A270048D8C2 /* playstore.png in Resources */,
-				DF4FD9002F6D3A270048D8C2 /* ic_launcher.png in Resources */,
-				DF4FD9012F6D3A270048D8C2 /* appstore.png in Resources */,
-				DF4FD9032F6D3A270048D8C2 /* Assets 2.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +166,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DF01DBC72F756F5200E7E99B /* NativeUploaderPlugin.swift in Sources */,
+				DF01DBC82F756F5200E7E99B /* NativeUploaderPlugin.m in Sources */,
+				DF02AAC12F76A00000E7E99B /* MainViewController.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -277,7 +210,6 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -285,10 +217,8 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -298,10 +228,8 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -319,9 +247,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = Orbit;
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -341,7 +267,6 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -349,10 +274,8 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -362,10 +285,8 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -376,9 +297,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_NAME = Orbit;
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -390,10 +309,11 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Orbit;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -401,9 +321,11 @@
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.wehihi.orbit;
+				PRODUCT_BUNDLE_IDENTIFIER = com.getcapacitor.App;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OBJC_BRIDGING_HEADER = "App-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -413,19 +335,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Orbit;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.wehihi.orbit;
+				PRODUCT_BUNDLE_IDENTIFIER = com.getcapacitor.App;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "App-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -434,7 +358,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "Orbit" */ = {
+		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				504EC3141FED79650016851F /* Debug */,
@@ -443,7 +367,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "Orbit" */ = {
+		504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,

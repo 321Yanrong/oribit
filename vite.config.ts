@@ -8,6 +8,24 @@ const pkg = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url
 const PWA_CACHE_VERSION = 'orbit-pwa-v3-20260314';
 const runtimeVersionSuffix = `-${PWA_CACHE_VERSION}`;
 
+// Capacitor 原生构建时跳过 PWA/Service Worker（原生 App 不需要 SW）
+const isCapacitorBuild = process.env.CAPACITOR === '1';
+
+// 在 Capacitor 模式下，用空模块替代 virtual:pwa-register，避免构建报错
+const capacitorMockPwaPlugin = {
+  name: 'capacitor-mock-pwa-register',
+  resolveId(id: string) {
+    if (id === 'virtual:pwa-register') return '\0virtual:pwa-register';
+    return null;
+  },
+  load(id: string) {
+    if (id === '\0virtual:pwa-register') {
+      return 'export const registerSW = () => () => {};';
+    }
+    return null;
+  },
+};
+
 // https://vite.dev/config/
 export default defineConfig({
   define: {
@@ -16,12 +34,14 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    VitePWA({
+    isCapacitorBuild && capacitorMockPwaPlugin,
+    !isCapacitorBuild && VitePWA({
       injectRegister: false,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       // 在离线或导航失败时返回 offline.html 作为兜底
       workbox: {
+        inlineWorkboxRuntime: false,
         cacheId: PWA_CACHE_VERSION,
         // Allow precaching slightly larger bundles (default 2 MiB)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
@@ -155,8 +175,8 @@ export default defineConfig({
       devOptions: {
         enabled: false
       }
-    })
-  ],
+    }),
+  ].filter(Boolean),
   server: {
     host: "127.0.0.1",
     port: 5173,

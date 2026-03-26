@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons/fa';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 import { supabase, signUp, signIn, sendPasswordReset, updatePasswordAfterRecovery } from '../api/supabase';
 import { useUserStore } from '../store';
 
@@ -47,6 +49,21 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
   const { setCurrentUser } = useUserStore();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const showHandle = Keyboard.addListener('keyboardWillShow', (info) => {
+      setKeyboardHeight(info.keyboardHeight);
+    });
+    const hideHandle = Keyboard.addListener('keyboardWillHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showHandle.then(h => h.remove());
+      hideHandle.then(h => h.remove());
+    };
+  }, []);
 
   useEffect(() => {
     const detectRecoveryFromUrl = () => {
@@ -207,7 +224,11 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isLightMode ? 'bg-white/60' : 'bg-orbit-black'}`}
-      style={isLightMode ? { backdropFilter: 'blur(6px)' } : undefined}
+      style={{
+        ...(isLightMode ? { backdropFilter: 'blur(6px)' } : undefined),
+        paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined,
+        transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+      }}
     >
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" />
@@ -215,7 +236,13 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={`relative w-full max-w-md glass-card rounded-3xl p-8 ${isLightMode ? 'bg-white border border-neutral-200 text-neutral-900' : 'bg-[#121212] border border-white/10 text-white'}`}
+        className={`relative w-full max-w-md glass-card rounded-3xl p-8 overflow-y-auto hide-scrollbar ${isLightMode ? 'bg-white border border-neutral-200 text-neutral-900' : 'bg-[#121212] border border-white/10 text-white'}`}
+        style={{
+          maxHeight: keyboardHeight > 0
+            ? `calc(100dvh - ${keyboardHeight + 32}px)`
+            : 'calc(100dvh - 2rem)',
+          transition: 'max-height 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+        }}
       >
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
@@ -225,7 +252,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
             className="mx-auto mb-4"
           >
-            <img src="/icons/icon-384.png" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
+            <img src="/assets/icons/icon-384.png" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
           </motion.div>
           <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Orbit 轨迹</h1>
           <p className={`${textMuted}`}>记录与好友的每一个足迹 ✨</p>

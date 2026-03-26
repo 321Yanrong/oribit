@@ -24,6 +24,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { useAppWakeUp } from './hooks/useAppWakeUp';
 import { Network } from '@capacitor/network';
+import { runForegroundNetworkProbe } from './utils/webViewNetworkProbe';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -92,12 +93,24 @@ const useNativeKeyboardGuard = () => {
     if (!Capacitor.isNativePlatform()) return;
     const configureKeyboard = async () => {
       try {
-        await Keyboard.setResizeMode({ mode: KeyboardResize.None });
+        await Keyboard.setResizeMode({ mode: KeyboardResize.Body });
       } catch (err) {
         console.warn('Keyboard resize guard failed:', err);
       }
     };
     configureKeyboard();
+
+    // When keyboard appears, scroll the focused input into view so it's not covered
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 350);
+      }
+    };
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
 };
 
@@ -209,11 +222,14 @@ function App() {
     }
   }, []);
 
-  const fetchCoreData = useCallback(() => {
-    useMemoryStore.getState().fetchMemories();
+  const fetchCoreData = useCallback(async () => {
+    await useMemoryStore.getState().fetchMemories();
+    console.log('[fetchCoreData] memories 拉取完成，触发评论拉取');
+    useMemoryStore.getState().fetchComments();
     useUserStore.getState().fetchFriends();
     useUserStore.getState().fetchPendingRequests();
     useLedgerStore.getState().fetchLedgers();
+    console.log('[fetchCoreData] 全部触发完成');
   }, []);
 
   const refreshSessionAndData = useCallback(async (reason: string) => {
@@ -424,6 +440,18 @@ function App() {
     const performSafeResume = async () => {
       if (isDemoMode || !currentUser) return;
 
+      const backgroundAtEarly = (typeof window !== 'undefined' ? (window as any).__orbit_background_at : null) || 0;
+      if (backgroundAtEarly > 0 && Date.now() - backgroundAtEarly > 30 * 60 * 1000) {
+        console.log(`🔁 离开超过 ${Math.round((Date.now() - backgroundAtEarly) / 60000)} 分钟，强制重启 App...`);
+        window.location.reload();
+        return;
+      }
+
+      if (backgroundAtEarly > 0) {
+        console.log('[App] 从后台恢复流程：已调度 WebView/Supabase 探针（全 Tab 共用，非 MediaUploader 专属）');
+      }
+      void runForegroundNetworkProbe({ userId: currentUser.id, source: 'resume' });
+
       // ==========================================
       // 🛡️ 秒切免检通道：离开不足 10 秒直接放行
       // 手机底层网络根本没断，Token 也不可能过期，
@@ -434,8 +462,20 @@ function App() {
         const awayMs = Date.now() - backgroundAt;
 
         if (awayMs < 10000) {
-          console.log(`⚡️ 极速切回（仅离开 ${Math.round(awayMs / 1000)}s），网络未断，跳过所有重连动作`);
-          return; // 直接放行，不等待，不发请求，不刷数据
+          console.log(`⚡️ 极速切回（仅离开 ${Math.round(awayMs / 1000)}s），等待网络稳定后轻量刷新...`);
+          // Fire a lightweight ping immediately to re-establish TCP during the wait
+          void Promise.resolve(
+            supabase.from('profiles').select('id', { count: 'exact', head: true })
+              .eq('id', currentUser.id).limit(1)
+          ).then(() => { (window as any).__orbit_session_valid_until = Date.now() + 30_000; })
+            .catch(() => {});
+          await new Promise(r => setTimeout(r, 3000));
+          if (!isCancelled) {
+            // 标记 fetchCoreData 运行时刻，供 tryAutoRefresh 跳过重复刷新
+            (window as any).__orbit_last_core_data_refresh = Date.now();
+            fetchCoreData();
+          }
+          return;
         }
 
         // ==========================================
@@ -461,6 +501,17 @@ function App() {
       try { (window as any).__orbit_last_resume = Date.now(); } catch (e) { /* ignore */ }
       console.log('⚡️ 接收到长时唤醒信标，等待底层网络恢复...');
 
+      // 0. Fire a pre-warm ping immediately — the TCP handshake starts while we
+      //    wait for the 1.2s delay below, so the connection is already established
+      //    by the time the user interacts (e.g. clicks "publish").
+      const prewarmPing = Promise.resolve(
+        supabase.from('profiles').select('id', { count: 'exact', head: true })
+          .eq('id', currentUser.id).limit(1)
+      ).then(() => {
+        (window as any).__orbit_session_valid_until = Date.now() + 30_000;
+        console.log('[pre-warm] Supabase TCP connection re-established');
+      }).catch(() => { /* silent — best-effort */ });
+
       // 1. 等待底层网络栈苏醒（延长到 1.2s，给手机系统分配 IP 和恢复 TCP 连接的时间）
       await new Promise(resolve => setTimeout(resolve, 1200));
       if (isCancelled) return;
@@ -485,41 +536,51 @@ function App() {
 
       console.log('🔄 网络已真正连通，开始执行数据抢救...');
 
-      // 3. 刷新会话防掉线（限流：10秒内不重复刷，避免频繁切屏时 Token 过期）
-      const now = Date.now();
-      if (now - lastRefreshRef.current > 10 * 1000) {
-        lastRefreshRef.current = now;
-        try {
-          const refreshResult = await Promise.race([
-            supabase.auth.refreshSession(),
-            // 10s 略小于 authAwareFetch 的 12s，确保 race 能真正拦截超时
-            new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Refresh Timeout')), 10000))
-          ]);
-          if (refreshResult?.error) {
-            console.warn('唤醒时刷新 Session 返回错误:', refreshResult.error.message);
-          } else if (refreshResult?.data?.session) {
-            console.log('✅ Session 刷新成功，Token 已更新');
-          }
-        } catch (e: any) {
-          const detail = e?.message || (typeof e === 'string' ? e : 'Unknown error');
-          console.warn('唤醒时刷新 Session 失败, 但允许继续拉取数据:', detail);
-        }
-      }
-
-      if (isCancelled) return;
-
-      // 4. 清理废弃的 WebSockets 连接 (防止内存泄漏和消息重复)
+      // 3. 清理废弃的 WebSockets 连接
       try {
         await supabase.removeAllChannels();
       } catch (e) { }
 
-      // 5. 等待 300ms 让 SDK 把新 Token 写入内部缓存，再发请求
-      await new Promise(resolve => setTimeout(resolve, 300));
       if (isCancelled) return;
 
-      // 6. 安全地重新拉取核心数据
+      // Ensure the pre-warm ping has settled before we continue
+      await prewarmPing;
+
+      // 4. 先填缓存 + 立即拉数据，不等 refreshSession
       hydrateUserCache(currentUser.id);
       fetchCoreData();
+      (window as any).__orbit_session_valid_until = Date.now() + 30_000;
+
+      // 5. 按需刷新 Token：只有 token 即将过期（5 分钟内）才触发，
+      //    且不阻塞数据拉取，超时 4s 后静默放弃。
+      //    原因：refreshSession 走 WebView fetch，App 刚从后台唤醒时
+      //    WebView 网络栈可能还未完全恢复，贸然调用会挂 10s 导致感知卡顿。
+      const now = Date.now();
+      if (now - lastRefreshRef.current > 10 * 1000) {
+        lastRefreshRef.current = now;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const expiresAt = session?.expires_at ?? 0;
+          const secondsUntilExpiry = expiresAt - Math.floor(now / 1000);
+          if (secondsUntilExpiry < 300) {
+            // token 5 分钟内到期，异步刷新（不 await，不阻塞）
+            Promise.race([
+              supabase.auth.refreshSession(),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Refresh Timeout')), 4000))
+            ]).then(result => {
+              if ((result as any)?.data?.session) {
+                console.log('✅ Session 刷新成功，Token 已更新');
+              }
+            }).catch((e: any) => {
+              console.warn('唤醒时刷新 Session 失败（已忽略）:', e?.message || e);
+            });
+          } else {
+            console.log(`⚡️ Token 仍有 ${Math.round(secondsUntilExpiry / 60)} 分钟有效期，跳过 refreshSession`);
+          }
+        } catch (e: any) {
+          console.warn('唤醒时检查 Session 失败（已忽略）:', e?.message || e);
+        }
+      }
     };
 
     performSafeResume();

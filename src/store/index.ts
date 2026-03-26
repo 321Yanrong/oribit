@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { User, Memory, Ledger, MapPin, Location, Settlement } from '../types';
-import { getMemories } from '../api/supabase';
+import { getMemories, getMemoryComments } from '../api/supabase';
 import { supabase } from '../api/supabase';
 
 // 仅接受真实 UUID（demo 模式用 'demo-user'，不能发给 Supabase）
@@ -243,35 +243,93 @@ interface MemoryState {
   isLoading: boolean;
   selectedMemory: Memory | null;
   selectedFriendIds: string[];
+  commentsByMemory: Record<string, any[]>;
   setSelectedFriendIds: (friendIds: string[]) => void;
   fetchMemories: () => Promise<void>;
+  fetchComments: () => Promise<void>;
+  updateCommentsByMemory: (byMemory: Record<string, any[]>) => void;
+  prependComment: (memoryId: string, comment: any) => void;
+  removeComment: (memoryId: string, commentId: string) => void;
   addMemory: (memory: Memory) => void;
   editMemory: (id: string, updatedData: any) => Promise<void>;
   deleteMemory: (id: string) => Promise<void>;
 }
 
-export const useMemoryStore = create<MemoryState>((set) => ({
+// Prevents concurrent fetchMemories calls from duplicating network requests
+let _fetchMemoriesInFlight: Promise<void> | null = null;
+
+let _fetchCommentsInFlight: Promise<void> | null = null;
+
+export const useMemoryStore = create<MemoryState>((set, get) => ({
   memories: [],
   isLoading: false,
   selectedMemory: null,
   selectedFriendIds: [],
+  commentsByMemory: {},
   setSelectedFriendIds: (friendIds) => set({ selectedFriendIds: friendIds }),
+  updateCommentsByMemory: (byMemory) => set({ commentsByMemory: byMemory }),
+  prependComment: (memoryId, comment) => set((state) => {
+    const existing = state.commentsByMemory[memoryId] || [];
+    if (existing.some((c: any) => c.id === comment.id)) return state;
+    return { commentsByMemory: { ...state.commentsByMemory, [memoryId]: [...existing, comment] } };
+  }),
+  removeComment: (memoryId, commentId) => set((state) => {
+    const existing = state.commentsByMemory[memoryId] || [];
+    return { commentsByMemory: { ...state.commentsByMemory, [memoryId]: existing.filter((c: any) => c.id !== commentId) } };
+  }),
+  fetchComments: async () => {
+    if (_fetchCommentsInFlight) return _fetchCommentsInFlight;
+    const memoryIds = get().memories.map((m: any) => m.id).filter(Boolean);
+    if (!memoryIds.length) {
+      console.log('[store] fetchComments: 无记忆 id，跳过');
+      return;
+    }
+
+    console.log(`[store] fetchComments: 开始，共 ${memoryIds.length} 条记忆`);
+
+    _fetchCommentsInFlight = (async () => {
+      try {
+        const comments = await getMemoryComments(memoryIds);
+        const grouped = ((comments as any[]) || []).reduce((acc: Record<string, any[]>, item: any) => {
+          const mid = item.memory_id;
+          if (!acc[mid]) acc[mid] = [];
+          acc[mid].push(item);
+          return acc;
+        }, {});
+        const memoryCount = Object.keys(grouped).length;
+        const commentCount = (comments as any[])?.length ?? 0;
+        console.log(`[store] fetchComments: 成功，共 ${commentCount} 条评论，覆盖 ${memoryCount} 个记忆`);
+        set({ commentsByMemory: grouped });
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        console.warn(`[store] fetchComments: 失败 — ${msg}`);
+      } finally {
+        _fetchCommentsInFlight = null;
+      }
+    })();
+    return _fetchCommentsInFlight;
+  },
   fetchMemories: async () => {
+    if (_fetchMemoriesInFlight) return _fetchMemoriesInFlight;
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId || !isRealUUID(userId)) return;
 
-    set({ isLoading: true });
-    try {
-      const data = await getMemories(userId);
-      set({ memories: data || [] });
-      writeCache(buildCacheKey('memories', userId), data || []);
-    } catch (error: any) {
-      console.error('拉取记忆失败:', error?.message || error);
-      const fallback = readCache<any[]>(buildCacheKey('memories', userId), []);
-      if (fallback.length > 0) set({ memories: fallback });
-    } finally {
-      set({ isLoading: false });
-    }
+    _fetchMemoriesInFlight = (async () => {
+      set({ isLoading: true });
+      try {
+        const data = await getMemories(userId);
+        set({ memories: data || [] });
+        writeCache(buildCacheKey('memories', userId), data || []);
+      } catch (error: any) {
+        console.error('拉取记忆失败:', error?.message || String(error));
+        const fallback = readCache<any[]>(buildCacheKey('memories', userId), []);
+        if (fallback.length > 0) set({ memories: fallback });
+      } finally {
+        set({ isLoading: false });
+        _fetchMemoriesInFlight = null;
+      }
+    })();
+    return _fetchMemoriesInFlight;
   },
   addMemory: (memory) => set((state) => {
     const next = [memory, ...state.memories];

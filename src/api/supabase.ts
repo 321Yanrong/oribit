@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
 import { Database } from '../types/database'
 import { clearOrbitStorage, emitInvalidAuthEvent, isLikelyInvalidSession } from '../utils/auth'
+import { nativeFetch } from '../utils/nativeHttp'
+import { NativeUploader } from '../plugins/nativeUploader'
 
 const supabaseUrl = 'https://qoaqmbepnsqymxzpncyf.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYXFtYmVwbnNxeW14enBuY3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQ5NTMsImV4cCI6MjA4ODUzMDk1M30.dmQ5kVi2dGQHJ8QM7gDSRx8nNSSIfZ5jVbh22NLeBIc'
@@ -11,11 +14,23 @@ let invalidAuthTimer: ReturnType<typeof setTimeout> | null = null
 let pendingInvalidReason = ''
 
 const authAwareFetch: typeof fetch = async (input, init) => {
-  const response = await fetch(input, init)
+  const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+
+  // 路由策略：
+  //   WebView fetch  → Storage POST（multipart 流式 body，nativeFetch 不支持）
+  //                  → Edge Functions（CORS 需要带 Origin，走 WebView 更安全）
+  //   nativeFetch    → Auth（/auth/v1/）+ REST（/rest/v1/）：绕开 WKWebView 死连接，
+  //                    唤醒后立即可用，彻底消灭 getSession-timeout
+  const isStorageUpload =
+    /\/storage\/v1\/object\//.test(url) && (init?.method?.toUpperCase() ?? 'GET') === 'POST'
+  const isEdgeFunction = /\/functions\/v1\//.test(url)
+  const mustUseWebViewFetch = isStorageUpload || isEdgeFunction
+
+  const fetchFn = mustUseWebViewFetch ? fetch : nativeFetch
+  const response = await fetchFn(input, init)
 
   try {
     if (response.status === 401 || response.status === 403) {
-      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
       const errorCode = response.headers.get('x-sb-error-code') || ''
       const authRelatedEndpoint = /\/auth\/v1\//.test(url) || /\/rest\/v1\//.test(url)
 
@@ -38,11 +53,59 @@ const authAwareFetch: typeof fetch = async (input, init) => {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   global: {
+    // 只需要保留这一个！
+    // 只要 authAwareFetch 内部调用的是 fetch()，它就会自动走 Capacitor 的原生通道
     fetch: authAwareFetch,
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<any>) => {
+      return await fn()
+    },
   },
 })
 
+const SUPABASE_STORAGE_KEY = 'sb-qoaqmbepnsqymxzpncyf-auth-token'
+
+/** Read the persisted session directly from localStorage, bypassing the SDK's
+ *  internal async state machine (which can deadlock after app backgrounding). */
+export function getSessionFromStorage(): {
+  access_token: string
+  refresh_token: string
+  expires_at: number
+} | null {
+  try {
+    const raw = localStorage.getItem(SUPABASE_STORAGE_KEY)
+    if (!raw) return null
+    const stored = JSON.parse(raw)
+    if (!stored?.access_token) return null
+    return stored
+  } catch {
+    return null
+  }
+}
+
+// Bypass the SDK's internal fetchWithAuth -> _getAccessToken() -> auth.getSession()
+// pipeline for REST queries. The SDK acquires a JS-level lock inside getSession()
+// that contends with the visibility-change handler on app resume, blocking ALL
+// REST requests until the lock drains. Reading the token from localStorage is
+// synchronous and sidesteps the entire lock/queue mechanism.
+; (supabase as any).rest.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const stored = getSessionFromStorage()
+  const token = stored?.access_token ?? supabaseAnonKey
+
+  const headers = new Headers(init?.headers)
+  if (!headers.has('apikey')) headers.set('apikey', supabaseAnonKey)
+  if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+
+  return authAwareFetch(input, { ...init, headers })
+}
+
 const UPLOAD_TIMEOUT_MS = 45000
+/** Only around NativeUploader.upload — excludes base64 prep and token lookup */
+const NATIVE_STORAGE_UPLOAD_TIMEOUT_MS = 35000
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs = UPLOAD_TIMEOUT_MS): Promise<T> => {
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -122,6 +185,71 @@ export const uploadPhoto = async (
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
+  if (Capacitor.isNativePlatform()) {
+    // On iOS/Android: bypass WebView by uploading via native URLSession.
+    // This avoids WebView network suspension when the app is backgrounded.
+    const arrayBuffer = await file.arrayBuffer()
+    // Convert ArrayBuffer to base64 in chunks to avoid call-stack overflow on large files
+    const bytes = new Uint8Array(arrayBuffer)
+    let binary = ''
+    const chunkSize = 8192
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+    }
+    const base64Data = btoa(binary)
+
+    // Read token directly from localStorage — instant, no network call.
+    // supabase.auth.getSession() hangs after iOS background because it
+    // internally calls _refreshAccessToken() via WebView fetch (dead).
+    // Even a slightly expired token is fine: if the server rejects it,
+    // the upload fails fast and gets retried when the network recovers.
+    let authToken = ''
+    try {
+      const storageKey = `sb-qoaqmbepnsqymxzpncyf-auth-token`
+      const raw = localStorage.getItem(storageKey)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        authToken = parsed.access_token || parsed?.currentSession?.access_token || ''
+      }
+    } catch { /* localStorage read failed */ }
+
+    // Fallback: try getSession() with a tight timeout if localStorage had nothing
+    if (!authToken) {
+      try {
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error('getSession-upload-timeout')), 5_000)),
+        ])
+        authToken = sessionResult.data?.session?.access_token ?? ''
+      } catch { /* timed out — no token available */ }
+    }
+
+    console.log(`[uploadPhoto] token: ${authToken ? `OK (${authToken.length}ch)` : 'EMPTY'}`)
+    if (!authToken) throw new Error('无法获取登录凭证，请稍后重试')
+
+    const { publicUrl } = await Promise.race([
+      NativeUploader.upload({
+        base64Data,
+        fileName,
+        bucket: 'photos',
+        contentType: file.type || 'image/jpeg',
+        supabaseUrl,
+        supabaseAnonKey,
+        authToken,
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(
+          () => reject(new Error('图片上传超时，请检查网络后重试')),
+          NATIVE_STORAGE_UPLOAD_TIMEOUT_MS,
+        )
+      }),
+    ])
+
+    await syncStorageUsed(file.size)
+    return publicUrl
+  }
+
+  // Web: use the standard Supabase JS storage client
   const { error: uploadError } = await withTimeout(
     supabase.storage
       .from('photos')
@@ -134,7 +262,7 @@ export const uploadPhoto = async (
   if (uploadError) throw uploadError
 
   // 新增：手动调用 RPC 同步（注意：若 storage-quota-migration.sql 触发器已生效，此处会导致双倍计数）
-  await syncStorageUsed(file.size);
+  await syncStorageUsed(file.size)
 
   // 获取公开 URL
   const { data: { publicUrl } } = supabase.storage
