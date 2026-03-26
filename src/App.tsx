@@ -23,6 +23,7 @@ import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { useAppWakeUp } from './hooks/useAppWakeUp';
+import { Network } from '@capacitor/network';
 
 // Repair old DiceBear URLs that had comma-separated hair values (caused 400 errors)
 const sanitiseAvatarUrl = (url: string | null | undefined, userId?: string): string => {
@@ -414,6 +415,7 @@ function App() {
     if (resumeTrigger === 0) return;
 
     let isCancelled = false;
+
     // 取消之前的定时器，防止多次触发
     if (resumeTimerRef.current) {
       window.clearTimeout(resumeTimerRef.current);
@@ -421,47 +423,102 @@ function App() {
 
     const performSafeResume = async () => {
       if (isDemoMode || !currentUser) return;
-      console.log('⚡️ 接收到唤醒信标，等待底层网络恢复...');
 
-      // 1. 强制阻断：给手机系统分配 IP 和恢复 TCP 连接的时间 (极度重要)
-      await new Promise(resolve => setTimeout(resolve, 800));
-      if (isCancelled) return;
+      // ==========================================
+      // 🛡️ 秒切免检通道：离开不足 10 秒直接放行
+      // 手机底层网络根本没断，Token 也不可能过期，
+      // 强行重连反而会主动破坏正在进行的请求和 WebSocket。
+      // ==========================================
+      const backgroundAt = (typeof window !== 'undefined' ? (window as any).__orbit_background_at : null) || 0;
+      if (backgroundAt > 0) {
+        const awayMs = Date.now() - backgroundAt;
 
-      // 如果 800ms 后依然没网，直接放弃，避免制造 Pending 死请求，或者只尝试回填缓存
-      if (!navigator.onLine) {
-        console.log('📴 当前无网络，仅执行本地缓存回填');
-        hydrateUserCache(currentUser.id);
-        return;
-      }
+        if (awayMs < 10000) {
+          console.log(`⚡️ 极速切回（仅离开 ${Math.round(awayMs / 1000)}s），网络未断，跳过所有重连动作`);
+          return; // 直接放行，不等待，不发请求，不刷数据
+        }
 
-      console.log('🔄 网络已就绪，开始执行数据抢救...');
-
-      // 2. 刷新会话防掉线 (限流：30秒内不重复刷)
-      const now = Date.now();
-      if (now - lastRefreshRef.current > 30 * 1000) {
-        lastRefreshRef.current = now;
-        try {
-          await Promise.race([
-            Promise.all([
-              supabase.auth.getSession(),
-              supabase.auth.refreshSession()
-            ]),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh Timeout')), 3000))
-          ]);
-        } catch (e) {
-          console.warn("唤醒时刷新 Session 失败, 但允许继续拉取数据", e);
+        // ==========================================
+        // 🔄 长时离开（> 5 分钟）：走冷启动流程
+        // 显示 Splash，重新拉所有数据，跟重启一样
+        // ==========================================
+        if (awayMs > 5 * 60 * 1000) {
+          console.log(`🔄 长时离开（${Math.round(awayMs / 60000)}分钟），触发冷启动流程...`);
+          setShowSplash(true);
+          setSplashMinimumElapsed(false);
+          setFirstScreenReady(false);
+          // 2.5s 后收起 Splash（与冷启动保持一致）
+          window.setTimeout(() => setSplashMinimumElapsed(true), 2500);
+          // 重新拉取所有数据
+          try { await supabase.auth.refreshSession(); } catch (e) { /* ignore */ }
+          fetchCoreData();
+          setFirstScreenReady(true);
+          return;
         }
       }
 
-      // 3. 清理废弃的 WebSockets 连接 (防止内存泄漏和消息重复)
+      // mark last resume time so auth-aware fetch can apply extra grace
+      try { (window as any).__orbit_last_resume = Date.now(); } catch (e) { /* ignore */ }
+      console.log('⚡️ 接收到长时唤醒信标，等待底层网络恢复...');
+
+      // 1. 等待底层网络栈苏醒（延长到 1.2s，给手机系统分配 IP 和恢复 TCP 连接的时间）
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      if (isCancelled) return;
+
+      // 2. 调用 iOS/Android 底层系统 API 检查真实网络连通性
+      try {
+        const networkStatus = await Network.getStatus();
+        if (!networkStatus.connected) {
+          console.log('📴 原生系统报告当前无网络，仅回填缓存');
+          hydrateUserCache(currentUser.id);
+          return;
+        }
+      } catch (e) {
+        // Network 插件调用失败时回退到 navigator.onLine
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          console.log('📴 navigator.onLine 报告断网，仅回填缓存');
+          hydrateUserCache(currentUser.id);
+          return;
+        }
+      }
+      if (isCancelled) return;
+
+      console.log('🔄 网络已真正连通，开始执行数据抢救...');
+
+      // 3. 刷新会话防掉线（限流：10秒内不重复刷，避免频繁切屏时 Token 过期）
+      const now = Date.now();
+      if (now - lastRefreshRef.current > 10 * 1000) {
+        lastRefreshRef.current = now;
+        try {
+          const refreshResult = await Promise.race([
+            supabase.auth.refreshSession(),
+            // 10s 略小于 authAwareFetch 的 12s，确保 race 能真正拦截超时
+            new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Refresh Timeout')), 10000))
+          ]);
+          if (refreshResult?.error) {
+            console.warn('唤醒时刷新 Session 返回错误:', refreshResult.error.message);
+          } else if (refreshResult?.data?.session) {
+            console.log('✅ Session 刷新成功，Token 已更新');
+          }
+        } catch (e: any) {
+          const detail = e?.message || (typeof e === 'string' ? e : 'Unknown error');
+          console.warn('唤醒时刷新 Session 失败, 但允许继续拉取数据:', detail);
+        }
+      }
+
+      if (isCancelled) return;
+
+      // 4. 清理废弃的 WebSockets 连接 (防止内存泄漏和消息重复)
       try {
         await supabase.removeAllChannels();
       } catch (e) { }
 
-      // 4. 安全地重新拉取核心数据 (此时网络已通，绝对不会掉进黑洞)
-      // 回填本地缓存
+      // 5. 等待 300ms 让 SDK 把新 Token 写入内部缓存，再发请求
+      await new Promise(resolve => setTimeout(resolve, 300));
+      if (isCancelled) return;
+
+      // 6. 安全地重新拉取核心数据
       hydrateUserCache(currentUser.id);
-      // 拉取最新数据
       fetchCoreData();
     };
 
@@ -772,6 +829,9 @@ function App() {
               useLedgerStore.getState().fetchLedgers();
               // Ensure invite code is always persisted on login
               saveInviteCode(user.id, generateInviteCode(user.id));
+              // 🚀 冷启动也触发一次唤醒流程，确保切屏后数据是最新的
+              // 延迟 1s 等 fetchMemories 等先跑完，避免重复请求
+              setTimeout(() => { if (isMounted) triggerResume(); }, 1000);
             } else {
               // Profile doesn't exist yet, create temp data
               if (isMounted) {

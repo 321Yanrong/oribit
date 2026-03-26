@@ -6,6 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
 import FloatingParticles from '../components/FloatingParticles';
 import { addMemoryComment, getMemoryComments, supabase } from '../api/supabase';
+import { SETTINGS_EVENT } from '../utils/settings';
 
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 
@@ -149,13 +150,19 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
       else if (theme === 'light') setIsDarkTheme(false);
       else setIsDarkTheme(window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true);
     };
+
     const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
     update();
+
+    // Use MutationObserver to watch for data-theme changes, which avoids event ordering issues
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
     media?.addEventListener('change', update);
-    window.addEventListener('settings:update', update as EventListener);
+
     return () => {
+      observer.disconnect();
       media?.removeEventListener('change', update);
-      window.removeEventListener('settings:update', update as EventListener);
     };
   }, []);
 
