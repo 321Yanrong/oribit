@@ -18,6 +18,9 @@ import imageCompression from 'browser-image-compression';
 import ReportPage from '../components/ReportPage';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import PhotoUploader from '../components/PhotoUploader';
+
+// Set to true once push notifications are fully configured (APNs + OneSignal)
+const PUSH_NOTIFICATIONS_ENABLED = false;
 import AdminReportsPage from '../components/AdminReportsPage';
 import appIcon from '../../assets/icons/logo.png';
 
@@ -3657,18 +3660,21 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
       return;
     }
 
-    if (!window.confirm('⚠️ 注销后账号、回忆、账单、评论等数据将被永久删除，且无法恢复。确定继续吗？')) {
+    if (!window.confirm('⚠️ 你正在申请注销。提交后将立即退出登录，账号及数据将在 7 个工作日后永久删除。确定继续吗？')) {
       return;
     }
 
     setDeletingAccount(true);
     try {
-      await deleteMyAccount(confirmEmail);
+      const result = await deleteMyAccount(confirmEmail);
       setCurrentUser(null);
       useMemoryStore.setState({ memories: [] });
       useLedgerStore.setState({ ledgers: [] });
       useUserStore.setState({ friends: [], pendingRequests: [] });
-      alert('账号已注销完成');
+      const scheduledAt = result?.deletionScheduledAt
+        ? new Date(result.deletionScheduledAt).toLocaleString()
+        : '7 个工作日后';
+      alert(`注销申请已提交，预计删除时间：${scheduledAt}`);
     } catch (error: any) {
       alert(error?.message || '注销失败，请稍后重试');
     } finally {
@@ -4668,7 +4674,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
       </div>
 
       {/* 好友申请通知 */}
-      {settings.notifyFriendRequest && pendingRequests.length > 0 && (
+      {pendingRequests.length > 0 && (
         <div className="relative z-10 px-4 mt-6">
           <h2 className="text-sm font-medium mb-2 px-1 flex items-center gap-2" style={{ color: 'var(--orbit-text-muted)' }}>
             <span className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
@@ -4873,6 +4879,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                       </div>
                     </div>
 
+                    {PUSH_NOTIFICATIONS_ENABLED && (
                     <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                       <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通知设置</p>
                       <div className="mt-1.5 py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
@@ -4894,6 +4901,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                         </button>
                       </div>
                     </div>
+                    )}
 
                     <div className="rounded-2xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                       <button onClick={() => setShowCommunityGuidelines(true)} className="w-full px-3 py-3 text-left text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000', borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
@@ -5257,6 +5265,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 </div>
 
                 {/* 3. 通知设置 */}
+                {PUSH_NOTIFICATIONS_ENABLED && (
                 <div className="glass-card rounded-2xl overflow-hidden">
                   <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">通知设置</div>
                   <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
@@ -5279,6 +5288,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                   </div>
 
                 </div>
+                )}
 
                 {/* 4. 隐私设置 */}
                 <div className="glass-card rounded-2xl overflow-hidden">
