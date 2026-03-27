@@ -10,6 +10,7 @@ import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment, submitHelpQuestionFeedback, updateAllowShare } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh, shouldAllowUpload } from '../utils/settings';
+import { TERMS_TEXT, PRIVACY_TEXT } from '../constants/appDocuments';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import PullToRefresh from '../components/PullToRefresh';
 import { BOTTOM_NAV_CONTENT_GAP } from '../components/BottomNav';
@@ -1170,9 +1171,9 @@ const HelpSupportPage = ({
                 <button
                   className="w-full h-11 rounded-xl text-[15px] font-medium"
                   style={{ background: '#87CEEB', color: '#0a2140' }}
-                  onClick={() => { window.location.href = 'mailto:chenyanrong2025@163.com?subject=联系客服'; setShowContactModal(false); }}
+                  onClick={() => { window.location.href = 'mailto:support@wehihi.com?subject=联系客服'; setShowContactModal(false); }}
                 >
-                  邮件联系：chenyanrong2025@163.com
+                  邮件联系：support@wehihi.com
                 </button>
                 <button
                   className="w-full h-11 rounded-xl text-[15px]"
@@ -3831,101 +3832,6 @@ export default function ProfilePage() {
     setDocModal({ isOpen: true, title, content });
   };
 
-  // Orbit 服务条款 - 正式版
-  const TERMS_TEXT = `Orbit 用户服务协议
-
-Orbit 用户服务协议-简明版
-
-更新日期：2025年12月8日
-生效日期：2025年12月8日
-
-【引言】
-名称为"Orbit"、"Orbit"，和/或"Orbit"的网站、小程序、客户端应用程序以及我们不时提供的其他形式（统称"Orbit平台"）由Orbit团队运营并维护（以下简称"我们"）。"我们"的应相应地进行理解。为免疑义，我们亦保留调整Orbit平台名称的权利。
-
-【一、服务说明】
-
-1. 账号注册与登录
-【账号注册】您需要使用真实信息注册账号，保管好您的登录凭证，不得将其转让他人。
-
-2. 内容发布
-【内容记录】用户可发布、存储和分享记忆内容，禁止发布违法、色情或侵犯他人隐私的内容。
-
-3. 知识产权保护
-【内容所有权】您发布的内容属于您本人。您授予Orbit平台使用、展示您内容的权利（仅用于平台功能需要）。
-
-【二、用户责任】
-1. 用户保证所发布内容的真实性和合法性
-2. 用户同意接受Orbit平台的管理和监督
-3. Orbit平台尊重用户隐私，不泄露个人信息
-4. 用户不得将其账号用于任何违法目的
-
-【三、数据与隐私】
-1. Orbit不将您的记忆用于商业广告分析或数据出售
-2. 我们不接入任何第三方广告追踪SDK
-3. 用户有权随时请求删除账号及其所有数据
-
-【四、免责声明】
-Orbit平台按"现状"提供服务。对因网络故障、系统错误或不可抗力导致的损失不承担责任。
-
-【五、政策变更】
-Orbit有权根据需要修改本协议，并将提前通知用户。
-
-最终解释权归Orbit团队所有。`;
-
-  const PRIVACY_TEXT = `Orbit 用户隐私政策
-
-Orbit 用户隐私政策-简明版
-
-更新日期：2025年12月8日
-生效日期：2025年12月8日
-
-【引言】
-名称为"Orbit"、"Orbit"，和/或"Orbit"的网站、小程序、客户端应用程序以及我们不时提供的其他形式（统称"Orbit平台"）由Orbit团队运营并维护（以下简称"我们"）。本隐私政策说明了我们如何收集、使用和保护您的个人信息。
-
-【一、信息收集与使用】
-
-对应业务功能 | 功能场景说明
----|---
-账号注册及登录 | 【注册与登录】收集邮箱地址、登录密码用于身份验证和账号恢复。
-编辑信息 | 【个人资料】收集昵称、头像、个人简介用于个人资料展示。
-信息浏览、发布、点赞、收藏 | 【用户内容】收集您发布的照片、文字、记忆内容，用于平台功能展示。
-设备信息收集 | 【设备信息】收集操作系统、设备标识，仅用于服务优化和异常检测。
-
-【二、信息使用范围】
-1. 维持平台基础运转（账号验证、内容存储）
-2. 改进产品体验和功能性能
-3. 提供个性化服务和推荐
-4. 处理用户反馈、申诉和技术支持
-5. 遵守法律法规要求
-
-【三、信息安全与数据保护】
-1. 我们采取行业标准的加密和安全措施保护您的数据
-2. 我们不接入任何第三方广告追踪SDK
-3. 我们不将用户信息用于商业广告分析或出售
-4. 我们不与任何第三方共享用户个人信息（法律要求除外）
-5. 我们限制员工访问权限，仅授权必需人员接触您的信息
-
-【四、数据删除与账号注销】
-1. 用户有权随时申请删除账号
-2. 账号删除后，系统将立即清除您的所有个人数据、内容和关联信息
-3. 技术备份数据将在30天内清除
-4. 对于因法律要求必须保留的数据，我们将对其加密存储
-
-【五、用户权利】
-您有权：
-- 访问您的个人信息
-- 更正您的信息
-- 请求删除您的数据（除法律要求外）
-- 获取您数据的副本
-- 撤回对某些处理的同意
-
-【六、第三方服务】
-平台可能集成第三方服务（如地图、分享工具），这些服务受其各自隐私政策管制。我们不对第三方隐私实践承担责任。
-
-【七、政策变更】
-Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我们将在平台内通知用户。
-
-请放心记录你的每一天。最终解释权归Orbit团队所有。`;
 
   const COMMUNITY_TEXT = "Orbit 是专属于熟人的温暖私密社交小天地。\n\n✨ 友善互动：依托共同回忆，畅聊吐槽，传递温暖\n✨ 尊重边界：不恶意关联他人真实账号，守护彼此隐私\n✨ 记录当下：告别刻意摆拍，珍藏真实鲜活的生活瞬间\n\n让我们携手守护这片纯粹的熟人社交净土。";
 
@@ -5907,8 +5813,8 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                     <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">使用条款与服务说明</p>
                   </button>
                   <button onClick={() => openDocument('隐私政策', PRIVACY_TEXT)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
-                    <p className="font-medium text-[color:var(--orbit-text)]">🔏 隐私政策（简明版）</p>
-                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">简要说明数据收集与使用</p>
+                    <p className="font-medium text-[color:var(--orbit-text)]">🔏 隐私政策</p>
+                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">查看完整隐私保护政策</p>
                   </button>
                   <button onClick={() => setShowAccountDiagnostics(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t block" style={{ borderColor: 'var(--orbit-border)' }}>
                     <p className="font-medium text-[color:var(--orbit-text)]">🧪 网络诊断</p>

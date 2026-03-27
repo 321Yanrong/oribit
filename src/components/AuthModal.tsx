@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner, FaTimes } from 'react-icons/fa';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { supabase, signUp, signIn, sendPasswordReset, updatePasswordAfterRecovery } from '../api/supabase';
 import appIcon from '../../assets/icons/logo.png';
 import { useUserStore } from '../store';
+import { TERMS_TEXT, PRIVACY_TEXT } from '../constants/appDocuments';
 
 const EMAIL_ACTION_COOLDOWN_MS = 60 * 1000;
 
@@ -51,6 +52,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
 
   const { setCurrentUser } = useUserStore();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [docModal, setDocModal] = useState<{ isOpen: boolean; title: string; content: string }>({ isOpen: false, title: '', content: '' });
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -376,7 +378,18 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
                 style={{ accentColor: isLightMode ? '#171717' : '#ffffff' }}
               />
               <label htmlFor="agreed" className={`text-xs ${textMuted} leading-relaxed select-none`}>
-                我已阅读并同意 <a href="/terms" target="_blank" className="underline hover:opacity-80">《用户协议》</a> <a href="/privacy" target="_blank" className="underline hover:opacity-80">《隐私政策》</a>
+                我已阅读并同意{' '}
+                <button
+                  type="button"
+                  onClick={() => setDocModal({ isOpen: true, title: '用户服务协议', content: TERMS_TEXT })}
+                  className="underline hover:opacity-80 cursor-pointer"
+                >《用户协议》</button>
+                {' '}
+                <button
+                  type="button"
+                  onClick={() => setDocModal({ isOpen: true, title: '隐私保护政策', content: PRIVACY_TEXT })}
+                  className="underline hover:opacity-80 cursor-pointer"
+                >《隐私政策》</button>
               </label>
             </div>
           )}
@@ -446,6 +459,47 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           </button>
         </div>
       </motion.div>
+
+      {/* 应用内文档弹窗（用户协议 / 隐私政策） */}
+      <AnimatePresence>
+        {docModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-end justify-center"
+            style={{ background: 'rgba(0,0,0,0.6)' }}
+            onClick={() => setDocModal({ isOpen: false, title: '', content: '' })}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className={`w-full max-w-lg rounded-t-3xl flex flex-col ${isLightMode ? 'bg-white text-neutral-900' : 'bg-[#1a1a1a] text-white'}`}
+              style={{ maxHeight: '80dvh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 标题栏 */}
+              <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${isLightMode ? 'border-neutral-200' : 'border-white/10'}`}>
+                <h2 className="text-base font-semibold">{docModal.title}</h2>
+                <button
+                  onClick={() => setDocModal({ isOpen: false, title: '', content: '' })}
+                  className={`p-2 rounded-full ${isLightMode ? 'bg-neutral-100 text-neutral-600' : 'bg-white/10 text-white/70'}`}
+                >
+                  <FaTimes className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {/* 内容 */}
+              <div className="overflow-y-auto flex-1 px-5 py-4">
+                <pre className={`text-xs leading-relaxed whitespace-pre-wrap font-sans ${isLightMode ? 'text-neutral-700' : 'text-white/80'}`}>
+                  {docModal.content}
+                </pre>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
