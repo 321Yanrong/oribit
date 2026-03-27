@@ -24,8 +24,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Orbit 需要获取你的位置来在地图上展示回忆和发布时标记地点</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Orbit 需要使用麦克风来录制语音评论和语音记忆</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Orbit 需要访问你的相册来上传照片和视频到回忆中</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
