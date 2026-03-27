@@ -1,9 +1,5 @@
 import memoryFlowBackground from '../../../../screenshot_app/回忆流.jpg';
 
-export const AMAP_KEY = import.meta.env.VITE_AMAP_KEY as string;
-export const AMAP_SECURITY_CODE = import.meta.env.VITE_AMAP_SECURITY_CODE as string;
-export const AMAP_VERSION = '2.0';
-
 export const WEATHER_OPTIONS = [
   { emoji: '\u2600\uFE0F', label: '晴天' },      // ☀️
   { emoji: '\u26C5', label: '多云' },            // ⛅

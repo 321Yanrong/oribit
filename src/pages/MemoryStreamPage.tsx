@@ -44,17 +44,9 @@ function memoryStreamFetchBatchRaceMs(): number {
   return ago != null && ago < 120_000 ? 45_000 : 30_000;
 }
 
-// 高德地图 API 配置
-const AMAP_KEY = import.meta.env.VITE_AMAP_KEY as string;
-const AMAP_SECURITY_CODE = import.meta.env.VITE_AMAP_SECURITY_CODE as string;
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
-// 配置安全密钥
-(window as any)._AMapSecurityConfig = {
-  securityJsCode: AMAP_SECURITY_CODE,
-};
-
-// 高德地点搜索结果类型
-interface AMapPoi {
+interface LocationPoi {
   id: string;
   name: string;
   address: string;
@@ -254,7 +246,7 @@ const groupMemoriesByDate = (memories: any[], order: 'asc' | 'desc' = 'desc') =>
   }));
 };
 
-// 提取城市名（高德地址格式：省市区...)
+// 提取城市名
 const getCityFromMemory = (memory: any): string => {
   const addr = memory.location?.address || '';
   const name = memory.location?.name || '';
@@ -309,9 +301,45 @@ const toLocalIsoWithOffset = (value: string) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00${sign}${hh}:${mm}`;
 };
 
-const isInChina = (lat: number, lng: number) => {
-  // Rough bounding box for mainland China
-  return lat >= 18 && lat <= 54 && lng >= 73 && lng <= 135;
+const searchMapbox = async (keyword: string): Promise<LocationPoi[]> => {
+  if (!MAPBOX_TOKEN) return [];
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(keyword)}.json?language=zh&limit=10&access_token=${MAPBOX_TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data?.features) return [];
+    return data.features.map((f: any) => ({
+      id: f.id,
+      name: f.text_zh || f.text || keyword,
+      address: f.place_name_zh || f.place_name || '',
+      location: `${f.center?.[0]},${f.center?.[1]}`,
+      type: f.place_type?.join(',') || '',
+    })) as LocationPoi[];
+  } catch {
+    return [];
+  }
+};
+
+const reverseMapbox = async (lat: number, lng: number): Promise<LocationPoi | null> => {
+  if (!MAPBOX_TOKEN) return null;
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=zh&limit=1&access_token=${MAPBOX_TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const f = data?.features?.[0];
+    if (!f) return null;
+    return {
+      id: `gps-${Date.now()}`,
+      name: f.text_zh || f.text || '我的位置',
+      address: f.place_name_zh || f.place_name || '',
+      location: `${lng},${lat}`,
+      type: f.place_type?.join(',') || '',
+    } as LocationPoi;
+  } catch {
+    return null;
+  }
 };
 
 const searchNominatim = async (keyword: string) => {
@@ -319,7 +347,7 @@ const searchNominatim = async (keyword: string) => {
   const res = await fetch(url, {
     headers: { 'Accept-Language': 'zh-CN,zh;q=0.8,en;q=0.6' },
   });
-  if (!res.ok) return [] as AMapPoi[];
+  if (!res.ok) return [] as LocationPoi[];
   const data = (await res.json()) as any[];
   return data.map((item) => {
     const display = item.display_name || '';
@@ -330,7 +358,7 @@ const searchNominatim = async (keyword: string) => {
       address: display,
       location: `${item.lon},${item.lat}`,
       type: item.type || '',
-    } as AMapPoi;
+    } as LocationPoi;
   });
 };
 
@@ -349,51 +377,18 @@ const reverseNominatim = async (lat: number, lng: number) => {
     address: display,
     location: `${lng},${lat}`,
     type: data?.type || '',
-  } as AMapPoi;
+  } as LocationPoi;
 };
 
 // 地点搜索组件
-const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange: (val: string) => void; onSelect: (poi: AMapPoi) => void; }) => {
-  const [results, setResults] = useState<AMapPoi[]>([]);
+const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange: (val: string) => void; onSelect: (poi: LocationPoi) => void; }) => {
+  const [results, setResults] = useState<LocationPoi[]>([]);
   const [city, setCity] = useState('');
   const [needCityHint, setNeedCityHint] = useState(false);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [locating, setLocating] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-  const placeSearchRef = useRef<any>(null);
-  const aMapRef = useRef<any>(null);
-  const lastKnownCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
-
-  const isLikelyOverseasCity = (name: string) => {
-    const n = name.trim();
-    if (!n) return false;
-    if (/[A-Za-z]/.test(n)) return true;
-    return /爱丁堡|伦敦|巴黎|纽约|东京|悉尼|新加坡|柏林|多伦多|温哥华/i.test(n);
-  };
-
-  useEffect(() => {
-    const initPlaceSearch = async () => {
-      try {
-        const AMap = await import('@amap/amap-jsapi-loader').then(m => m.default.load({
-          key: AMAP_KEY,
-          version: '2.0',
-          plugins: ['AMap.PlaceSearch', 'AMap.Geocoder'],
-        }));
-
-        aMapRef.current = AMap;
-
-        placeSearchRef.current = new AMap.PlaceSearch({
-          pageSize: 10,
-          pageIndex: 1,
-        });
-      } catch (error) {
-        console.error('初始化地点搜索失败:', error);
-      }
-    };
-
-    initPlaceSearch();
-  }, []);
 
   const searchLocation = async (keyword: string) => {
     const trimmed = keyword.trim();
@@ -410,52 +405,25 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
       return;
     }
 
-    const last = lastKnownCoordsRef.current;
-    const preferGlobal = isLikelyOverseasCity(city) || (!!last && !isInChina(last.lat, last.lng));
-    const hasAmap = !!placeSearchRef.current;
-
     setSearching(true);
+    const query = `${city} ${trimmed}`.trim();
 
-    if (!hasAmap || preferGlobal) {
-      try {
-        const pois = await searchNominatim(`${city} ${trimmed}`.trim());
-        setResults(pois);
-      } catch {
-        setResults([]);
-      } finally {
-        setSearching(false);
-      }
-      return;
-    }
-
-    try { placeSearchRef.current.setCity(city); } catch { }
-
-    placeSearchRef.current.search(trimmed, async (status: string, result: any) => {
-      if (status === 'complete' && result.poiList?.pois?.length) {
-        const pois = result.poiList.pois.map((poi: any) => ({
-          id: poi.id,
-          name: poi.name,
-          address: poi.address || poi.pname + poi.cityname + poi.adname,
-          location: `${poi.location.lng},${poi.location.lat}`,
-          type: poi.type,
-        }));
+    try {
+      const pois = await searchMapbox(query);
+      if (pois.length > 0) {
         setResults(pois);
         setSearching(false);
         return;
       }
+    } catch { /* fallback below */ }
 
-      if (preferGlobal) {
-        try {
-          const pois = await searchNominatim(`${city} ${trimmed}`.trim());
-          setResults(pois);
-        } catch {
-          setResults([]);
-        }
-      } else {
-        setResults([]);
-      }
-      setSearching(false);
-    });
+    try {
+      const pois = await searchNominatim(query);
+      setResults(pois);
+    } catch {
+      setResults([]);
+    }
+    setSearching(false);
   };
 
   useEffect(() => {
@@ -480,7 +448,7 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
     };
   }, [value, city]);
 
-  const handleSelect = (poi: AMapPoi) => {
+  const handleSelect = (poi: LocationPoi) => {
     onChange(poi.name);
     onSelect(poi);
     setShowResults(false);
@@ -493,46 +461,18 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
       async (pos) => {
         setLocating(false);
         const { latitude: lat, longitude: lng } = pos.coords;
-        lastKnownCoordsRef.current = { lat, lng };
-        const inChina = isInChina(lat, lng);
 
-        const AMap = aMapRef.current || (window as any).AMap;
-        if (inChina && AMap?.Geocoder) {
-          const gc = new AMap.Geocoder({ radius: 500 });
-          gc.getAddress([lng, lat], (status: string, result: any) => {
-            if (status === 'complete' && result.regeocode) {
-              const addr = result.regeocode;
-              const name = addr.pois?.[0]?.name || addr.formattedAddress?.slice(-10) || '我的位置';
-              const poi: AMapPoi = {
-                id: `gps-${Date.now()}`,
-                name,
-                address: addr.formattedAddress || '',
-                location: `${lng},${lat}`,
-                type: '',
-              };
-              onChange(poi.name);
-              onSelect(poi);
-            } else {
-              const poi: AMapPoi = { id: `gps-${Date.now()}`, name: '我的位置', address: `${lat.toFixed(5)},${lng.toFixed(5)}`, location: `${lng},${lat}`, type: '' };
-              onChange(poi.name);
-              onSelect(poi);
-            }
-          });
-          return;
-        }
+        try {
+          const poi = await reverseMapbox(lat, lng);
+          if (poi) { onChange(poi.name); onSelect(poi); return; }
+        } catch { /* fallback below */ }
 
         try {
           const poi = await reverseNominatim(lat, lng);
-          if (poi) {
-            onChange(poi.name);
-            onSelect(poi);
-            return;
-          }
-        } catch {
-          // ignore
-        }
+          if (poi) { onChange(poi.name); onSelect(poi); return; }
+        } catch { /* fallback below */ }
 
-        const fallbackPoi: AMapPoi = {
+        const fallbackPoi: LocationPoi = {
           id: `gps-${Date.now()}`,
           name: '我的位置',
           address: `${lat.toFixed(5)},${lng.toFixed(5)}`,
@@ -798,7 +738,7 @@ const CreateMemoryModal = ({
   );
   const [route, setRoute] = useState(isEditMode ? existingMeta.route : (initialDraft?.route || ''));
   const [locationName, setLocationName] = useState(isEditMode ? (editData?.location?.name || '') : (initialDraft?.locationName || ''));
-  const [selectedLocation, setSelectedLocation] = useState<AMapPoi | null>(
+  const [selectedLocation, setSelectedLocation] = useState<LocationPoi | null>(
     isEditMode
       ? (editData?.location ? {
         id: editData.location.id,
@@ -946,7 +886,7 @@ const CreateMemoryModal = ({
     setMood(prev => prev.includes(emoji) ? prev.filter(e => e !== emoji) : [...prev, emoji]);
   };
 
-  const handleLocationSelect = (poi: AMapPoi) => {
+  const handleLocationSelect = (poi: LocationPoi) => {
     setSelectedLocation(poi);
   };
 

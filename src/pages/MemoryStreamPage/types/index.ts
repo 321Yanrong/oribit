@@ -1,4 +1,4 @@
-export interface AMapPoi {
+export interface LocationPoi {
   id: string;
   name: string;
   address: string;
