@@ -18,20 +18,21 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Orbit" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tTL-a1-bX0">
-                                <rect key="frame" x="120" y="366" width="190" height="62"/>
+                                <rect key="frame" x="154" y="335" width="122" height="62"/>
                                 <fontDescription key="fontDescription" type="boldSystem" pointSize="52"/>
-                                <color key="textColor" name="LaunchTitleColor"/>
+                                <color key="textColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="—  记录共同轨迹  —" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="sUB-b2-cY1">
-                                <rect key="frame" x="130" y="475" width="170" height="17"/>
+                                <rect key="frame" x="149.66666666666666" y="413" width="130.99999999999997" height="18"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                 <color key="textColor" name="LaunchSubtitleColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="3lK-bq-fpe"/>
-                        <color key="backgroundColor" name="LaunchBackground"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <color key="tintColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
                             <constraint firstItem="tTL-a1-bX0" firstAttribute="centerX" secondItem="q0l-QF-fuh" secondAttribute="centerX" id="aXc-1a-bC0"/>
                             <constraint firstItem="tTL-a1-bX0" firstAttribute="centerY" secondItem="q0l-QF-fuh" secondAttribute="centerY" constant="-100" id="bYd-2b-cD1"/>
@@ -46,12 +47,6 @@
         </scene>
     </scenes>
     <resources>
-        <namedColor name="LaunchBackground">
-            <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </namedColor>
-        <namedColor name="LaunchTitleColor">
-            <color red="0.058823529411764705" green="0.058823529411764705" blue="0.058823529411764705" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </namedColor>
         <namedColor name="LaunchSubtitleColor">
             <color red="0.30196078431372547" green="0.30196078431372547" blue="0.30196078431372547" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>

@@ -146,7 +146,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             .single();
 
           if (profile) {
-            setCurrentUser(profile);
+            setCurrentUser({ ...profile, email: user.email || '' });
           }
           onSuccess();
         }
@@ -164,9 +164,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
           throw new Error(`邮件发送太频繁，请 ${seconds} 秒后再试`);
         }
 
-        const { betaJoinOrder } = await signUp(email, password, username, '');
+        await signUp(email, password, username);
         markEmailActionTriggered('signup', email);
-        setError(`✅ 注册成功！你是第 ${betaJoinOrder}/50 位内测用户，请前往邮箱点击验证链接，再回来登录。`);
+        setError(`✅ 注册成功！请前往邮箱点击验证链接，再回来登录。`);
         setIsLogin(true);
       }
     } catch (err: any) {
@@ -376,7 +376,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
                 style={{ accentColor: isLightMode ? '#171717' : '#ffffff' }}
               />
               <label htmlFor="agreed" className={`text-xs ${textMuted} leading-relaxed select-none`}>
-                我已阅读并同意 <a href="/terms" target="_blank" className="underline hover:opacity-80">《用户协议》</a> <a href="/privacy" target="_blank" className="underline hover:opacity-80">《隐私政策》</a> <a href="/privacy" target="_blank" className="underline hover:opacity-80">《未成年人个人信息保护规则》</a>
+                我已阅读并同意 <a href="/terms" target="_blank" className="underline hover:opacity-80">《用户协议》</a> <a href="/privacy" target="_blank" className="underline hover:opacity-80">《隐私政策》</a>
               </label>
             </div>
           )}

@@ -18,6 +18,9 @@
 		DF01DBC72F756F5200E7E99B /* NativeUploaderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF01DBC62F756F5200E7E99B /* NativeUploaderPlugin.swift */; };
 		DF01DBC82F756F5200E7E99B /* NativeUploaderPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = DF01DBC52F756F5200E7E99B /* NativeUploaderPlugin.m */; };
 		DF02AAC12F76A00000E7E99B /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF02AAC02F76A00000E7E99B /* MainViewController.swift */; };
+		DF03BDC12F85710100BBDD01 /* ThemeSyncPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF03BDC02F85710100BBDD01 /* ThemeSyncPlugin.swift */; };
+		DF03BDC32F85710100BBDD01 /* ThemeSyncPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = DF03BDC22F85710100BBDD01 /* ThemeSyncPlugin.m */; };
+		DF88A1012F99000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DF88A1002F99000000000001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +38,9 @@
 		DF01DBC62F756F5200E7E99B /* NativeUploaderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeUploaderPlugin.swift; sourceTree = "<group>"; };
 		DF02AAC02F76A00000E7E99B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		DFBD76482F75503000C99756 /* App-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "App-Bridging-Header.h"; sourceTree = "<group>"; };
+		DF03BDC02F85710100BBDD01 /* ThemeSyncPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSyncPlugin.swift; sourceTree = "<group>"; };
+		DF03BDC22F85710100BBDD01 /* ThemeSyncPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ThemeSyncPlugin.m; sourceTree = "<group>"; };
+		DF88A1002F99000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,7 +84,10 @@
 				DF01DBC52F756F5200E7E99B /* NativeUploaderPlugin.m */,
 				DF01DBC62F756F5200E7E99B /* NativeUploaderPlugin.swift */,
 				DF02AAC02F76A00000E7E99B /* MainViewController.swift */,
+				DF03BDC22F85710100BBDD01 /* ThemeSyncPlugin.m */,
+				DF03BDC02F85710100BBDD01 /* ThemeSyncPlugin.swift */,
 				504EC3131FED79650016851F /* Info.plist */,
+				DF88A1002F99000000000001 /* PrivacyInfo.xcprivacy */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
@@ -156,6 +165,7 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				DF88A1012F99000000000001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -170,6 +180,8 @@
 				DF01DBC82F756F5200E7E99B /* NativeUploaderPlugin.m in Sources */,
 				DF02AAC12F76A00000E7E99B /* MainViewController.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				DF03BDC12F85710100BBDD01 /* ThemeSyncPlugin.swift in Sources */,
+				DF03BDC32F85710100BBDD01 /* ThemeSyncPlugin.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -311,7 +323,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Orbit 轨迹";
@@ -320,7 +332,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wehihi.orbit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -338,7 +350,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Orbit 轨迹";
@@ -347,7 +359,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wehihi.orbit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

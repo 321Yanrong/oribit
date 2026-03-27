@@ -22,14 +22,6 @@ const config: CapacitorConfig = {
     StatusBar: {
       overlaysWebView: true,
     },
-    SplashScreen: {
-      launchShowDuration: 3000,
-      launchAutoHide: false,
-      backgroundColor: "#ffffff",
-      showSpinner: false,
-      androidSplashResourceName: "splash",
-      iosSpinnerStyle: "small",
-    },
     "CapacitorHttp": {
       "enabled": true
     },

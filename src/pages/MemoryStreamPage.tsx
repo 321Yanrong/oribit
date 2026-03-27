@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { App } from '@capacitor/app';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock, FaCity, FaEllipsisH } from 'react-icons/fa';
 import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
@@ -1353,6 +1356,8 @@ export default function MemoryStreamPage() {
     scrollPositions,
     memoryCommentReadMarkers,
     memoryCommentUnreadCount,
+    likeReadMarkers,
+    memoryLikeUnreadCount,
     memoryComposerRequestId,
     setMemoryStreamSearchQuery,
     setMemoryStreamFilterFriendIds,
@@ -1362,6 +1367,8 @@ export default function MemoryStreamPage() {
     setScrollPosition,
     markMemoryCommentsRead,
     setMemoryCommentUnreadCount,
+    markMemoryLikesRead,
+    setMemoryLikeUnreadCount,
     clearMemoryComposerRequest,
   } = useUIStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -1391,6 +1398,7 @@ export default function MemoryStreamPage() {
   const [activeMenuMemoryId, setActiveMenuMemoryId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showNotificationSheet, setShowNotificationSheet] = useState(false);
+  const [showLikeNotificationSheet, setShowLikeNotificationSheet] = useState(false);
   const [reportingFriend, setReportingFriend] = useState<any>(null);
 
   const handleBlockUser = async (targetUser: any) => {
@@ -1468,6 +1476,7 @@ export default function MemoryStreamPage() {
   const [replyTarget, setReplyTarget] = useState<Record<string, { commentId: string; authorId: string; authorName: string } | null>>({});
   const [albumFilterFriendIds, setAlbumFilterFriendIds] = useState<string[]>([]);
   const [albumDateRange, setAlbumDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [albumRoleFilter, setAlbumRoleFilter] = useState<'all' | 'mine' | 'others'>('all');
   // Top-of-page month filter (YYYY-MM) — keep UI consistent with LedgerPage
   const [currentMonth, setCurrentMonth] = useState('');
   // Top-of-page sort order for memory list: newest first ('desc') or oldest first ('asc')
@@ -1549,10 +1558,18 @@ export default function MemoryStreamPage() {
   const [roastInput, setRoastInput] = useState<Record<string, string>>({});
   const [submittingRoasts, setSubmittingRoasts] = useState<Record<string, boolean>>({});
   const [activeInteractionMemoryId, setActiveInteractionMemoryId] = useState<string | null>(null);
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const showH = Keyboard.addListener('keyboardWillShow', (info) => setKbHeight(info.keyboardHeight));
+    const hideH = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { showH.then(h => h.remove()); hideH.then(h => h.remove()); };
+  }, []);
 
   const shouldLockBackgroundScroll =
     isCreateOpen ||
-    // !!selectedMemory || // MemoryDetailModal handles its own scroll lock
+    !!selectedMemory ||
     !!activeStoryMemories ||
     showStoryEntry ||
     showAlbumFilterDialog ||
@@ -1796,10 +1813,22 @@ export default function MemoryStreamPage() {
     markMemoryCommentsRead(memoryId, latestCommentAt);
   };
 
+  const hasUnreadLikes = (memory: any) => {
+    const r = reactions[memory.id];
+    if (!r?.likers?.length) return false;
+    const otherLikers = r.likers.filter((id: string) => id !== currentUser?.id);
+    const lastSeen = likeReadMarkers[memory.id] ?? 0;
+    return otherLikers.length > lastSeen;
+  };
+
   const handleShareMemory = async (memory: any) => {
-    if (!settings.allowShare) {
-      alert('已关闭“允许他人分享你的回忆”，请在隐私设置中开启。');
-      return;
+    // If the sharer is not the author, check whether the author allows sharing
+    if (memory.user_id !== currentUser?.id) {
+      const authorFriend = friends.find((f: any) => f.friend?.id === memory.user_id);
+      if (authorFriend?.friend?.allow_share === false) {
+        alert('该回忆发布者未开启分享功能。');
+        return;
+      }
     }
     track('memory_share_attempt', { memoryId: memory?.id });
     const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
@@ -1934,6 +1963,19 @@ export default function MemoryStreamPage() {
       .filter((item: any): item is NonNullable<typeof item> => item !== null);
   }, [memories, commentsByMemory, currentUser, memoryCommentReadMarkers]);
 
+  const unreadLikeItems = useMemo(() => {
+    return memories
+      .filter((m: any) => hasUnreadLikes(m))
+      .map((m: any) => {
+        const likers: string[] = (reactions[m.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
+        const lastSeen = likeReadMarkers[m.id] ?? 0;
+        const newLikerIds = likers.slice(lastSeen);
+        const latestLikerId = newLikerIds[newLikerIds.length - 1];
+        const latestLiker = getMemoryAuthor(latestLikerId) || { name: '好友', avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + latestLikerId };
+        return { memory: m, newLikerIds, latestLiker };
+      });
+  }, [memories, reactions, likeReadMarkers, currentUser?.id]);
+
   // 首次进入时若存在历史好友筛选，自动清空避免进来就空白
   useEffect(() => {
     if (initialFilterClearedRef.current) return;
@@ -1964,6 +2006,12 @@ export default function MemoryStreamPage() {
         return true;
       });
     }
+    if (albumRoleFilter === 'mine') {
+      result = result.filter((m: any) => m.user_id === currentUser?.id);
+    } else if (albumRoleFilter === 'others') {
+      result = result.filter((m: any) => m.user_id !== currentUser?.id);
+    }
+
     // Apply same sort order to album-filtered list
     const sorted = [...result].sort((a: any, b: any) => {
       const ta = new Date(a.memory_date || a.created_at).getTime();
@@ -1972,7 +2020,7 @@ export default function MemoryStreamPage() {
       return sortOrder === 'desc' ? tb - ta : ta - tb;
     });
     return sorted;
-  }, [filteredMemories, albumFilterFriendIds, albumDateRange, sortOrder]);
+  }, [filteredMemories, albumFilterFriendIds, albumDateRange, albumRoleFilter, currentUser, sortOrder]);
 
   // 若筛选导致列表为空，自动清空筛选以恢复数据
   useEffect(() => {
@@ -2040,6 +2088,11 @@ export default function MemoryStreamPage() {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
     setMemoryCommentUnreadCount(unreadCount);
   }, [memories, commentsByMemory, memoryCommentReadMarkers, currentUser?.id, setMemoryCommentUnreadCount]);
+
+  useEffect(() => {
+    const count = memories.filter((m: any) => hasUnreadLikes(m)).length;
+    setMemoryLikeUnreadCount(count);
+  }, [memories, reactions, likeReadMarkers, currentUser?.id]);
 
   const refreshMemoryStream = useCallback(async (showLoading: boolean) => {
     if (!shouldAllowRefresh()) return;
@@ -2259,7 +2312,11 @@ export default function MemoryStreamPage() {
       style={{
         backgroundColor: 'var(--orbit-surface)',
         color: 'var(--orbit-text)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
+        paddingBottom: kbHeight > 0
+          ? `${kbHeight}px`
+          : 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
+        transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+        overscrollBehaviorY: 'contain',
       }}
     >
       <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} disabled={shouldLockBackgroundScroll} scrollRef={scrollContainerRef} />
@@ -2292,6 +2349,16 @@ export default function MemoryStreamPage() {
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B] animate-pulse" />
                   {memoryCommentUnreadCount} 条新评论
+                </motion.button>
+              )}
+              {memoryLikeUnreadCount > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowLikeNotificationSheet(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-400 border border-red-500/20"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                  {memoryLikeUnreadCount} 个新的赞
                 </motion.button>
               )}
             </div>
@@ -2616,8 +2683,11 @@ export default function MemoryStreamPage() {
 
                       <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="flex items-center gap-4">
-                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
-                            <FaHeart className="text-[22px]" />
+                          <button onClick={() => { toggleLike(memory.id); const otherLikers = (reactions[memory.id]?.likers || []).filter((id: string) => id !== currentUser?.id); markMemoryLikesRead(memory.id, otherLikers.length); }} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                            <div className="relative">
+                              <FaHeart className="text-[22px]" />
+                              {hasUnreadLikes(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                            </div>
                             {reaction.likes > 0 && <span className="text-sm font-medium">{reaction.likes}</span>}
                           </button>
                           <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="flex items-center gap-1 text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
@@ -2938,8 +3008,11 @@ export default function MemoryStreamPage() {
 
                       <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="flex items-center gap-4">
-                          <button onClick={() => toggleLike(memory.id)} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
-                            <FaHeart className="text-[22px]" />
+                          <button onClick={() => { toggleLike(memory.id); const otherLikers = (reactions[memory.id]?.likers || []).filter((id: string) => id !== currentUser?.id); markMemoryLikesRead(memory.id, otherLikers.length); }} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                            <div className="relative">
+                              <FaHeart className="text-[22px]" />
+                              {hasUnreadLikes(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
+                            </div>
                             {reaction.likes > 0 && <span className="text-sm font-medium">{reaction.likes}</span>}
                           </button>
                           <button onClick={() => setActiveInteractionMemoryId(memory.id)} className="flex items-center gap-1 text-[color:var(--orbit-text)] hover:text-gray-400 transition-colors relative">
@@ -3156,6 +3229,33 @@ export default function MemoryStreamPage() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="px-4 mb-6">
+                  {/* 角色筛选 */}
+                  <div
+                    className="mb-3 rounded-2xl border p-3 flex items-center justify-between"
+                    style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                  >
+                    <p className="text-sm font-semibold shrink-0" style={{ color: 'var(--orbit-text)' }}>查看范围</p>
+                    <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--orbit-border)' }}>
+                      {(['all', 'mine', 'others'] as const).map((v, i) => {
+                        const label = v === 'all' ? '全部' : v === 'mine' ? '我发布的' : '为我发布';
+                        const active = albumRoleFilter === v;
+                        return (
+                          <button
+                            key={v}
+                            onClick={() => setAlbumRoleFilter(v)}
+                            className={`px-3 py-1.5 text-xs font-semibold transition-colors${i > 0 ? ' border-l' : ''}`}
+                            style={{
+                              borderColor: 'var(--orbit-border)',
+                              background: active ? '#00FFB3' : 'var(--orbit-surface)',
+                              color: active ? '#000' : 'var(--orbit-text-muted, #9ca3af)',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div
                     className="mb-4 rounded-2xl border p-4"
                     style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
@@ -3210,7 +3310,7 @@ export default function MemoryStreamPage() {
                         </label>
                         <button
                           type="button"
-                          onClick={() => { setAlbumDateRange({ start: '', end: '' }); setCurrentMonth(''); }}
+                          onClick={() => { setAlbumDateRange({ start: '', end: '' }); setCurrentMonth(''); setAlbumRoleFilter('all'); }}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
                           style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)' }}
                         >清空</button>
@@ -3342,16 +3442,19 @@ export default function MemoryStreamPage() {
       </AnimatePresence>
 
       {/* 3. 记忆详情弹窗 */}
-      <AnimatePresence>
-        {selectedMemory && (
-          <MemoryDetailModal
-            memory={selectedMemory}
-            onClose={() => setSelectedMemory(null)}
-            friends={friends}
-            currentUser={currentUser}
-          />
-        )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedMemory && (
+            <MemoryDetailModal
+              memory={selectedMemory}
+              onClose={() => setSelectedMemory(null)}
+              friends={friends}
+              currentUser={currentUser}
+            />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <AnimatePresence>
         {showNotificationSheet && (
@@ -3420,6 +3523,84 @@ export default function MemoryStreamPage() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {showLikeNotificationSheet && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => {
+                memories.forEach((m: any) => {
+                  if (hasUnreadLikes(m)) {
+                    const otherLikers = (reactions[m.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
+                    markMemoryLikesRead(m.id, otherLikers.length);
+                  }
+                });
+                setShowLikeNotificationSheet(false);
+              }}
+              className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed bottom-20 left-0 right-0 z-[191] flex flex-col rounded-t-3xl border-t shadow-2xl safe-bottom"
+              style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', maxHeight: '70vh' }}
+            >
+              <div className="w-full flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => {
+                memories.forEach((m: any) => {
+                  if (hasUnreadLikes(m)) {
+                    const otherLikers = (reactions[m.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
+                    markMemoryLikesRead(m.id, otherLikers.length);
+                  }
+                });
+                setShowLikeNotificationSheet(false);
+              }}>
+                <div className="w-12 h-1.5 rounded-full bg-gray-400/30" />
+              </div>
+
+              <div className="px-6 pb-4 flex-1 overflow-hidden flex flex-col">
+                <h2 className="text-lg font-bold mb-4 shrink-0" style={{ color: 'var(--orbit-text)' }}>新的赞</h2>
+
+                <div className="overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-6 flex-1">
+                  {unreadLikeItems.length === 0 ? (
+                    <p className="text-sm text-center py-8" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>暂无未读点赞</p>
+                  ) : (
+                    unreadLikeItems.map(({ memory, newLikerIds, latestLiker }: any) => (
+                      <div
+                        key={memory.id}
+                        className="p-3 rounded-2xl flex gap-3 items-start border cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+                        onClick={() => {
+                          const otherLikers = (reactions[memory.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
+                          markMemoryLikesRead(memory.id, otherLikers.length);
+                          setShowLikeNotificationSheet(false);
+                          setSelectedMemory(memory);
+                        }}
+                      >
+                        <img src={latestLiker.avatar} className="w-8 h-8 rounded-full bg-gray-200 object-cover shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold truncate" style={{ color: 'var(--orbit-text)' }}>
+                              {newLikerIds.length > 1 ? `${latestLiker.name} 等 ${newLikerIds.length} 人` : latestLiker.name}
+                            </p>
+                            <FaHeart className="text-red-400 text-xs shrink-0" />
+                          </div>
+                          <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                            赞了你的回忆{memory.content ? `：${memory.content.slice(0, 30)}${memory.content.length > 30 ? '…' : ''}` : ''}
+                          </p>
+                        </div>
+                        {memory.photos?.[0] && (
+                          <img src={memory.photos[0]} className="w-10 h-10 rounded-lg object-cover ml-1 opacity-80" />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {activeInteractionMemoryId && (() => {
           const memory = memories.find(m => m.id === activeInteractionMemoryId);
           if (!memory) return null;
@@ -3455,8 +3636,13 @@ export default function MemoryStreamPage() {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed bottom-0 left-0 right-0 z-[191] flex flex-col rounded-t-3xl border-t shadow-2xl safe-bottom max-h-[85vh]"
-                style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)' }}
+                className="fixed left-0 right-0 z-[191] flex flex-col rounded-t-3xl border-t shadow-2xl safe-bottom max-h-[85vh]"
+                style={{
+                  backgroundColor: 'var(--orbit-surface)',
+                  borderColor: 'var(--orbit-border)',
+                  bottom: kbHeight > 0 ? `${kbHeight}px` : 0,
+                  transition: 'bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+                }}
               >
                 <div className="w-full flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => setActiveInteractionMemoryId(null)}>
                   <div className="w-12 h-1.5 rounded-full bg-gray-400/30" />

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { FaCamera, FaTimes, FaSpinner } from 'react-icons/fa';
+import { shouldAllowUpload } from '../utils/settings';
 
 interface AvatarUploaderProps {
   currentAvatar: string;
@@ -29,6 +30,11 @@ export default function AvatarUploader({ currentAvatar, userId, onAvatarChange }
       setPreview(event.target?.result as string);
     };
     reader.readAsDataURL(file);
+
+    if (!shouldAllowUpload()) {
+      alert('已开启仅 Wi‑Fi 上传，请连接 Wi‑Fi 后重试。');
+      return;
+    }
 
     setUploading(true);
 

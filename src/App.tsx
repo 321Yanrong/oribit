@@ -4,18 +4,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
 import { useAppStore } from './store/app';
-import { usePushSetup } from './hooks/useOneSignal';
+// import { usePushSetup } from './hooks/useOneSignal'; // 推送功能待后续启用
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav, { BOTTOM_NAV_CONTENT_GAP } from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import PWABanners from './components/PWABanners';
-import { SplashScreen as CapacitorSplashScreen } from '@capacitor/splash-screen';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
 import ProfilePage from './pages/ProfilePage';
-import { shouldAllowRefresh, readSettings, SETTINGS_EVENT } from './utils/settings';
+import { shouldAllowRefresh, readSettings, SETTINGS_EVENT, setCachedConnectionType } from './utils/settings';
 import { Analytics } from '@vercel/analytics/react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
@@ -122,7 +121,7 @@ const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
   const isSystemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const mode = settings.themeMode || 'system';
 
-  let finalTheme: 'light' | 'dark' | string = 'dark';
+  let finalTheme: 'light' | 'dark' | string = 'light';
   if (mode === 'system') {
     finalTheme = isSystemDark ? 'dark' : 'light';
   } else {
@@ -130,11 +129,12 @@ const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
   }
 
   document.documentElement.dataset.theme = finalTheme;
-  document.body.style.backgroundColor = finalTheme === 'dark' ? '#0b1324' : '#f5f5f7';
+  document.body.style.backgroundColor = finalTheme === 'dark' ? '#0b1324' : '#ffffff';
   if (Capacitor.isNativePlatform()) {
     StatusBar.setStyle({ style: finalTheme === 'dark' ? Style.Light : Style.Dark }).catch((err) => {
       console.warn('StatusBar setStyle failed:', err);
     });
+    Capacitor.Plugins.ThemeSync?.setTheme({ theme: finalTheme }).catch(() => {});
   }
 };
 
@@ -163,10 +163,26 @@ function App() {
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   useAegisMonitor();
-  usePushSetup();
+  // usePushSetup(); // 推送功能待后续启用
   useNativeStatusBar();
   useNativeKeyboardGuard();
 
+  // Populate the Wi-Fi connection cache using the native Network plugin so that
+  // shouldAllowRefresh() / shouldAllowUpload() work correctly on iOS where
+  // navigator.connection is not available.
+  useEffect(() => {
+    Network.getStatus()
+      .then(s => setCachedConnectionType(s.connectionType))
+      .catch(() => {});
+
+    const listenerPromise = Network.addListener('networkStatusChange', (status) => {
+      setCachedConnectionType(status.connectionType);
+    });
+
+    return () => {
+      listenerPromise.then(handle => handle.remove()).catch(() => {});
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -345,10 +361,7 @@ function App() {
     if (loading || !firstScreenReady) return;
     if (document.visibilityState !== 'visible') return;
 
-    const timer = setTimeout(async () => {
-      try {
-        await CapacitorSplashScreen.hide();
-      } catch (_) { /* ignore on web */ }
+    const timer = setTimeout(() => {
       setAllowAuthModal(true);
     }, 150);
 

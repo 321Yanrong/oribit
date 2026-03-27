@@ -49,7 +49,17 @@ export const writeSettings = (next: OrbitSettings) => {
   window.dispatchEvent(new CustomEvent(SETTINGS_EVENT, { detail: next }));
 };
 
+// module-level cache populated by @capacitor/network (null = not yet initialised)
+let _cachedIsWifi: boolean | null = null;
+
+export const setCachedConnectionType = (connectionType: string) => {
+  _cachedIsWifi = connectionType === 'wifi' || connectionType === 'ethernet';
+};
+
 export const isWifiConnection = (): boolean => {
+  // Use Capacitor-provided cache when available (iOS + Android native)
+  if (_cachedIsWifi !== null) return _cachedIsWifi;
+  // Web fallback (Android Chrome, desktop browser)
   if (typeof navigator === 'undefined') return true;
   const conn = (navigator as any)?.connection;
   if (!conn) return true;

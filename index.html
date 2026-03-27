@@ -6,6 +6,24 @@
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
+  <!-- 关键：在任何 CSS 加载前提前读取主题设置，彻底防止启动闪黑 -->
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('orbit_settings') || '{}');
+        var mode = s.themeMode || 'light';
+        var isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var theme = isDark ? 'dark' : 'light';
+        var bg = isDark ? '#121212' : '#ffffff';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.backgroundColor = bg;
+        // 同步写入 meta theme-color，让 iOS 状态栏颜色也正确
+        var metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) metaThemeColor.setAttribute('content', bg);
+      } catch (e) { /* 读取失败时保持默认浅色，不影响启动 */ }
+    })();
+  </script>
+
   <meta name="theme-color" content="#ffffff" />
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,10 +36,13 @@
   <title>Orbit 轨迹</title>
 
   <style>
-    /* 关键 2：在 React 运行前，先把“底座”涂黑，防止白屏闪烁 */
+    /* 关键：在 React/CSS 加载前提供正确的背景色，防止启动闪黑 */
     :root {
       --orbit-bg: #ffffff;
-      /* 保持与 SplashScreen/Capacitor backgroundColor 一致，避免启动闪白 */
+    }
+
+    :root[data-theme='dark'] {
+      --orbit-bg: #121212;
     }
 
     html,
@@ -31,16 +52,15 @@
       width: 100%;
       height: 100%;
       background-color: var(--orbit-bg);
-      /* 彻底禁用整个页面的橡皮筋回弹，防止下拉露白 */
       overscroll-behavior: none;
       overflow: hidden;
-      /* 确保 Emoji 字体在最底层就准备好 */
       font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", sans-serif;
     }
 
     #root {
       width: 100%;
       height: 100%;
+      background-color: var(--orbit-bg);
     }
   </style>
 

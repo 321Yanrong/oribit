@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaTimes, FaSpinner } from 'react-icons/fa';
 import imageCompression from 'browser-image-compression';
+import { shouldAllowUpload } from '../utils/settings';
 
 interface PhotoUploaderProps {
   userId: string;
@@ -22,6 +23,10 @@ export default function PhotoUploader({
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || uploading) return;
+    if (!shouldAllowUpload()) {
+      alert('已开启仅 Wi‑Fi 上传，请连接 Wi‑Fi 后重试。');
+      return;
+    }
 
     // Convert FileList to Array and filter for valid images
     const fileArray = Array.from(files);
@@ -72,6 +77,13 @@ export default function PhotoUploader({
 
       const { uploadMultiplePhotos } = await import('../api/supabase');
       const urls = await uploadMultiplePhotos(userId, compressedFiles);
+      if (urls && urls.length > 0) {
+        onPhotosChange([...photos, ...urls]);
+      } else {
+        alert('上传失败，请重试');
+      }
+    } catch (err) {
+      console.error('Photo upload failed:', err);
       alert('上传失败，请重试');
     } finally {
       setUploading(false);

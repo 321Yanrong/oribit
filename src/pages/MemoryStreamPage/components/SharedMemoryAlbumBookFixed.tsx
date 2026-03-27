@@ -931,32 +931,36 @@ export const MemoryStoryDrawer = ({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto"
+                    className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-auto"
+                    style={{ backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.97)' : 'rgba(0,0,0,0.88)', borderRadius: 'inherit' }}
                     onClick={() => setShowPosterPreview(false)}
                   >
-                    <div
-                      className="absolute inset-0 rounded-3xl"
-                      style={{
-                        backgroundColor: theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.10)',
-                        pointerEvents: 'none',
-                      }}
-                    />
                     <img
                       src={posterDataUrl}
                       alt="分享海报"
-                      className="w-full h-full object-cover rounded-3xl shadow-2xl"
+                      className="rounded-2xl shadow-2xl"
                       style={{
+                        maxWidth: '88%',
+                        maxHeight: '80%',
+                        objectFit: 'contain',
                         WebkitTouchCallout: 'default',
                         pointerEvents: 'auto',
                         WebkitUserSelect: 'none',
                       }}
                       onClick={(e) => e.stopPropagation()}
                     />
+                    <p
+                      className="mt-3 text-xs font-semibold tracking-wide"
+                      style={{ color: theme === 'light' ? '#00b47a' : '#00FFB3', pointerEvents: 'none' }}
+                    >
+                      长按图片保存到相册
+                    </p>
                     <button
                       onClick={() => setShowPosterPreview(false)}
-                      className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20"
+                      className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center border"
+                      style={{ background: 'rgba(0,0,0,0.25)', borderColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
                     >
-                      <FaTimes />
+                      <FaTimes className="text-sm" />
                     </button>
                   </motion.div>
                 )}

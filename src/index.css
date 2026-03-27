@@ -16,16 +16,16 @@
 }
 
 :root {
-  /* 默认深色主题变量 */
-  --orbit-bg: #121212;
+  /* 默认浅色主题变量（与 index.html / capacitor.config 保持一致，防止启动闪黑） */
+  --orbit-bg: #ffffff;
   --app-root-bg: var(--orbit-bg);
-  --orbit-surface: #1b1b1b;
-  --orbit-card: rgba(255, 255, 255, 0.08);
-  --orbit-border: rgba(255, 255, 255, 0.12);
-  --orbit-text: #ffffff;
-  --orbit-text-muted: #cbd5e1;
-  --orbit-glow: rgba(0, 255, 179, 0.3);
-  color-scheme: dark;
+  --orbit-surface: #ffffff;
+  --orbit-card: rgba(0, 0, 0, 0.08);
+  --orbit-border: rgba(0, 0, 0, 0.14);
+  --orbit-text: #0f172a;
+  --orbit-text-muted: #334155;
+  --orbit-glow: rgba(0, 150, 110, 0.25);
+  color-scheme: light;
 }
 
 :root[data-theme='light'] {
@@ -38,6 +38,18 @@
   --orbit-text-muted: #334155;
   --orbit-glow: rgba(0, 150, 110, 0.25);
   color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --orbit-bg: #121212;
+  --app-root-bg: var(--orbit-bg);
+  --orbit-surface: #1b1b1b;
+  --orbit-card: rgba(255, 255, 255, 0.08);
+  --orbit-border: rgba(255, 255, 255, 0.12);
+  --orbit-text: #ffffff;
+  --orbit-text-muted: #cbd5e1;
+  --orbit-glow: rgba(0, 255, 179, 0.3);
+  color-scheme: dark;
 }
 
 @tailwind base;
@@ -356,8 +368,4 @@
     pointer-events: none;
   }
 
-  html,
-  body {
-    background-color: #ffffff !important;
-  }
 }

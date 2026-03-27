@@ -8,7 +8,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        let savedTheme = UserDefaults.standard.string(forKey: "orbit_app_theme") ?? "light"
+        if let window = self.window {
+            window.overrideUserInterfaceStyle = savedTheme == "dark" ? .dark : .light
+            window.backgroundColor = savedTheme == "dark"
+                ? UIColor(red: 0x12/255.0, green: 0x12/255.0, blue: 0x12/255.0, alpha: 1)
+                : .white
+        }
         return true
     }
 

@@ -549,7 +549,7 @@ export default function LedgerPage() {
   const borderLine = isDarkMode ? 'border-neutral-800' : 'border-neutral-200';
 
   return (
-    <div ref={scrollContainerRef} className={`relative flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-36 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif' }}>
+    <div ref={scrollContainerRef} className={`relative flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-36 ${bgMain} ${textPrimary}`} style={{ fontFamily: '"PingFang SC", "Helvetica Neue", sans-serif', overscrollBehaviorY: 'contain' }}>
       <PullToRefresh onRefresh={handlePullRefresh} isRefreshing={isRefreshingPull} disabled={showLedgerModal || !!editingLedger} scrollRef={scrollContainerRef} />
       {/* 顶部标题栏 (高级线条版 + 月份筛选 + Q弹渐变按钮) */}
       <div

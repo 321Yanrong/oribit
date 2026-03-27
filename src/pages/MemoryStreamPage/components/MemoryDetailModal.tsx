@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { VoiceRecorder } from '../../../components/MediaUploader';
 import { uploadAvatar, updateProfileAvatarUrl, supabase } from '../../../api/supabase';
+import { shouldAllowUpload } from '../../../utils/settings';
 import { useUserStore } from '../../../store';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaChevronRight, FaMicrophone, FaDollarSign, FaQuoteLeft, FaHeart } from 'react-icons/fa';
@@ -291,6 +292,11 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !avatarPreview?.userId || !currentUser?.id || avatarPreview.userId !== currentUser.id) return;
+    if (!shouldAllowUpload()) {
+      alert('已开启仅 Wi‑Fi 上传，请连接 Wi‑Fi 后重试。');
+      if (avatarFileRef.current) avatarFileRef.current.value = '';
+      return;
+    }
     setAvatarSaving(true);
     try {
       const url = await uploadAvatar(currentUser.id, file);
@@ -394,23 +400,21 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 backdrop-blur-xl overflow-y-auto memory-modal-backdrop"
+      className="fixed inset-0 z-50 backdrop-blur-xl flex flex-col memory-modal-backdrop"
       style={{
         backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 92%, rgba(0,0,0,0.55))',
         color: 'var(--orbit-text)',
         paddingBottom: kbHeight > 0 ? `${kbHeight}px` : undefined,
         transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+        overscrollBehaviorY: 'contain',
       }}
       onClick={onClose}
     >
-      <div className="min-h-screen" onClick={(e) => e.stopPropagation()}>
-
-        {/* ✨ 修复后的独立 Header：实心防穿透、绝对居中 */}
-        {/* ✨ 修复后的独立 Header：完美适配深浅色模式、绝对居中、实心防穿透 */}
+      <div onClick={(e) => e.stopPropagation()} className="flex flex-col flex-1 min-h-0">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="sticky top-0 z-[100] w-full border-b backdrop-blur-xl"
+          className="flex-shrink-0 z-[100] w-full border-b backdrop-blur-xl"
           style={{
             // 完美适配深色/浅色模式，90%不透明度防穿透
             backgroundColor: 'color-mix(in srgb, var(--orbit-surface) 90%, transparent)',
@@ -448,7 +452,8 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           </div>
         </motion.div>
 
-        {/* 👇 下方内容区：调整 paddingTop 配合 sticky header */}
+        {/* Scrollable body — only this area scrolls, header stays pinned */}
+        <div className="flex-1 overflow-y-auto" style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <div
           className="px-4 pb-32 w-full max-w-3xl mx-auto"
           style={{ paddingTop: '16px' }}
@@ -841,6 +846,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
             </motion.div>
           )}
         </div>
+        </div>{/* end scrollable body */}
       </div>
 
       <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />

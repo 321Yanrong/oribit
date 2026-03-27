@@ -43,6 +43,7 @@ export interface Friend {
     username: string;      // 优先显示备注，无备注时为真实名
     real_username: string; // 永远是真实账号名/马甲名，用于详情页
     avatar_url: string;
+    allow_share?: boolean;
   };
   created_at: string;
 }
@@ -81,6 +82,7 @@ const mapFriendRecord = (item: any): Friend => {
       real_username: isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友',
       username: item.remark || (isVirtual ? (item.friend_name || '马甲好友') : friendProfile?.username ?? '密友'),
       avatar_url: avatarUrl,
+      allow_share: isVirtual ? undefined : (friendProfile?.allow_share as boolean | undefined),
     },
   };
 };
@@ -149,7 +151,8 @@ export const useUserStore = create<UserState>((set, get) => ({
         friend:friend_id (
           id,
           username,
-          avatar_url
+          avatar_url,
+          allow_share
         )
       `)
       .eq('user_id', currentUser.id)
