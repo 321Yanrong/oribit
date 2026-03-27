@@ -4,6 +4,7 @@ import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { supabase, signUp, signIn, sendPasswordReset, updatePasswordAfterRecovery } from '../api/supabase';
+import appIcon from '../../assets/icons/logo.png';
 import { useUserStore } from '../store';
 
 const EMAIL_ACTION_COOLDOWN_MS = 60 * 1000;
@@ -226,7 +227,9 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isLightMode ? 'bg-white/60' : 'bg-orbit-black'}`}
       style={{
         ...(isLightMode ? { backdropFilter: 'blur(6px)' } : undefined),
-        paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined,
+        paddingBottom: keyboardHeight > 0
+          ? `${keyboardHeight + 16}px`
+          : 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
         transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
       }}
     >
@@ -240,7 +243,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
         style={{
           maxHeight: keyboardHeight > 0
             ? `calc(100dvh - ${keyboardHeight + 32}px)`
-            : 'calc(100dvh - 2rem)',
+            : 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 120px)',
           transition: 'max-height 200ms cubic-bezier(0.33, 1, 0.68, 1)',
         }}
       >
@@ -252,7 +255,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
             className="mx-auto mb-4"
           >
-            <img src="/assets/icons/icon-384.png" alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
+            <img src={appIcon} alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
           </motion.div>
           <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Orbit 轨迹</h1>
           <p className={`${textMuted}`}>记录与好友的每一个足迹 ✨</p>
@@ -384,10 +387,12 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
             disabled={isRecoveryMode ? updatingPassword : loading}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className={`w-full py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg ${isLightMode
-              ? 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-neutral-900/10'
-              : 'bg-white text-black hover:bg-neutral-200 shadow-white/10'
-              }`}
+            className="w-full py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg"
+            style={{
+              background: 'linear-gradient(135deg, #00FFB3, #00D9FF)',
+              color: '#0f172a',
+              boxShadow: '0 4px 20px rgba(0, 255, 179, 0.25)',
+            }}
           >
             {(isRecoveryMode ? updatingPassword : loading) ? (
               <>
@@ -432,7 +437,7 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
         )}
 
         {/* 演示模式 */}
-        <div className="mt-6 pt-6 border-t border-white/10">
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)' }}>
           <button
             onClick={onDemo}
             className={`${textMuted} w-full py-3 hover:opacity-80 text-sm transition-colors`}

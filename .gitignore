@@ -7,3 +7,11 @@ dev-dist/
 *.log
 .DS_Store
 .vscode/
+.idea/
+
+# iOS user-specific
+*.xcuserstate
+xcuserdata/
+
+# Capacitor generated (rebuilt by `npx cap sync`)
+ios/App/App/capacitor.config.json

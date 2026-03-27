@@ -45,8 +45,8 @@ function memoryStreamFetchBatchRaceMs(): number {
 }
 
 // 高德地图 API 配置
-const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
-const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
+const AMAP_KEY = import.meta.env.VITE_AMAP_KEY as string;
+const AMAP_SECURITY_CODE = import.meta.env.VITE_AMAP_SECURITY_CODE as string;
 
 // 配置安全密钥
 (window as any)._AMapSecurityConfig = {
@@ -838,6 +838,15 @@ const CreateMemoryModal = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const hasContent = content.trim().length > 0 || photos.length > 0 || videos.length > 0 || audios.length > 0;
+
+  const handleCancel = () => {
+    if (isEditMode) { onClose(); return; }
+    if (!hasContent) { onClearDraft?.(); onClose(); return; }
+    setShowCancelConfirm(true);
+  };
 
   useEffect(() => {
     if (!isEditMode) {
@@ -1089,7 +1098,7 @@ const CreateMemoryModal = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleCancel}
     >
       <motion.div
         initial={{ y: '100%' }}
@@ -1109,7 +1118,7 @@ const CreateMemoryModal = ({
         <div className="sticky top-0 flex items-center justify-between px-4 py-4 z-20"
           style={{ background: 'var(--orbit-surface)', borderBottom: '1px solid var(--orbit-border)', color: 'var(--orbit-text)' }}
         >
-          <button onClick={onClose} style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>取消</button>
+          <button onClick={handleCancel} style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>取消</button>
           <span className="font-semibold" style={{ color: 'var(--orbit-text)' }}>{isEditMode ? '编辑回忆' : '记录此刻'}</span>
           <button
             data-tour-id="memory-submit"
@@ -1335,6 +1344,51 @@ const CreateMemoryModal = ({
             </motion.div>
           )}
         </div>
+
+        {/* 取消确认弹窗 */}
+        <AnimatePresence>
+          {showCancelConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center px-8"
+              onClick={() => setShowCancelConfirm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl"
+                style={{ background: 'var(--orbit-surface)', border: '1px solid var(--orbit-border)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 pt-6 pb-4 text-center">
+                  <p className="font-semibold text-base" style={{ color: 'var(--orbit-text)' }}>保留此草稿？</p>
+                  <p className="text-sm mt-1.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                    你编辑的内容将被保存，下次可以继续编辑
+                  </p>
+                </div>
+                <div className="flex border-t" style={{ borderColor: 'var(--orbit-border)' }}>
+                  <button
+                    className="flex-1 py-3.5 text-sm font-medium border-r transition-colors"
+                    style={{ color: '#ef4444', borderColor: 'var(--orbit-border)' }}
+                    onClick={() => { setShowCancelConfirm(false); onClearDraft?.(); onClose(); }}
+                  >
+                    删除草稿
+                  </button>
+                  <button
+                    className="flex-1 py-3.5 text-sm font-semibold transition-colors"
+                    style={{ color: '#00C9A7' }}
+                    onClick={() => { setShowCancelConfirm(false); onClose(); }}
+                  >
+                    保留草稿
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );

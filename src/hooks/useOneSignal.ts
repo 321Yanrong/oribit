@@ -23,7 +23,7 @@ export function usePushSetup() {
 
         // 2. 尝试初始化
         await OneSignal.init({
-          appId: '48d60e01-82a6-482e-b8cc-d07ba2790f4b',
+          appId: import.meta.env.VITE_ONESIGNAL_APP_ID as string,
           allowLocalhostAsSecureOrigin: true,
           notifyButton: { enable: false },
         });

@@ -19,6 +19,7 @@ import ReportPage from '../components/ReportPage';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import PhotoUploader from '../components/PhotoUploader';
 import AdminReportsPage from '../components/AdminReportsPage';
+import appIcon from '../../assets/icons/logo.png';
 
 const stripOrbitMetaText = (content: string) => {
   const raw = content || '';
@@ -4981,7 +4982,7 @@ Orbit可能根据法律或业务需要修改本隐私政策。重大变更时我
                 <div className="px-4 pt-2">
                   <div className="rounded-3xl overflow-hidden" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                     <div className="px-6 pt-12 pb-8 text-center" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
-                      <img src="/assets/icons/icon-384.png" alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
+                      <img src={appIcon} alt="Orbit" className="h-16 w-auto mx-auto object-contain rounded-lg" />
                       <p className="mt-4 text-[15px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>v{appVersion}</p>
                       <p className="mt-1 text-[13px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>更新于 {appBuildLabel}</p>
                     </div>

@@ -102,7 +102,7 @@
 
   body[data-page='map'],
   body[data-page='map'] #root {
-    background-color: var(--app-root-bg, #121212);
+    background-color: var(--app-root-bg, #ffffff);
     /* Fallback to default background */
   }
 
@@ -358,6 +358,6 @@
 
   html,
   body {
-    background-color: #121212 !important;
+    background-color: #ffffff !important;
   }
 }

@@ -13,23 +13,30 @@
         <scene sceneID="EHf-IW-A2E">
             <objects>
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
-                    <view key="view" multipleTouchEnabled="YES" contentMode="scaleToFill" id="q0l-QF-fuh">
+                    <view key="view" contentMode="scaleToFill" id="q0l-QF-fuh">
                         <rect key="frame" x="0.0" y="0.0" width="430" height="932"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashLogo" translatesAutoresizingMaskIntoConstraints="NO" id="5NW-pi-ARf">
-                                <rect key="frame" x="175" y="426" width="80" height="80"/>
-                                <constraints>
-                                    <constraint firstAttribute="height" constant="80" id="1Ix-JU-IHw"/>
-                                    <constraint firstAttribute="width" constant="80" id="mNN-py-1n3"/>
-                                </constraints>
-                            </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Orbit" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tTL-a1-bX0">
+                                <rect key="frame" x="120" y="366" width="190" height="62"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="52"/>
+                                <color key="textColor" red="0.058823529411764705" green="0.058823529411764705" blue="0.058823529411764705" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="—  记录共同轨迹  —" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="sUB-b2-cY1">
+                                <rect key="frame" x="130" y="475" width="170" height="17"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                                <color key="textColor" red="0.30196078431372547" green="0.30196078431372547" blue="0.30196078431372547" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="3lK-bq-fpe"/>
                         <color key="backgroundColor" name="LaunchBackground"/>
                         <constraints>
-                            <constraint firstItem="5NW-pi-ARf" firstAttribute="centerX" secondItem="q0l-QF-fuh" secondAttribute="centerX" id="OAP-a5-ucH"/>
-                            <constraint firstItem="5NW-pi-ARf" firstAttribute="centerY" secondItem="q0l-QF-fuh" secondAttribute="centerY" id="fHe-CE-5lp"/>
+                            <constraint firstItem="tTL-a1-bX0" firstAttribute="centerX" secondItem="q0l-QF-fuh" secondAttribute="centerX" id="aXc-1a-bC0"/>
+                            <constraint firstItem="tTL-a1-bX0" firstAttribute="centerY" secondItem="q0l-QF-fuh" secondAttribute="centerY" constant="-100" id="bYd-2b-cD1"/>
+                            <constraint firstItem="sUB-b2-cY1" firstAttribute="centerX" secondItem="q0l-QF-fuh" secondAttribute="centerX" id="cZe-3c-dE2"/>
+                            <constraint firstItem="sUB-b2-cY1" firstAttribute="top" secondItem="tTL-a1-bX0" secondAttribute="bottom" constant="16" id="dAf-4d-eF3"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -38,9 +45,7 @@
             <point key="canvasLocation" x="53" y="375"/>
         </scene>
     </scenes>
-    <color key="tintColor" name="LaunchBackground"/>
     <resources>
-        <image name="SplashLogo" width="96" height="96"/>
         <namedColor name="LaunchBackground">
             <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>

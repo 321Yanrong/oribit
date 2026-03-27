@@ -11,7 +11,6 @@ import BottomNav, { BOTTOM_NAV_CONTENT_GAP } from './components/BottomNav';
 import AuthModal from './components/AuthModal';
 import PWABanners from './components/PWABanners';
 import { SplashScreen as CapacitorSplashScreen } from '@capacitor/splash-screen';
-import SplashScreen from './components/SplashScreen';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
 import LedgerPage from './pages/LedgerPage';
@@ -54,7 +53,7 @@ const resetClientData = () => {
 
 // RUM/日志：在应用层初始化，后续用户登录后再补充 uin
 const aegis = new Aegis({
-  id: 'nG8gnTK2972Drrb304',
+  id: import.meta.env.VITE_AEGIS_ID as string,
   uin: '',
   reportApiSpeed: true,
   reportAssetSpeed: true,
@@ -148,9 +147,7 @@ function App() {
   const { currentPage } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
   const [showAuth, setShowAuth] = useState(false);
-  const [allowAuthModal, setAllowAuthModal] = useState(false); // 避免闪屏期间弹出登录窗
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
+  const [allowAuthModal, setAllowAuthModal] = useState(false);
   const [firstScreenReady, setFirstScreenReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -173,11 +170,10 @@ function App() {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const pageFlag = showSplash ? 'splash' : currentPage;
-    document.body.dataset.page = pageFlag;
+    document.body.dataset.page = currentPage;
     const root = document.getElementById('root');
-    if (root) root.setAttribute('data-page', pageFlag);
-  }, [currentPage, showSplash]);
+    if (root) root.setAttribute('data-page', currentPage);
+  }, [currentPage]);
 
   // 注册 Service Worker 并监听更新
   useEffect(() => {
@@ -311,11 +307,6 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const SPLASH_MIN_DURATION = 2500;
-    const splashTimer = window.setTimeout(() => {
-      setSplashMinimumElapsed(true);
-    }, SPLASH_MIN_DURATION);
-
     const startOnboarding = () => {
       setShowNewbieGuide(true);
       setGuideRun(true);
@@ -334,7 +325,6 @@ function App() {
     }
 
     return () => {
-      window.clearTimeout(splashTimer);
       window.removeEventListener('orbit:start-onboarding', startOnboarding);
     };
   }, []);
@@ -351,42 +341,19 @@ function App() {
     };
   }, []);
 
-  // 只有当加载完成且最短展示时间结束后才收起闪屏，避免加载过程外露
-  // 🚀 修复版：让原生图与 React 闪屏进行“无缝换岗”
   useEffect(() => {
-    // 只有当所有条件都准备好了
-    if (!splashMinimumElapsed || loading || !firstScreenReady || !showSplash) return;
+    if (loading || !firstScreenReady) return;
+    if (document.visibilityState !== 'visible') return;
 
-    const performHandover = async () => {
+    const timer = setTimeout(async () => {
       try {
-        // 🚀 核心修复：增加对 App 是否在后台的判断，防止切屏时进入死循环
-        if (document.visibilityState !== 'visible') {
-          console.log('⏳ App 处于后台，推迟闪屏隐藏流程');
-          return;
-        }
+        await CapacitorSplashScreen.hide();
+      } catch (_) { /* ignore on web */ }
+      setAllowAuthModal(true);
+    }, 150);
 
-        // 1. 此时 React 的 Splash 界面已经完全渲染在 WebView 里了
-        // 我们给原生层发指令：你可以退下了
-        // 增加 100-200ms 的极短延迟，确保渲染帧已经提交给 GPU
-        setTimeout(async () => {
-          await CapacitorSplashScreen.hide();
-          console.log("🟢 原生图撤离，底下已经铺好了 React 画面");
-
-          // 2. 原生图撤掉后，现在看的是 React 写的 Splash 界面，淡出进入 App
-          setShowSplash(false);
-
-          // 3. 处理登录弹窗逻辑
-          const AUTH_DELAY = 500;
-          window.setTimeout(() => setAllowAuthModal(true), AUTH_DELAY);
-        }, 150);
-      } catch (e) {
-        setShowSplash(false);
-      }
-    };
-
-    performHandover();
-  }, [splashMinimumElapsed, loading, firstScreenReady, showSplash]);
-  // 非登录态或演示模式下不阻塞闪屏
+    return () => clearTimeout(timer);
+  }, [loading, firstScreenReady]);
   useEffect(() => {
     if (loading) return;
     if (isDemoMode || !currentUser) {
@@ -478,21 +445,11 @@ function App() {
           return;
         }
 
-        // ==========================================
-        // 🔄 长时离开（> 5 分钟）：走冷启动流程
-        // 显示 Splash，重新拉所有数据，跟重启一样
-        // ==========================================
         if (awayMs > 5 * 60 * 1000) {
-          console.log(`🔄 长时离开（${Math.round(awayMs / 60000)}分钟），触发冷启动流程...`);
-          setShowSplash(true);
-          setSplashMinimumElapsed(false);
-          setFirstScreenReady(false);
-          // 2.5s 后收起 Splash（与冷启动保持一致）
-          window.setTimeout(() => setSplashMinimumElapsed(true), 2500);
-          // 重新拉取所有数据
+          console.log(`🔄 长时离开（${Math.round(awayMs / 60000)}分钟），静默刷新数据...`);
           try { await supabase.auth.refreshSession(); } catch (e) { /* ignore */ }
+          (window as any).__orbit_last_core_data_refresh = Date.now();
           fetchCoreData();
-          setFirstScreenReady(true);
           return;
         }
       }
@@ -1186,11 +1143,6 @@ function App() {
           </AnimatePresence>
         </>
       )}
-
-      {/* 闪屏：覆盖全局，掩护首屏加载 */}
-      <AnimatePresence>
-        {showSplash && <SplashScreen />}
-      </AnimatePresence>
 
       <Analytics />
     </div>

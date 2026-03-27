@@ -14,8 +14,8 @@ export const SETTINGS_STORAGE_KEY = 'orbit_settings';
 export const SETTINGS_EVENT = 'orbit:settings';
 export const DEFAULT_SETTINGS: OrbitSettings = {
   fontSize: 'normal',
-  darkMode: true,
-  themeMode: 'dark',
+  darkMode: false,
+  themeMode: 'light',
   wifiOnlyUpload: false,
   wifiOnlyRefresh: false,
   notifyAt: true,

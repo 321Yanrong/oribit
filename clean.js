@@ -1,6 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
-const supabase = createClient('https://qoaqmbepnsqymxzpncyf.supabase.co', process.env.SUPABASE_SERVICE_ROLE_KEY);
+import { readFileSync } from 'node:fs';
+
+try {
+  readFileSync('.env', 'utf-8')
+    .split('\n').filter(l => l && !l.startsWith('#')).forEach(l => {
+      const [k, ...v] = l.split('=')
+      if (k && !process.env[k.trim()]) process.env[k.trim()] = v.join('=').trim()
+    })
+} catch {}
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
 async function cleanBucket() {
     const bucketName = 'photos';

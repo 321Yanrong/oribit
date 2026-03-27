@@ -1,6 +1,6 @@
 const META_PREFIX = '[orbit_meta:';
 
-export const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
+export const AMAP_KEY = import.meta.env.VITE_AMAP_KEY as string;
 
 export const WEATHER_OPTIONS = [
   { emoji: '\u2600\uFE0F', label: '晴天' },      // ☀️

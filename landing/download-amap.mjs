@@ -4,6 +4,7 @@
  */
 import https from 'node:https';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -11,7 +12,20 @@ import sharp from 'sharp';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, 'screenshots', 'app');
 
-const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
+// Load .env from project root
+try {
+  readFileSync(path.join(__dirname, '..', '.env'), 'utf-8')
+    .split('\n').filter(l => l && !l.startsWith('#')).forEach(l => {
+      const [k, ...v] = l.split('=')
+      if (k && !process.env[k.trim()]) process.env[k.trim()] = v.join('=').trim()
+    })
+} catch {}
+
+const AMAP_KEY = process.env.VITE_AMAP_KEY;
+if (!AMAP_KEY) {
+  console.error('Missing VITE_AMAP_KEY — check .env file');
+  process.exit(1);
+}
 
 // Markers: demo pin positions (Shanghai + HK)
 const markers = [

@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'node:fs';
@@ -27,7 +27,10 @@ const capacitorMockPwaPlugin = {
 };
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+const env = loadEnv(mode, process.cwd());
+const supabaseOrigin = env.VITE_SUPABASE_URL || 'https://qoaqmbepnsqymxzpncyf.supabase.co';
+return {
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version || '0.0.0'),
     'import.meta.env.VITE_APP_BUILD_TIME': JSON.stringify(new Date().toISOString()),
@@ -68,7 +71,7 @@ export default defineConfig({
           {
             urlPattern: ({ url, request }) =>
               request.method === 'GET' &&
-              url.origin === 'https://qoaqmbepnsqymxzpncyf.supabase.co' &&
+              url.origin === supabaseOrigin &&
               url.pathname.startsWith('/rest/v1/'),
             handler: 'NetworkFirst',
             options: {
@@ -86,7 +89,7 @@ export default defineConfig({
           {
             urlPattern: ({ url, request }) =>
               request.method === 'GET' &&
-              url.origin === 'https://qoaqmbepnsqymxzpncyf.supabase.co' &&
+              url.origin === supabaseOrigin &&
               url.pathname.startsWith('/storage/v1/object/public/'),
             handler: 'CacheFirst',
             options: {
@@ -184,4 +187,5 @@ export default defineConfig({
   build: {
     sourcemap: true,
   },
+};
 });

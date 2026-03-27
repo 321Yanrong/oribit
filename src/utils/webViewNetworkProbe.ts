@@ -5,7 +5,7 @@ export const FOREGROUND_PROBE_CACHE_MS = 60_000
 
 const SESSION_CACHE_EXTEND_MS = 30_000
 
-const PROBE_PING_URL = 'https://qoaqmbepnsqymxzpncyf.supabase.co/auth/v1/'
+const PROBE_PING_URL = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/`
 
 let probeInFlight: Promise<void> | null = null
 

@@ -5,9 +5,24 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { readFileSync } from 'node:fs'
 
-const SUPABASE_URL = 'https://qoaqmbepnsqymxzpncyf.supabase.co'
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYXFtYmVwbnNxeW14enBuY3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQ5NTMsImV4cCI6MjA4ODUzMDk1M30.dmQ5kVi2dGQHJ8QM7gDSRx8nNSSIfZ5jVbh22NLeBIc'
+// Load .env for local scripts
+try {
+  readFileSync(new URL('./.env', import.meta.url), 'utf-8')
+    .split('\n').filter(l => l && !l.startsWith('#')).forEach(l => {
+      const [k, ...v] = l.split('=')
+      if (k && !process.env[k.trim()]) process.env[k.trim()] = v.join('=').trim()
+    })
+} catch {}
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !ANON_KEY) {
+  console.error('❌ 缺少 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY，请确保 .env 文件存在')
+  process.exit(1)
+}
 
 const SERVICE_KEY = process.argv[2] || ''
 

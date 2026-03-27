@@ -5,8 +5,8 @@ import { clearOrbitStorage, emitInvalidAuthEvent, isLikelyInvalidSession } from 
 import { nativeFetch } from '../utils/nativeHttp'
 import { NativeUploader } from '../plugins/nativeUploader'
 
-const supabaseUrl = 'https://qoaqmbepnsqymxzpncyf.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvYXFtYmVwbnNxeW14enBuY3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTQ5NTMsImV4cCI6MjA4ODUzMDk1M30.dmQ5kVi2dGQHJ8QM7gDSRx8nNSSIfZ5jVbh22NLeBIc'
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 const PASSWORD_RESET_REDIRECT_URL = 'https://wehihi.com/reset-password'
 
 const INVALID_AUTH_GRACE_MS = 1200
@@ -67,7 +67,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-const SUPABASE_STORAGE_KEY = 'sb-qoaqmbepnsqymxzpncyf-auth-token'
+const supabaseRef = new URL(supabaseUrl).hostname.split('.')[0]
+const SUPABASE_STORAGE_KEY = `sb-${supabaseRef}-auth-token`
 
 /** Read the persisted session directly from localStorage, bypassing the SDK's
  *  internal async state machine (which can deadlock after app backgrounding). */
@@ -205,8 +206,7 @@ export const uploadPhoto = async (
     // the upload fails fast and gets retried when the network recovers.
     let authToken = ''
     try {
-      const storageKey = `sb-qoaqmbepnsqymxzpncyf-auth-token`
-      const raw = localStorage.getItem(storageKey)
+      const raw = localStorage.getItem(SUPABASE_STORAGE_KEY)
       if (raw) {
         const parsed = JSON.parse(raw)
         authToken = parsed.access_token || parsed?.currentSession?.access_token || ''

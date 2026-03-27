@@ -1,7 +1,7 @@
 import memoryFlowBackground from '../../../../screenshot_app/回忆流.jpg';
 
-export const AMAP_KEY = '2c322381589d30cd71d9275748b8b02c';
-export const AMAP_SECURITY_CODE = '34af5b9d582fa1ec0ac3b5d8840917a3';
+export const AMAP_KEY = import.meta.env.VITE_AMAP_KEY as string;
+export const AMAP_SECURITY_CODE = import.meta.env.VITE_AMAP_SECURITY_CODE as string;
 export const AMAP_VERSION = '2.0';
 
 export const WEATHER_OPTIONS = [
