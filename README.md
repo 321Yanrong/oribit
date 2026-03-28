@@ -18,7 +18,7 @@ Orbit is a memory-first social app designed for small, trusted circles. Unlike p
 Record moments with photos, video, long-form text, precise location, weather, mood, and route tags. Tag friends to share a memory with them directly in their feed. Participants can leave text or voice comments (up to 30s). Memories can also be browsed in a full-screen story album view with poster generation.
 
 **Friendship Map**
-All geotagged memories are plotted on an interactive map (Mapbox). Filter by friend to see a shared travel history, or zoom out to see city-level clusters.
+All geotagged memories are plotted on an interactive map (Apple Maps (MapKit JS)). Filter by friend to see a shared travel history, or zoom out to see city-level clusters.
 
 **Shared Ledger**
 Log expenses alongside a memory or independently. Expense details are always private to the author only — tagged friends see the memory but never the associated numbers. AA splits can be set up with selected participants.
@@ -36,7 +36,7 @@ Friends are added via invite code through a mutual confirmation flow (send reque
 | Styling & Animation | Tailwind CSS, Framer Motion |
 | State Management | Zustand |
 | Backend & Database | Supabase (Auth, PostgreSQL, Storage) |
-| Maps | Mapbox GL JS |
+| Maps | Apple MapKit JS |
 | Native Shell | Capacitor (iOS) |
 | Deployment | Vercel |
 | Monitoring | Aegis Web SDK (Tencent Cloud), Vercel Analytics |
@@ -89,7 +89,7 @@ Environment variables (copy `.env.example` to `.env`):
 ```
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-VITE_MAPBOX_TOKEN=
+VITE_APPLE_MAPKIT_TOKEN=
 ```
 
 ---

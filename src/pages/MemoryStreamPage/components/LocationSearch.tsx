@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FaMapMarkerAlt, FaTimes, FaSpinner } from 'react-icons/fa';
 import { LocationPoi } from '../types';
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+import { loadMapKit, getMapKit } from '../../../utils/mapkit';
 
 type LocationSearchProps = {
   value: string;
@@ -10,45 +9,49 @@ type LocationSearchProps = {
   onSelect: (poi: LocationPoi) => void;
 };
 
-const mapboxSearch = async (keyword: string): Promise<LocationPoi[]> => {
-  if (!MAPBOX_TOKEN) return [];
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(keyword)}.json?language=zh&limit=8&access_token=${MAPBOX_TOKEN}`;
+const appleSearch = async (keyword: string): Promise<LocationPoi[]> => {
   try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!data?.features) return [];
-    return data.features.map((f: any) => ({
-      id: f.id,
-      name: f.text_zh || f.text || keyword,
-      address: f.place_name_zh || f.place_name || '',
-      location: `${f.center?.[0]},${f.center?.[1]}`,
-      type: f.place_type?.join(',') || '',
-    }));
-  } catch (e) {
-    console.warn('Mapbox geocoding failed', e);
-    return [];
-  }
+    await loadMapKit();
+  } catch { return []; }
+  const mk = getMapKit();
+  if (!mk) return [];
+
+  return new Promise((resolve) => {
+    const search = new mk.Search({ language: 'zh-CN' });
+    search.search(keyword, (error: any, data: any) => {
+      if (error || !data?.places) { resolve([]); return; }
+      resolve(data.places.map((p: any) => ({
+        id: p.id || `apple-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: p.name || keyword,
+        address: p.formattedAddress || '',
+        location: `${p.coordinate.longitude},${p.coordinate.latitude}`,
+        type: p.pointOfInterestCategory || '',
+      })));
+    });
+  });
 };
 
-const reverseMapbox = async (lat: number, lng: number): Promise<LocationPoi | null> => {
-  if (!MAPBOX_TOKEN) return null;
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=zh&limit=1&access_token=${MAPBOX_TOKEN}`;
+const reverseApple = async (lat: number, lng: number): Promise<LocationPoi | null> => {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const f = data?.features?.[0];
-    if (!f) return null;
-    return {
-      id: `gps-${Date.now()}`,
-      name: f.text_zh || f.text || '我的位置',
-      address: f.place_name_zh || f.place_name || '',
-      location: `${lng},${lat}`,
-      type: f.place_type?.join(',') || '',
-    };
-  } catch {
-    return null;
-  }
+    await loadMapKit();
+  } catch { return null; }
+  const mk = getMapKit();
+  if (!mk) return null;
+
+  return new Promise((resolve) => {
+    const geocoder = new mk.Geocoder({ language: 'zh-CN' });
+    geocoder.reverseLookup(new mk.Coordinate(lat, lng), (error: any, data: any) => {
+      if (error || !data?.results?.length) { resolve(null); return; }
+      const place = data.results[0];
+      resolve({
+        id: `gps-${Date.now()}`,
+        name: place.name || place.locality || '我的位置',
+        address: place.formattedAddress || '',
+        location: `${lng},${lat}`,
+        type: place.pointOfInterestCategory || '',
+      });
+    });
+  });
 };
 
 const LocationSearch = ({ value, onChange, onSelect }: LocationSearchProps) => {
@@ -74,7 +77,7 @@ const LocationSearch = ({ value, onChange, onSelect }: LocationSearchProps) => {
     setSearching(true);
 
     try {
-      const pois = await mapboxSearch(`${city} ${keyword}`.trim());
+      const pois = await appleSearch(`${city} ${keyword}`.trim());
       setResults(pois);
     } catch {
       setResults([]);
@@ -110,7 +113,7 @@ const LocationSearch = ({ value, onChange, onSelect }: LocationSearchProps) => {
         const { latitude: lat, longitude: lng } = coords;
 
         try {
-          const poi = await reverseMapbox(lat, lng);
+          const poi = await reverseApple(lat, lng);
           if (poi) {
             onChange(poi.name);
             onSelect(poi);

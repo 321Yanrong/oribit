@@ -6,10 +6,10 @@ import memoryFlowBackground from '../../../../screenshot_app/回忆流.jpg';
 
 const STORY_DURATION = 5000; // ms per story
 const MUSIC_TRACKS = [
-  { label: '本地音乐 · bgm1', url: '/music/bgm1.mp3' },
-  { label: '本地音乐 · bgm2', url: '/music/bgm2.mp3' },
-  { label: '本地音乐 · bgm3', url: '/music/bgm3.mp3' },
-  { label: '本地音乐 · bgm4', url: '/music/bgm4.mp3' },
+  { label: 'Walk Together', url: '/music/folk_acoustic-walk-together-123281.mp3' },
+  { label: 'A Quiet Joy', url: '/music/stevekaldes-a-quiet-joy-stevekaldes-piano-385744.mp3' },
+  { label: 'Gratitude', url: '/music/stevekaldes-gratitude-stevekaldes-piano-382684.mp3' },
+  { label: 'Plea for Forgiveness', url: '/music/stevekaldes-plea-for-forgiveness-stevekaldes-piano-art-ayla-heefner-401168.mp3' },
 ];
 
 const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);

@@ -47,7 +47,7 @@ function memoryStreamFetchBatchRaceMs(): number {
   return ago != null && ago < 120_000 ? 45_000 : 30_000;
 }
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+import { loadMapKit, getMapKit } from '../utils/mapkit';
 
 interface LocationPoi {
   id: string;
@@ -304,55 +304,151 @@ const toLocalIsoWithOffset = (value: string) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00${sign}${hh}:${mm}`;
 };
 
-const searchMapbox = async (keyword: string): Promise<LocationPoi[]> => {
-  if (!MAPBOX_TOKEN) return [];
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(keyword)}.json?language=zh&limit=10&access_token=${MAPBOX_TOKEN}`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!data?.features) return [];
-    return data.features.map((f: any) => ({
-      id: f.id,
-      name: f.text_zh || f.text || keyword,
-      address: f.place_name_zh || f.place_name || '',
-      location: `${f.center?.[0]},${f.center?.[1]}`,
-      type: f.place_type?.join(',') || '',
-    })) as LocationPoi[];
-  } catch {
-    return [];
-  }
+const normalizeSearchText = (text: string) =>
+  (text || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[，,.\-_/]/g, '');
+
+const MAINLAND_CITY_COORDS: Record<string, string> = {
+  '上海': '121.4737,31.2304',
+  '北京': '116.4074,39.9042',
+  '广州': '113.2644,23.1291',
+  '深圳': '114.0579,22.5431',
+  '成都': '104.0668,30.5728',
+  '杭州': '120.1551,30.2741',
+  '武汉': '114.3054,30.5931',
+  '西安': '108.9402,34.3416',
+  '重庆': '106.5516,29.5630',
+  '南京': '118.7969,32.0603',
+  '天津': '117.2010,39.0851',
+  '苏州': '120.5853,31.2989',
+  '厦门': '118.0894,24.4798',
+  '长沙': '112.9388,28.2278',
+  '沈阳': '123.4315,41.8057',
+  '青岛': '120.3826,36.0671',
+  '郑州': '113.6254,34.7466',
+  '哈尔滨': '126.6424,45.7570',
+  '昆明': '102.8329,24.8801',
+  '大连': '121.6147,38.9140',
+  '济南': '117.0009,36.6758',
+  '合肥': '117.2272,31.8206',
+  '福州': '119.2965,26.0745',
+  '宁波': '121.5440,29.8683',
+  '无锡': '120.3119,31.4913',
+  '南宁': '108.3665,22.8170',
+  '贵阳': '106.6302,26.6477',
+  '兰州': '103.8343,36.0611',
+  '乌鲁木齐': '87.6168,43.8256',
+  '海口': '110.3312,20.0311',
+  '三亚': '109.5116,18.2525',
 };
 
-const reverseMapbox = async (lat: number, lng: number): Promise<LocationPoi | null> => {
-  if (!MAPBOX_TOKEN) return null;
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=zh&limit=1&access_token=${MAPBOX_TOKEN}`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const f = data?.features?.[0];
-    if (!f) return null;
-    return {
-      id: `gps-${Date.now()}`,
-      name: f.text_zh || f.text || '我的位置',
-      address: f.place_name_zh || f.place_name || '',
-      location: `${lng},${lat}`,
-      type: f.place_type?.join(',') || '',
-    } as LocationPoi;
-  } catch {
-    return null;
-  }
+
+const cityAliases = (city: string) => {
+  const base = (city || '').trim();
+  if (!base) return [];
+  const aliases = new Set<string>([base]);
+  if (base.endsWith('市')) aliases.add(base.slice(0, -1));
+  if (base.endsWith('省')) aliases.add(base.slice(0, -1));
+  return Array.from(aliases).map(normalizeSearchText).filter(Boolean);
 };
 
-const searchNominatim = async (keyword: string) => {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=10&addressdetails=1&q=${encodeURIComponent(keyword)}`;
+const filterPoisByCity = (pois: LocationPoi[], city: string, keyword: string) => {
+  const aliases = cityAliases(city);
+  if (aliases.length === 0) return pois;
+  const matched = pois.filter((poi) => {
+    const haystack = normalizeSearchText(`${poi.name || ''} ${poi.address || ''}`);
+    return aliases.some((alias) => haystack.includes(alias));
+  });
+  const candidate = matched.length > 0 ? matched : pois;
+
+  // 避免只返回“香港/伦敦”等城市级泛结果，优先展示具体地点
+  const q = normalizeSearchText(keyword);
+  const genericTypes = new Set(['place', 'region', 'country', 'district']);
+  const hasKeyword = q.length > 0;
+  if (!hasKeyword) return candidate;
+
+  const keywordMatched = candidate.filter((poi) => {
+    const haystack = normalizeSearchText(`${poi.name || ''} ${poi.address || ''}`);
+    return haystack.includes(q);
+  });
+  if (keywordMatched.length > 0) {
+    const refined = keywordMatched.filter((poi) => {
+      const typeTokens = (poi.type || '').split(',').map((x) => x.trim()).filter(Boolean);
+      const isGeneric = typeTokens.length > 0 && typeTokens.every((t) => genericTypes.has(t));
+      return !isGeneric;
+    });
+    return refined.length > 0 ? refined : keywordMatched;
+  }
+
+  return candidate;
+};
+
+const searchApple = async (keyword: string, city?: string, proximity?: { lng: number; lat: number }): Promise<LocationPoi[]> => {
+  try {
+    await loadMapKit();
+  } catch { return []; }
+  const mk = getMapKit();
+  if (!mk) return [];
+
+  const fullQuery = city?.trim() ? `${city.trim()} ${keyword}` : keyword;
+
+  return new Promise((resolve) => {
+    const opts: any = { language: 'zh-CN' };
+    if (proximity) {
+      opts.region = new mk.CoordinateRegion(
+        new mk.Coordinate(proximity.lat, proximity.lng),
+        new mk.CoordinateSpan(1.6, 1.6),
+      );
+    }
+    const search = new mk.Search(opts);
+    search.search(fullQuery, (error: any, data: any) => {
+      if (error || !data?.places) { resolve([]); return; }
+      const mapped: LocationPoi[] = data.places.map((p: any) => ({
+        id: p.id || `apple-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: p.name || keyword,
+        address: p.formattedAddress || '',
+        location: `${p.coordinate.longitude},${p.coordinate.latitude}`,
+        type: p.pointOfInterestCategory || '',
+      }));
+      resolve(filterPoisByCity(mapped, city || '', keyword));
+    });
+  });
+};
+
+const reverseApple = async (lat: number, lng: number): Promise<LocationPoi | null> => {
+  try {
+    await loadMapKit();
+  } catch { return null; }
+  const mk = getMapKit();
+  if (!mk) return null;
+
+  return new Promise((resolve) => {
+    const geocoder = new mk.Geocoder({ language: 'zh-CN' });
+    geocoder.reverseLookup(new mk.Coordinate(lat, lng), (error: any, data: any) => {
+      if (error || !data?.results?.length) { resolve(null); return; }
+      const place = data.results[0];
+      resolve({
+        id: `gps-${Date.now()}`,
+        name: place.name || place.locality || '我的位置',
+        address: place.formattedAddress || '',
+        location: `${lng},${lat}`,
+        type: place.pointOfInterestCategory || '',
+      });
+    });
+  });
+};
+
+const searchNominatim = async (keyword: string, city?: string) => {
+  const fullQuery = city?.trim() ? `${city.trim()} ${keyword}` : keyword;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=10&addressdetails=1&q=${encodeURIComponent(fullQuery)}`;
   const res = await fetch(url, {
     headers: { 'Accept-Language': 'zh-CN,zh;q=0.8,en;q=0.6' },
   });
   if (!res.ok) return [] as LocationPoi[];
   const data = (await res.json()) as any[];
-  return data.map((item) => {
+  const mapped = data.map((item) => {
     const display = item.display_name || '';
     const name = display.split(',')[0] || item.name || '未知地点';
     return {
@@ -363,6 +459,7 @@ const searchNominatim = async (keyword: string) => {
       type: item.type || '',
     } as LocationPoi;
   });
+  return filterPoisByCity(mapped, city || '', keyword);
 };
 
 const reverseNominatim = async (lat: number, lng: number) => {
@@ -387,11 +484,50 @@ const reverseNominatim = async (lat: number, lng: number) => {
 const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange: (val: string) => void; onSelect: (poi: LocationPoi) => void; }) => {
   const [results, setResults] = useState<LocationPoi[]>([]);
   const [city, setCity] = useState('');
+  const [cityCoords, setCityCoords] = useState<{ lng: number; lat: number } | null>(null);
   const [needCityHint, setNeedCityHint] = useState(false);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [locating, setLocating] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const cityGeoCacheRef = useRef<Record<string, { lng: number; lat: number }>>({});
+
+  // 动态地理编码城市名 → 坐标，用于搜索 proximity 偏置
+  useEffect(() => {
+    const trimmed = city.trim();
+    if (!trimmed) { setCityCoords(null); return; }
+
+    // 优先查内地城市快速缓存
+    const baseName = trimmed.replace(/[市省区]$/, '');
+    if (MAINLAND_CITY_COORDS[baseName]) {
+      const [lng, lat] = MAINLAND_CITY_COORDS[baseName].split(',').map(Number);
+      setCityCoords({ lng, lat });
+      return;
+    }
+
+    // 查内存缓存
+    if (cityGeoCacheRef.current[trimmed]) {
+      setCityCoords(cityGeoCacheRef.current[trimmed]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        await loadMapKit();
+        const mk = getMapKit();
+        if (!mk) return;
+        const geocoder = new mk.Geocoder({ language: 'zh-CN' });
+        geocoder.lookup(trimmed, (error: any, data: any) => {
+          if (error || !data?.results?.length) return;
+          const place = data.results[0];
+          const coords = { lng: place.coordinate.longitude, lat: place.coordinate.latitude };
+          cityGeoCacheRef.current[trimmed] = coords;
+          setCityCoords(coords);
+        });
+      } catch { /* ignore */ }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [city]);
 
   const searchLocation = async (keyword: string) => {
     const trimmed = keyword.trim();
@@ -409,10 +545,10 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
     }
 
     setSearching(true);
-    const query = `${city} ${trimmed}`.trim();
+    const query = `${trimmed}`.trim();
 
     try {
-      const pois = await searchMapbox(query);
+      const pois = await searchApple(query, city, cityCoords ?? undefined);
       if (pois.length > 0) {
         setResults(pois);
         setSearching(false);
@@ -421,7 +557,7 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
     } catch { /* fallback below */ }
 
     try {
-      const pois = await searchNominatim(query);
+      const pois = await searchNominatim(query, city);
       setResults(pois);
     } catch {
       setResults([]);
@@ -466,7 +602,7 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
         const { latitude: lat, longitude: lng } = pos.coords;
 
         try {
-          const poi = await reverseMapbox(lat, lng);
+          const poi = await reverseApple(lat, lng);
           if (poi) { onChange(poi.name); onSelect(poi); return; }
         } catch { /* fallback below */ }
 
@@ -550,8 +686,8 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
 
         {showResults && results.length > 0 && (
           <div
-            className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl border z-10"
-            style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+            className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl border z-20 shadow-xl"
+            style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', borderColor: 'var(--orbit-border)' }}
           >
             {results.map((poi) => (
               <button
@@ -569,8 +705,8 @@ const LocationSearch = ({ value, onChange, onSelect }: { value: string; onChange
 
         {showResults && !searching && value.trim() && results.length === 0 && (
           <div
-            className="absolute top-full left-0 right-0 mt-2 p-4 rounded-xl border z-10 text-center"
-            style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
+            className="absolute top-full left-0 right-0 mt-2 p-4 rounded-xl border z-20 text-center shadow-xl"
+            style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', borderColor: 'var(--orbit-border)' }}
           >
             <p className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{needCityHint ? '请先选择城市，再搜索具体地点' : '未找到相关地点'}</p>
           </div>
@@ -1796,7 +1932,9 @@ export default function MemoryStreamPage() {
   };
 
   const hasUnreadComments = (memory: any) => {
-    if (!isTaggedParticipantMemory(memory)) return false;
+    const isOwner = memory.user_id === currentUser?.id;
+    const isTagged = isTaggedParticipantMemory(memory);
+    if (!isOwner && !isTagged) return false;
 
     const comments = commentsByMemory[memory.id] || [];
     const latestOtherComment = [...comments].reverse().find((item) => item.author_id && item.author_id !== currentUser?.id);

@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaMapMarkerAlt, FaTimes, FaUsers, FaCamera, FaCalendar, FaReceipt, FaChevronLeft, FaComment, FaPaperPlane, FaHeart } from 'react-icons/fa';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { useMemoryStore, useUserStore, useMapStore } from '../store';
@@ -13,15 +11,7 @@ import { SETTINGS_EVENT } from '../utils/settings';
 
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import { useScrollLock } from '../hooks/useScrollLock';
-
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
-// Debug helper: print resolved token at runtime to help diagnose 401 issues.
-// Remove this after debugging to avoid logging tokens in production.
-if (typeof window !== 'undefined') {
-  // eslint-disable-next-line no-console
-  console.log('MAPBOX_TOKEN (runtime) =', MAPBOX_TOKEN);
-}
+import { loadMapKit, getMapKit } from '../utils/mapkit';
 
 const getCityFromMemory = (memory: any): string => {
   const addr = memory.location?.address || '';
@@ -139,8 +129,8 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     };
   }, []);
 
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]); // 存储 Mapbox 的 Marker 实例，方便后续清理
+  const mapRef = useRef<any>(null);
+  const annotationsRef = useRef<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const readyFiredRef = useRef(false);
   const toastTimerRef = useRef<number | null>(null);
@@ -189,22 +179,13 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     };
   }, []);
 
-  // 当主题发生变化时，更新地图样式（例如深色/浅色切换）
   useEffect(() => {
     if (!mapRef.current) return;
-    const map = mapRef.current;
-    const desired = isDarkTheme ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12';
-    try {
-      // 只有在样式不同的时候才切换，避免重复调用
-      if ((map.getStyle() as any)?.sprite !== desired) {
-        map.setStyle(desired);
-        // style 变更后，styledata/load 会触发，我们仍需再次应用中文标注
-        map.once('styledata', () => applyChineseLabels(map));
-      }
-    } catch (err) {
-      // fallback: 直接 setStyle
-      try { map.setStyle(desired); map.once('styledata', () => applyChineseLabels(map)); } catch { }
-    }
+    const mk = getMapKit();
+    if (!mk) return;
+    mapRef.current.colorScheme = isDarkTheme
+      ? mk.Map.ColorSchemes.Dark
+      : mk.Map.ColorSchemes.Light;
   }, [isDarkTheme]);
 
   // When MapPage mounts, make the app root background transparent so the map can extend into the
@@ -363,84 +344,40 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     return selectedFriendIds.some((id) => tagged.includes(id) || m.user_id === id);
   }) || [];
 
-  // 初始化 Mapbox (只执行一次)
-  const applyChineseLabels = (mp: mapboxgl.Map | null) => {
-    if (!mp) return;
-    try {
-      const zhName = ['coalesce', ['get', 'name_zh'], ['get', 'name_zh-Hans'], ['get', 'name_zh-Hant'], ['get', 'name'], ['get', 'name_en']];
-      const style = mp.getStyle();
-      if (!style?.layers) return;
-      style.layers
-        .filter((layer) => layer.type === 'symbol' && (layer.layout as any)?.['text-field'])
-        .forEach((layer) => {
-          try { mp.setLayoutProperty(layer.id, 'text-field', zhName as any); } catch { /* ignore per-layer failures */ }
-        });
-    } catch (err) {
-      console.warn('切换中文标注失败', err);
-    }
-  };
-
   useEffect(() => {
     if (!containerRef.current) return;
+    let cancelled = false;
 
-    if (!MAPBOX_TOKEN) {
-      console.warn('Missing Mapbox token, please set VITE_MAPBOX_TOKEN');
-      showToast('地图服务未配置');
-      setMapLoaded(true);
-      return;
-    }
-
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
     const currentTheme = document.documentElement.getAttribute('data-theme');
-    const isDarkTheme = currentTheme === 'dark' || (!currentTheme && prefersDark);
+    const dark = currentTheme === 'dark' || (!currentTheme && prefersDark);
 
-    if (!mapboxgl.supported()) {
-      console.error('Mapbox 不支持当前浏览器的 WebGL');
-      showToast('当前浏览器不支持地图');
-      setMapLoaded(true);
-      return;
-    }
+    loadMapKit()
+      .then(() => {
+        if (cancelled || !containerRef.current) return;
+        const mk = getMapKit();
 
-    try {
-      // applyChineseLabels is defined above and reused
+        const map = new mk.Map(containerRef.current, {
+          colorScheme: dark ? mk.Map.ColorSchemes.Dark : mk.Map.ColorSchemes.Light,
+          center: new mk.Coordinate(31.2304, 121.4737),
+          showsScale: mk.FeatureVisibility.Visible,
+          isScrollEnabled: true,
+          isZoomEnabled: true,
+        });
 
-      const map = new mapboxgl.Map({
-        container: containerRef.current,
-        style: isDarkTheme ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
-        center: [121.4737, 31.2304],
-        zoom: 12,
-        attributionControl: false,
-      });
-
-      map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'metric' }));
-      mapRef.current = map;
-      map.on('load', () => {
+        mapRef.current = map;
         setMapLoaded(true);
-        map.resize();
-        applyChineseLabels(map);
-      });
-      map.on('styledata', () => applyChineseLabels(map));
-      map.on('error', (e) => {
-        console.error('Mapbox 运行错误:', e?.error || e);
+      })
+      .catch((err) => {
+        console.error('MapKit JS 加载失败:', err);
         showToast('地图加载失败');
-        setMapLoaded(true); // 避免因未触发 load 导致容器永久透明
+        setMapLoaded(true);
       });
-
-      const handleResize = () => map.resize();
-      window.addEventListener('resize', handleResize);
-      return () => {
-        window.removeEventListener('resize', handleResize);
-      };
-    } catch (e) {
-      console.error('Mapbox 加载失败:', e);
-      showToast('地图加载失败');
-      setMapLoaded(true);
-    }
 
     return () => {
+      cancelled = true;
       if (mapRef.current) {
-        mapRef.current.remove();
+        try { mapRef.current.destroy(); } catch { /* ok */ }
         mapRef.current = null;
       }
       if (fallbackShowTimerRef.current) window.clearTimeout(fallbackShowTimerRef.current);
@@ -456,18 +393,22 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
     };
   }, [mapLoaded]);
 
-  // ✨ 核心修复 3：监听数据的变化，动态往 Mapbox 上画光点
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
-    const map = mapRef.current as mapboxgl.Map;
+    const map = mapRef.current;
+    const mk = getMapKit();
+    if (!mk) return;
 
-    // 清除旧的 Markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    if (annotationsRef.current.length) {
+      map.removeAnnotations(annotationsRef.current);
+    }
+    annotationsRef.current = [];
 
-    // 画新的 Markers
+    const newAnnotations: any[] = [];
     filteredPins.forEach((pin: any) => {
       const isCityPin = mapGroupBy === 'city';
+      const lat = pin.location?.lat ?? pin.lat;
+      const lng = pin.location?.lng ?? pin.lng;
 
       const myAvatar = currentUser?.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=guest';
       const friendAvatarsHtml = pin.friends.slice(0, 2).map((f: any) =>
@@ -502,29 +443,34 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
         </div>
       `;
 
-      const el = document.createElement('div');
-      el.innerHTML = markerContent;
-
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat]);
-
-      el.addEventListener('click', () => {
-        const clickedPin = pin;
-        if (mapGroupBy === 'city') {
-          setSelectedPin({ ...clickedPin, location: { name: clickedPin.city, address: `${clickedPin.city} · ${clickedPin.memories.length} 个回忆` } });
-        } else {
-          setSelectedPin(clickedPin);
-        }
-        setShowMemoryDetail(true);
-      });
-
-      marker.addTo(map);
-      markersRef.current.push(marker);
+      const annotation = new mk.Annotation(
+        new mk.Coordinate(lat, lng),
+        () => {
+          const el = document.createElement('div');
+          el.innerHTML = markerContent;
+          el.addEventListener('click', () => {
+            if (mapGroupBy === 'city') {
+              setSelectedPin({ ...pin, location: { name: pin.city, address: `${pin.city} · ${pin.memories.length} 个回忆` } });
+            } else {
+              setSelectedPin(pin);
+            }
+            setShowMemoryDetail(true);
+          });
+          return el;
+        },
+        { anchorOffset: new DOMPoint(0, -7) },
+      );
+      newAnnotations.push(annotation);
     });
+
+    if (newAnnotations.length) {
+      map.addAnnotations(newAnnotations);
+    }
+    annotationsRef.current = newAnnotations;
 
     if (fitViewTimeoutRef.current) window.clearTimeout(fitViewTimeoutRef.current);
     fitViewTimeoutRef.current = window.setTimeout(() => {
-      const targetMap = mapRef.current as mapboxgl.Map | null;
+      const targetMap = mapRef.current;
       if (!targetMap) return;
 
       // 只有在数据加载完成且没有任何足迹时，才显示“暂无回忆足迹”的提示并缩小视野。
@@ -535,16 +481,25 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
           lastNoPinsToastRef.current = now;
           showToast('暂无回忆足迹');
         }
-        const currentZoom = targetMap.getZoom();
-        targetMap.setZoom(Math.max(currentZoom - 1, 4));
+        try {
+          const span = targetMap.region.span;
+          targetMap.region = new mk.CoordinateRegion(
+            targetMap.center,
+            new mk.CoordinateSpan(
+              Math.min(span.latitudeDelta * 2, 90),
+              Math.min(span.longitudeDelta * 2, 180),
+            ),
+          );
+        } catch { /* ignore */ }
         return;
       }
 
       // 如果有数据，正常缩放到 bounds
-      if (filteredPins.length > 0) {
-        const bounds = new mapboxgl.LngLatBounds();
-        filteredPins.forEach((pin: any) => bounds.extend([pin.location?.lng ?? pin.lng, pin.location?.lat ?? pin.lat]));
-        targetMap.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 600 });
+      if (newAnnotations.length > 0) {
+        targetMap.showItems(newAnnotations, {
+          animate: true,
+          padding: new mk.Padding(50, 50, 50, 50),
+        });
       }
     }, 300);
 
@@ -718,7 +673,7 @@ export default function MapPage({ onFirstScreenReady }: { onFirstScreenReady?: (
           </div>
         </div>
       )}
-      {/* Mapbox 地图容器 */}
+      {/* 地图容器 */}
       <div
         ref={containerRef}
         className="absolute inset-0"
