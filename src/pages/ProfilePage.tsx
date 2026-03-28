@@ -12,6 +12,7 @@ import { useAppStore } from '../store/app';
 import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment, submitHelpQuestionFeedback, updateAllowShare } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh, shouldAllowUpload } from '../utils/settings';
 import { TERMS_TEXT, PRIVACY_TEXT } from '../constants/appDocuments';
+import { STORAGE_LIMIT_BYTES, STORAGE_LIMIT_MB } from '../constants/storageQuota';
 import { getTaggedDisplayName, getVisibleTaggedFriendIds } from '../utils/tagVisibility';
 import PullToRefresh from '../components/PullToRefresh';
 import { BOTTOM_NAV_CONTENT_GAP } from '../components/BottomNav';
@@ -5024,20 +5025,32 @@ export default function ProfilePage() {
               {/* 存储空间条：仅对已登录用户展示 */}
               {currentUser && (
                 <div className="mt-3">
+                  {((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) >= 0.8 && (
+                    <p
+                      className="text-[10px] mb-1.5"
+                      style={{ color: ((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) > 0.9 ? '#ff6b6b' : '#f59e0b' }}
+                    >
+                      {((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) > 0.9 ? '容量接近上限，请尽快清理旧内容。' : '容量已超过 80%，建议提前清理。'}
+                    </p>
+                  )}
                   <div className="flex justify-between items-end mb-1">
                     <span className="text-[10px] opacity-50">存储空间</span>
                     <span className="text-[10px] font-medium opacity-80">
-                      {(currentUser.storage_used ? (currentUser.storage_used / 1024 / 1024).toFixed(1) : '0.0')} MB / 1024 MB
+                      {(currentUser.storage_used ? (currentUser.storage_used / 1024 / 1024).toFixed(1) : '0.0')} MB / {STORAGE_LIMIT_MB} MB
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                     <div
                       className="h-full transition-all duration-500 rounded-full"
                       style={{
-                        width: `${Math.min(100, ((currentUser.storage_used || 0) / (1024 * 1024 * 1024)) * 100)}%`,
-                        // 超过 90% 变红色预警
-                        backgroundColor: ((currentUser.storage_used || 0) / (1024 * 1024 * 1024)) > 0.9 ? '#ff4d4f' : undefined,
-                        background: ((currentUser.storage_used || 0) / (1024 * 1024 * 1024)) <= 0.9
+                        width: `${Math.min(100, ((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) * 100)}%`,
+                        // 80% 黄色预警，90% 红色预警
+                        backgroundColor: ((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) > 0.9
+                          ? '#ff4d4f'
+                          : ((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) > 0.8
+                            ? '#f59e0b'
+                            : undefined,
+                        background: ((currentUser.storage_used || 0) / STORAGE_LIMIT_BYTES) <= 0.8
                           ? 'linear-gradient(to right, #60a5fa, #a855f7)'
                           : undefined
                       }}

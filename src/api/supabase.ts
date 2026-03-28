@@ -4,6 +4,7 @@ import { Database } from '../types/database'
 import { clearOrbitStorage, emitInvalidAuthEvent, isLikelyInvalidSession } from '../utils/auth'
 import { nativeFetch } from '../utils/nativeHttp'
 import { NativeUploader } from '../plugins/nativeUploader'
+import { STORAGE_LIMIT_BYTES, STORAGE_LIMIT_MB } from '../constants/storageQuota'
 
 export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -176,6 +177,22 @@ const syncStorageUsed = async (bytes: number) => {
   }
 };
 
+const ensureStorageWithinLimit = async (userId: string, incomingBytes: number) => {
+  if (!incomingBytes || incomingBytes <= 0) return;
+  const { data, error } = await (supabase
+    .from('profiles' as any) as any)
+    .select('storage_used')
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  const used = data?.storage_used || 0;
+  if (used + incomingBytes > STORAGE_LIMIT_BYTES) {
+    const usedMb = (used / 1024 / 1024).toFixed(1);
+    const incomingMb = (incomingBytes / 1024 / 1024).toFixed(1);
+    throw new Error(`存储空间不足：当前已用 ${usedMb}MB，本次需 ${incomingMb}MB，每位用户上限 ${STORAGE_LIMIT_MB}MB。`);
+  }
+};
+
 // ==================== 照片上传 ====================
 
 export const uploadPhoto = async (
@@ -183,6 +200,7 @@ export const uploadPhoto = async (
   file: File
 ): Promise<string> => {
   ensureOnlineForWrite('上传图片')
+  await ensureStorageWithinLimit(userId, file.size)
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
@@ -303,6 +321,7 @@ export const uploadVideo = async (
   file: File
 ): Promise<string> => {
   ensureOnlineForWrite('上传视频')
+  await ensureStorageWithinLimit(userId, file.size)
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
@@ -317,6 +336,8 @@ export const uploadVideo = async (
   )
 
   if (uploadError) throw uploadError
+
+  await syncStorageUsed(file.size)
 
   // 获取公开 URL
   const { data: { publicUrl } } = supabase.storage
@@ -341,6 +362,7 @@ export const uploadAudio = async (
   blob: Blob
 ): Promise<string> => {
   ensureOnlineForWrite('上传语音')
+  await ensureStorageWithinLimit(userId, blob.size)
   const mimeType = blob.type || 'audio/webm'
   const ext = mimeType.includes('mp4') || mimeType.includes('aac') ? 'm4a' : 'webm'
   const fileName = `${userId}/${Date.now()}-voice.${ext}`
@@ -354,6 +376,7 @@ export const uploadAudio = async (
       })
   )
   if (uploadError) throw uploadError
+  await syncStorageUsed(blob.size)
   const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(fileName)
   return publicUrl
 }
@@ -380,6 +403,7 @@ export const uploadAvatar = async (
   file: File
 ): Promise<string> => {
   ensureOnlineForWrite('上传头像')
+  await ensureStorageWithinLimit(userId, file.size)
   const fileExt = file.name.split('.').pop()
   const fileName = `${userId}/avatar.${fileExt}`
 

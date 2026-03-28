@@ -5,6 +5,7 @@ import imageCompression from 'browser-image-compression';
 import { supabase } from '../api/supabase';
 import { useUserStore } from '../store';
 import { useScrollLock } from '../hooks/useScrollLock';
+import { STORAGE_LIMIT_BYTES, STORAGE_LIMIT_MB } from '../constants/storageQuota';
 
 interface ReportPageProps {
     isOpen: boolean;
@@ -69,6 +70,12 @@ const ReportPage = ({
 
             // 如果有文件需要上传到 Supabase
             if (evidenceFile) {
+                const used = currentUser?.storage_used || 0;
+                if (used + evidenceFile.size > STORAGE_LIMIT_BYTES) {
+                    const usedMb = (used / 1024 / 1024).toFixed(1);
+                    const needMb = (evidenceFile.size / 1024 / 1024).toFixed(1);
+                    throw new Error(`存储空间不足：当前已用 ${usedMb}MB，本次需 ${needMb}MB，每位用户上限 ${STORAGE_LIMIT_MB}MB。`);
+                }
                 const fileExt = evidenceFile.name.split('.').pop() || 'jpg';
                 const fileName = `reports/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
@@ -100,9 +107,9 @@ const ReportPage = ({
             setEvidenceFile(null);
             setEvidencePreview(null);
             onClose();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert('提交失败，请重试');
+            alert(err?.message || '提交失败，请重试');
         } finally {
             setLoading(false);
         }

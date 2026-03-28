@@ -1,0 +1,2 @@
+export const STORAGE_LIMIT_MB = 500;
+export const STORAGE_LIMIT_BYTES = STORAGE_LIMIT_MB * 1024 * 1024;

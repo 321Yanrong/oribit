@@ -6,6 +6,8 @@ import { shouldAllowUpload } from '../utils/settings';
 import imageCompression from 'browser-image-compression';
 import { savePendingPhotos, loadPendingPhotos, clearPendingPhotos } from '../utils/pendingUploads';
 import { uploadPhoto as uploadPhotoStatic } from '../api/supabase';
+import { useUserStore } from '../store';
+import { STORAGE_LIMIT_BYTES, STORAGE_LIMIT_MB } from '../constants/storageQuota';
 import {
   runForegroundNetworkProbe,
   isForegroundProbeFresh,
@@ -228,6 +230,7 @@ export default function MediaUploader({
   onPhotosChange,
   onVideosChange,
 }: MediaUploaderProps) {
+  const currentUser = useUserStore((s) => s.currentUser);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [activeTab, setActiveTab] = useState<'photo' | 'video'>('photo');
@@ -306,6 +309,19 @@ export default function MediaUploader({
     if (previewPhoto === photoUrl) setPreviewPhoto(null);
   };
 
+  const storageUsed = currentUser?.storage_used || 0;
+  const storageRatio = STORAGE_LIMIT_BYTES > 0 ? storageUsed / STORAGE_LIMIT_BYTES : 0;
+  const checkQuotaBeforeSelect = (incomingFiles: File[]) => {
+    const incomingBytes = incomingFiles.reduce((sum, file) => sum + file.size, 0);
+    if (storageUsed + incomingBytes > STORAGE_LIMIT_BYTES) {
+      const usedMb = (storageUsed / 1024 / 1024).toFixed(1);
+      const incomingMb = (incomingBytes / 1024 / 1024).toFixed(1);
+      alert(`存储空间不足：当前已用 ${usedMb}MB，本次需 ${incomingMb}MB，每位用户上限 ${STORAGE_LIMIT_MB}MB。`);
+      return false;
+    }
+    return true;
+  };
+
   const handleFileSelect = async (files: File[] | null, type: 'photo' | 'video') => {
     if (!files || uploading) return;
     if (!ensureWifiUpload()) return;
@@ -329,6 +345,7 @@ export default function MediaUploader({
       alert(type === 'photo' ? '请选择图片文件' : '请选择视频文件');
       return;
     }
+    if (!checkQuotaBeforeSelect(validFiles)) return;
     setUploading(true);
     setUploadTotal(validFiles.length);
     setUploadDone(0);
@@ -371,6 +388,7 @@ export default function MediaUploader({
   const handlePhotoFiles = async (files: File[], inputEl?: HTMLInputElement | null, options?: { skipPersist?: boolean }) => {
     if (!files.length || uploading) return;
     if (!ensureWifiUpload()) return;
+    if (!checkQuotaBeforeSelect(files)) return;
 
     if (!options?.skipPersist) {
       await savePendingPhotos(files, MAX_PENDING_FILES);
@@ -503,6 +521,13 @@ export default function MediaUploader({
           </div>
         </div>
       )}
+      {storageRatio >= 0.8 && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm ${storageRatio > 0.9 ? 'border-red-400/30 bg-red-500/10 text-red-200' : 'border-amber-300/30 bg-amber-500/10 text-amber-200'}`}
+        >
+          存储空间已用 {(storageRatio * 100).toFixed(0)}%（{(storageUsed / 1024 / 1024).toFixed(1)}MB / {STORAGE_LIMIT_MB}MB），建议先清理旧内容再上传。
+        </div>
+      )}
       {uploadError && (
         <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm flex items-center justify-between gap-3">
           <span className="flex-1">{uploadError}</span>
@@ -556,7 +581,13 @@ export default function MediaUploader({
               ))}
             </div>
           )}
-          <div onClick={() => { markPickingMedia(); fileInputRef.current?.click(); }} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handlePhotoFiles(Array.from(e.dataTransfer.files || [])); }}
+          <div onClick={() => {
+            if (storageUsed >= STORAGE_LIMIT_BYTES) {
+              alert(`存储空间已达上限 ${STORAGE_LIMIT_MB}MB，请先清理后再上传。`);
+              return;
+            }
+            markPickingMedia(); fileInputRef.current?.click();
+          }} onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handlePhotoFiles(Array.from(e.dataTransfer.files || [])); }}
             className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-all ${dragOver ? 'border-orbit-mint bg-orbit-mint/10' : 'border-white/20 bg-white/5 hover:border-orbit-mint/50'}`} style={{ minHeight: 110 }}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
               {uploading ? <FaSpinner className="text-orbit-mint text-2xl animate-spin" /> : (
@@ -585,7 +616,13 @@ export default function MediaUploader({
               ))}
             </div>
           )}
-          <div onClick={() => { markPickingMedia(); videoInputRef.current?.click(); }} className="relative rounded-2xl border-2 border-dashed border-white/20 bg-white/5 hover:border-orbit-orange/50 cursor-pointer transition-all" style={{ minHeight: 110 }}>
+          <div onClick={() => {
+            if (storageUsed >= STORAGE_LIMIT_BYTES) {
+              alert(`存储空间已达上限 ${STORAGE_LIMIT_MB}MB，请先清理后再上传。`);
+              return;
+            }
+            markPickingMedia(); videoInputRef.current?.click();
+          }} className="relative rounded-2xl border-2 border-dashed border-white/20 bg-white/5 hover:border-orbit-orange/50 cursor-pointer transition-all" style={{ minHeight: 110 }}>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
               {uploading ? <FaSpinner className="text-orbit-orange text-2xl animate-spin" /> : (
                 <>
