@@ -1399,6 +1399,7 @@ export default function MemoryStreamPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showNotificationSheet, setShowNotificationSheet] = useState(false);
   const [showLikeNotificationSheet, setShowLikeNotificationSheet] = useState(false);
+  const [commentNotificationSnapshot, setCommentNotificationSnapshot] = useState<any[]>([]);
   const [reportingFriend, setReportingFriend] = useState<any>(null);
 
   const handleBlockUser = async (targetUser: any) => {
@@ -1811,6 +1812,13 @@ export default function MemoryStreamPage() {
     const latestCommentAt = getLatestCommentTime(memoryId);
     if (!latestCommentAt) return;
     markMemoryCommentsRead(memoryId, latestCommentAt);
+  };
+
+  const openCommentNotificationSheet = () => {
+    const snapshot = [...unreadCommentItems];
+    setCommentNotificationSnapshot(snapshot);
+    snapshot.forEach(({ memory }: any) => markCommentsAsRead(memory.id));
+    setShowNotificationSheet(true);
   };
 
   const hasUnreadLikes = (memory: any) => {
@@ -2344,7 +2352,7 @@ export default function MemoryStreamPage() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowNotificationSheet(true)}
+                  onClick={openCommentNotificationSheet}
                   className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/15 px-2 py-0.5 text-[10px] font-semibold text-[#FF8A8A] border border-[#FF6B6B]/20"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B] animate-pulse" />
@@ -3482,10 +3490,10 @@ export default function MemoryStreamPage() {
                 <h2 className="text-lg font-bold mb-4 shrink-0" style={{ color: 'var(--orbit-text)' }}>新评论</h2>
 
                 <div className="overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-6 flex-1">
-                  {unreadCommentItems.length === 0 ? (
+                  {commentNotificationSnapshot.length === 0 ? (
                     <p className="text-sm text-center py-8" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>暂无未读评论</p>
                   ) : (
-                    unreadCommentItems.map(({ memory, comment, author }: any) => {
+                    commentNotificationSnapshot.map(({ memory, comment, author }: any) => {
                       const decoded = decodeCommentContent(comment.content);
                       return (
                         <div
@@ -3493,7 +3501,6 @@ export default function MemoryStreamPage() {
                           className="p-3 rounded-2xl flex gap-3 items-start border cursor-pointer hover:opacity-80 transition-opacity"
                           style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
                           onClick={() => {
-                            setShowNotificationSheet(false);
                             setSelectedMemory(memory);
                             markCommentsAsRead(memory.id);
                           }}

@@ -79,6 +79,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const lightboxContainerRef = useRef<HTMLDivElement | null>(null);
   const [commentAudios, setCommentAudios] = useState<string[]>([]);
   const [replyTarget, setReplyTarget] = useState<{ commentId: string; authorId: string; authorName: string } | null>(null);
+  const [showAllLikers, setShowAllLikers] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; isSelf: boolean; userId?: string } | null>(null);
   const avatarFileRef = useRef<HTMLInputElement>(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
@@ -120,6 +121,10 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     })();
     return () => { cancelled = true; };
   }, [memory?.id, currentUser?.id]);
+
+  useEffect(() => {
+    setShowAllLikers(false);
+  }, [memory?.id]);
 
   const handleToggleLike = async () => {
     if (!currentUser?.id) return;
@@ -719,13 +724,62 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
               </span>
             </div>
 
-            {/* 头像堆叠展示点赞的人 */}
-            <div className="flex items-center -space-x-2">
-              {(likeInfo.likers || []).slice(0, 5).map((user: any, idx) => (
-                <img key={idx} src={user.avatar_url || user.avatar} className="w-6 h-6 rounded-full border-2 border-[var(--orbit-bg)] object-cover" />
-              ))}
+            {/* 头像 + 名字展示点赞的人 */}
+            <div className="flex flex-col items-end gap-1 max-w-[55%]">
+              <div className="flex items-center -space-x-2">
+                {(likeInfo.likers || []).slice(0, 5).map((user: any, idx) => (
+                  <img
+                    key={idx}
+                    src={user.avatar_url || user.avatar}
+                    className="w-6 h-6 rounded-full border-2 border-[var(--orbit-bg)] object-cover"
+                    title={user.name || user.username || '好友'}
+                  />
+                ))}
+              </div>
+              {likeInfo.likers?.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (likeInfo.likers.length > 2) setShowAllLikers((prev) => !prev);
+                  }}
+                  className={`text-[11px] text-right truncate ${likeInfo.likers.length > 2 ? 'underline underline-offset-2' : ''}`}
+                  style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}
+                >
+                  {(likeInfo.likers || [])
+                    .slice(0, 2)
+                    .map((user: any) => user.name || user.username || '好友')
+                    .join('、')}
+                  {likeInfo.likers.length > 2 ? ` 等 ${likeInfo.likers.length} 人` : ''}
+                  {likeInfo.likers.length > 2 ? (showAllLikers ? '（收起）' : '（查看全部）') : ''}
+                </button>
+              )}
             </div>
           </motion.div>
+          {showAllLikers && likeInfo.likers.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+              className="mb-6 p-3 rounded-2xl border max-h-52 overflow-y-auto"
+              style={{ borderColor: 'var(--orbit-border)', backgroundColor: 'var(--orbit-card)' }}
+            >
+              <div className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>全部点赞成员</div>
+              <div className="space-y-2.5">
+                {(likeInfo.likers || []).map((user: any, idx: number) => (
+                  <div key={user.id || `${user.name || 'user'}-${idx}`} className="flex items-center gap-2.5">
+                    <img
+                      src={user.avatar_url || user.avatar}
+                      className="w-7 h-7 rounded-full object-cover border"
+                      style={{ borderColor: 'var(--orbit-border)' }}
+                    />
+                    <span className="text-sm truncate" style={{ color: 'var(--orbit-text)' }}>
+                      {user.name || user.username || '好友'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
           {/* 👆 点赞区域结束 👆 */}
 
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.38 }} className="mb-8">

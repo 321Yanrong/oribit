@@ -1,4 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Keyboard } from '@capacitor/keyboard';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaClock, FaUsers, FaUser, FaMapMarkerAlt, FaWallet, FaPlus, FaTimes, FaSpinner, FaImages, FaChevronRight, FaEdit, FaTrash, FaChevronDown } from 'react-icons/fa';
 import { useLedgerStore, useUserStore, getUserById, useMemoryStore } from '../store';
@@ -33,6 +36,9 @@ interface LedgerItem {
   category: string;
   note: string;
   amount: string;
+  splitType?: 'shared' | 'personal';
+  participantIds?: string[];
+  participantMeta?: Array<{ id: string; name: string; avatar_url?: string }>;
 }
 
 const CATEGORIES = ['🍜 饮食', '🏨 住宿', '🚗 交通', '🎢 娱乐', '🛍️ 购物', '💊 其他'];
@@ -85,35 +91,96 @@ function CalcPad({ expr, onChange, onConfirm }: { expr: string; onChange: (v: st
 // 1. 账单表单弹窗 (保持原样，完全未改动)
 // ==========================================
 const LedgerModal = ({
-  isOpen, onClose, onSave, friends, editData
+  isOpen, onClose, onSave, friends, editData, initialMemoryId
 }: {
   isOpen: boolean; onClose: () => void;
   onSave: (data: any) => void;
-  friends: any[]; editData?: any;
+  friends: any[]; editData?: any; initialMemoryId?: string;
 }) => {
   const { memories } = useMemoryStore();
   const isEdit = !!editData;
 
-  const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>(() =>
-    editData?.total_amount
-      ? [{ id: '1', category: '🍜 饮食', note: editData?.description || '', amount: String(editData.total_amount) }]
-      : [{ id: '1', category: '🍜 饮食', note: '', amount: '' }]
-  );
+  const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>(() => {
+    const defaultParticipants = editData?.participants
+      ?.filter((p: any) => p.user_id !== editData.creator_id)
+      .map((p: any) => p.user_id) || [];
+    const fallbackSplitType: 'shared' | 'personal' = editData?.expense_type === 'personal' ? 'personal' : 'shared';
+
+    const parseItemsFromDescription = () => {
+      const raw = editData?.description;
+      if (typeof raw !== 'string' || !raw.startsWith('[')) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || parsed.length === 0) return null;
+        return parsed.map((item: any, index: number) => ({
+          id: item?.id ? String(item.id) : `edit-item-${index + 1}`,
+          category: item?.category || '💊 其他',
+          note: item?.note || '',
+          amount: String(item?.amount || ''),
+          splitType: item?.splitType === 'personal' ? 'personal' : 'shared',
+          participantIds: Array.isArray(item?.participantIds) ? item.participantIds : defaultParticipants,
+          participantMeta: Array.isArray(item?.participantMeta) ? item.participantMeta : [],
+        })) as LedgerItem[];
+      } catch {
+        return null;
+      }
+    };
+
+    const parsedItems = parseItemsFromDescription();
+    if (parsedItems && parsedItems.length > 0) return parsedItems;
+
+    return editData?.total_amount
+      ? [{ id: '1', category: '🍜 饮食', note: editData?.description || '', amount: String(editData.total_amount), splitType: fallbackSplitType, participantIds: defaultParticipants, participantMeta: [] }]
+      : [{ id: '1', category: '🍜 饮食', note: '', amount: '', splitType: 'shared', participantIds: [], participantMeta: [] }];
+  });
   const [activeCalcId, setActiveCalcId] = useState<string | null>(null);
   const totalAmount = ledgerItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
-  const addLedgerItem = () => setLedgerItems(prev => [...prev, { id: Date.now().toString(), category: '💊 其他', note: '', amount: '' }]);
+  const addLedgerItem = () => setLedgerItems((prev) => {
+    const lastParticipants = prev[prev.length - 1]?.participantIds || [];
+    const lastMeta = prev[prev.length - 1]?.participantMeta || [];
+    const lastSplitType = prev[prev.length - 1]?.splitType || 'shared';
+    return [...prev, { id: Date.now().toString(), category: '💊 其他', note: '', amount: '', splitType: lastSplitType, participantIds: [...lastParticipants], participantMeta: [...lastMeta] }];
+  });
   const removeLedgerItem = (id: string) => setLedgerItems(prev => prev.length > 1 ? prev.filter(i => i.id !== id) : prev);
   const updateLedgerItem = (id: string, field: keyof LedgerItem, value: string) =>
     setLedgerItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
+  const getParticipantOptions = (item: LedgerItem) => {
+    const base = friends.map((friendship: any) => {
+      const friend = friendship.friend;
+      return {
+        id: friend.id,
+        name: friend.username || '好友',
+        avatar_url: friend.avatar_url || '',
+      };
+    });
+    const existing = new Set(base.map((u: any) => u.id));
+    const persisted = (item.participantMeta || []).filter((p) => p?.id && !existing.has(p.id));
+    return [...base, ...persisted];
+  };
+  const toggleItemFriend = (itemId: string, friendId: string) =>
+    setLedgerItems((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      const current = item.participantIds || [];
+      const options = getParticipantOptions(item);
+      const picked = options.find((p) => p.id === friendId);
+      const next = current.includes(friendId)
+        ? current.filter((id) => id !== friendId)
+        : [...current, friendId];
+      const nextMeta = [...(item.participantMeta || [])];
+      if (picked && !nextMeta.some((p) => p.id === friendId)) {
+        nextMeta.push({ id: picked.id, name: picked.name, avatar_url: picked.avatar_url || '' });
+      }
+      return { ...item, participantIds: next, participantMeta: nextMeta };
+    }));
   const [selectedMemoryId, setSelectedMemoryId] = useState(editData?.memory_id || '');
-  const [expenseType, setExpenseType] = useState<'shared' | 'personal'>(editData?.expense_type || 'shared');
-  const [selectedFriends, setSelectedFriends] = useState<string[]>(
-    editData?.participants?.filter((p: any) => p.user_id !== editData.creator_id).map((p: any) => p.user_id) || []
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
-  const toggleFriend = (friendId: string) => setSelectedFriends(prev => prev.includes(friendId) ? prev.filter(id => id !== friendId) : [...prev, friendId]);
+  useEffect(() => {
+    if (!isOpen || isEdit) return;
+    setSelectedMemoryId(initialMemoryId || '');
+  }, [isOpen, isEdit, initialMemoryId]);
 
   const handleSave = async () => {
     if (totalAmount <= 0 || !selectedMemoryId) return;
@@ -121,16 +188,35 @@ const LedgerModal = ({
 
     const memory = memories.find(m => m.id === selectedMemoryId);
     const tripName = memory?.location?.name || memory?.content?.substring(0, 10) || '未命名旅程';
-    const finalParticipants = expenseType === 'personal' ? [] : selectedFriends;
+    const finalItems = ledgerItems.map((item) => {
+      const isShared = (item.splitType || 'shared') === 'shared';
+      const participantIds = isShared ? (item.participantIds || []) : [];
+      const options = getParticipantOptions(item);
+      const participantMeta = participantIds.map((id) => {
+        const matched = options.find((p: any) => p.id === id) || item.participantMeta?.find((p) => p.id === id);
+        return {
+          id,
+          name: matched?.name || '虚拟成员',
+          avatar_url: matched?.avatar_url || '',
+        };
+      });
+      return {
+        ...item,
+        splitType: isShared ? 'shared' : 'personal',
+        participantIds,
+        participantMeta,
+      };
+    });
     const description = ledgerItems.map(i => i.category + (i.note ? ` ${i.note}` : '')).join('，');
+    const hasAnySharedItem = finalItems.some((item) => item.splitType !== 'personal');
 
     await onSave({
       id: editData?.id,
       amount: totalAmount,
       description,
-      items: ledgerItems,
-      participants: finalParticipants,
-      expenseType,
+      items: finalItems,
+      participants: [],
+      expenseType: hasAnySharedItem ? 'shared' : 'personal',
       tripName,
       memoryId: selectedMemoryId
     });
@@ -139,11 +225,69 @@ const LedgerModal = ({
     onClose();
   };
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const visualViewport = window.visualViewport;
+    const keyboardHandles: Array<{ remove: () => Promise<void> }> = [];
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/40 backdrop-blur" onClick={onClose}>
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl shadow-2xl" style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', color: 'var(--orbit-text, #0f172a)', borderTop: '1px solid var(--orbit-border, #e5e7eb)' }} onClick={(e) => e.stopPropagation()}>
+    const syncViewportInset = () => {
+      if (!visualViewport) return;
+      const overlap = Math.max(0, Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop));
+      if (overlap > 0) setKeyboardInset(overlap);
+    };
+
+    syncViewportInset();
+    visualViewport?.addEventListener('resize', syncViewportInset);
+    visualViewport?.addEventListener('scroll', syncViewportInset);
+
+    if (Capacitor.isNativePlatform()) {
+      void Keyboard.addListener('keyboardWillShow', (info) => {
+        setKeyboardInset(Math.max(0, Math.round(info.keyboardHeight || 0)));
+      }).then((handle) => keyboardHandles.push(handle));
+      void Keyboard.addListener('keyboardDidShow', (info) => {
+        setKeyboardInset(Math.max(0, Math.round(info.keyboardHeight || 0)));
+      }).then((handle) => keyboardHandles.push(handle));
+      void Keyboard.addListener('keyboardWillHide', () => {
+        setKeyboardInset(0);
+      }).then((handle) => keyboardHandles.push(handle));
+      void Keyboard.addListener('keyboardDidHide', () => {
+        setKeyboardInset(0);
+      }).then((handle) => keyboardHandles.push(handle));
+    }
+
+    return () => {
+      visualViewport?.removeEventListener('resize', syncViewportInset);
+      visualViewport?.removeEventListener('scroll', syncViewportInset);
+      keyboardHandles.forEach((handle) => { void handle.remove(); });
+    };
+  }, []);
+
+  const handleFieldFocus = useCallback((event: any) => {
+    const target = event?.target as HTMLElement | null;
+    if (!target || typeof target.scrollIntoView !== 'function') return;
+    const tagName = target.tagName;
+    if (tagName !== 'INPUT' && tagName !== 'TEXTAREA' && tagName !== 'SELECT') return;
+
+    window.setTimeout(() => {
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 220);
+  }, []);
+
+  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[180] bg-black/40 backdrop-blur" onClick={onClose}>
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-3xl shadow-2xl"
+        style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', color: 'var(--orbit-text, #0f172a)', borderTop: '1px solid var(--orbit-border, #e5e7eb)' }}
+        onClick={(e) => e.stopPropagation()}
+        onFocusCapture={handleFieldFocus}
+      >
         <div className="sticky top-0 flex items-center justify-between px-4 py-4 z-10" style={{ backgroundColor: 'var(--orbit-surface, #ffffff)', borderBottom: '1px solid var(--orbit-border, #e5e7eb)' }}>
           <button onClick={onClose} className="text-[#475569] hover:text-[#0f172a]">取消</button>
           <span className="font-semibold" style={{ color: 'var(--orbit-text, #0f172a)' }}>{isEdit ? '修改账单' : '记一笔'}</span>
@@ -152,10 +296,11 @@ const LedgerModal = ({
           </button>
         </div>
 
-        <div className="p-4 space-y-5" style={{ color: 'var(--orbit-text, #0f172a)' }}>
-          <div className="flex p-1 rounded-xl" style={{ backgroundColor: '#f6f7fb', border: '1px solid var(--orbit-border, #e5e7eb)' }}>
-            <button onClick={() => setExpenseType('shared')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'shared' ? 'bg-white shadow text-[#0f172a] border border-[var(--orbit-border,#e5e7eb)]' : 'text-[#94a3b8]'}`}>👫 多人 AA</button>
-            <button onClick={() => setExpenseType('personal')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${expenseType === 'personal' ? 'bg-[#e6fff5] text-[#047857] shadow border border-[#a7f3d0]' : 'text-[#94a3b8]'}`}>🙋 个人消费</button>
+        <div className="p-4 space-y-5" style={{ color: 'var(--orbit-text, #0f172a)', paddingBottom: `${Math.max(16, keyboardInset + 16)}px` }}>
+          <div className="px-1">
+            <p className="text-xs" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+              每个项目可独立选择「多人 AA / 个人消费」
+            </p>
           </div>
 
           <div className="relative">
@@ -203,6 +348,22 @@ const LedgerModal = ({
                     ¥{item.amount || '0'}
                   </button>
                 </div>
+                <div className="flex p-1 rounded-xl" style={{ backgroundColor: '#f6f7fb', border: '1px solid var(--orbit-border, #e5e7eb)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setLedgerItems((prev) => prev.map((it) => it.id === item.id ? { ...it, splitType: 'shared' } : it))}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${(item.splitType || 'shared') === 'shared' ? 'bg-white shadow text-[#0f172a] border border-[var(--orbit-border,#e5e7eb)]' : 'text-[#94a3b8]'}`}
+                  >
+                    👫 多人 AA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLedgerItems((prev) => prev.map((it) => it.id === item.id ? { ...it, splitType: 'personal', participantIds: [] } : it))}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${(item.splitType || 'shared') === 'personal' ? 'bg-[#e6fff5] text-[#047857] shadow border border-[#a7f3d0]' : 'text-[#94a3b8]'}`}
+                  >
+                    🙋 个人消费
+                  </button>
+                </div>
                 {activeCalcId === item.id && (
                   <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.15 }}>
                     <CalcPad
@@ -211,6 +372,32 @@ const LedgerModal = ({
                       onConfirm={v => { updateLedgerItem(item.id, 'amount', v); setActiveCalcId(null); }}
                     />
                   </motion.div>
+                )}
+                {(item.splitType || 'shared') === 'shared' && (
+                  <div className="pt-1">
+                    <p className="text-xs mb-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>该项目参与者（默认仅自己）</p>
+                    <div className="flex flex-wrap gap-2">
+                      {getParticipantOptions(item).map((person: any) => {
+                        const selected = (item.participantIds || []).includes(person.id);
+                        return (
+                          <button
+                            key={`${item.id}-${person.id}`}
+                            type="button"
+                            onClick={() => toggleItemFriend(item.id, person.id)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-all ${selected ? 'bg-[#e6fff5] border-[#34d399] text-[#047857]' : 'bg-[#f8fafc] border-[#e2e8f0] text-[#475569]'}`}
+                          >
+                            <img src={person.avatar_url || 'https://api.dicebear.com/9.x/adventurer/svg?seed=virtual'} alt={person.name} className="w-4 h-4 rounded-full object-cover" />
+                            <span>{person.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!!item.amount && (
+                      <div className="mt-2 text-[11px]" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
+                        本项总额 ¥{(parseFloat(item.amount) || 0).toFixed(2)}，共 {(item.participantIds?.length || 0) + 1} 人均摊，每人 ¥{((parseFloat(item.amount) || 0) / ((item.participantIds?.length || 0) + 1)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
@@ -226,35 +413,11 @@ const LedgerModal = ({
             </div>
           </div>
 
-          <AnimatePresence>
-            {expenseType === 'shared' && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <p className="text-[#64748b] text-sm mb-3">选择参与者（默认含自己）</p>
-                <div className="flex flex-wrap gap-2">
-                  {friends.filter((fs: any) => !fs.friend?.id?.startsWith('temp-')).map((friendship: any) => {
-                    const friend = friendship.friend;
-                    const isSelected = selectedFriends.includes(friend.id);
-                    return (
-                      <motion.button key={friend.id} onClick={() => toggleFriend(friend.id)} className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${isSelected ? 'bg-[#e6fff5] border-[#34d399] text-[#047857]' : 'bg-[#f8fafc] border-[#e2e8f0] text-[#475569]'}`}>
-                        <img src={friend.avatar_url} alt={friend.username} className="w-5 h-5 rounded-full" />
-                        <span className="text-sm">{friend.username}</span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-                {totalAmount > 0 && (
-                  <div className="mt-4 p-4 rounded-xl border text-center" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--orbit-border, #e5e7eb)' }}>
-                    <span className="text-[#475569] text-sm">总计 {selectedFriends.length + 1} 人均摊，每人 </span>
-                    <span className="text-[#d97706] font-bold">¥{(totalAmount / (selectedFriends.length + 1)).toFixed(2)}</span>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
         <div className="h-10" />
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -262,11 +425,12 @@ const LedgerModal = ({
 // 3. 账单详情弹窗 (分组按Trip展示)
 // ==========================================
 const GroupDetailModal = ({
-  groupData, groupType, onClose, friends, currentUser, onEdit, onDelete
+  groupData, groupType, onClose, friends, currentUser, onEdit, onDelete, onAdd
 }: {
-  groupData: any; groupType: 'memory' | 'city'; onClose: () => void; friends: any[]; currentUser: any; onEdit: (item: any) => void; onDelete: (id: string) => void;
+  groupData: any; groupType: 'memory' | 'city'; onClose: () => void; friends: any[]; currentUser: any; onEdit: (item: any) => void; onDelete: (id: string) => void; onAdd: (memoryId?: string) => void;
 }) => {
   if (!groupData) return null;
+  if (typeof document === 'undefined') return null;
 
   const title = groupType === 'city' ? groupData.city : (groupData.memory?.location?.name || groupData.memory?.content?.substring(0, 15) || '未命名分类');
   const dateStr = groupType === 'memory' && groupData.memory ? (groupData.memory.memory_date || groupData.memory.created_at) : null;
@@ -280,10 +444,10 @@ const GroupDetailModal = ({
       return sum + (myPart ? myPart.amount : 0);
     }, 0);
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -299,7 +463,18 @@ const GroupDetailModal = ({
 
         <div className="px-6 sm:px-8 flex-1 overflow-y-auto overscroll-contain hide-scrollbar pb-10">
           <div className="mb-6 mt-4 sm:mt-6 text-center sm:text-left">
-            <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--orbit-text)' }}>{title}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--orbit-text)' }}>{title}</h2>
+              <button
+                type="button"
+                onClick={() => onAdd(groupType === 'memory' ? groupData?.memory?.id : undefined)}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                style={{ borderColor: 'var(--orbit-border)', color: 'var(--orbit-text)', backgroundColor: 'var(--orbit-card)' }}
+              >
+                <FaPlus className="text-[10px]" />
+                新增
+              </button>
+            </div>
             {date && <p className="text-xs mt-1 uppercase tracking-widest" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{date}</p>}
           </div>
 
@@ -317,13 +492,20 @@ const GroupDetailModal = ({
               const myPart = isPersonal ? ledger.total_amount : (ledger.participants?.find((p: any) => p.user_id === currentUser?.id)?.amount || 0);
 
               // 解析 description 字段中的分类明细（JSON 数组格式）
-              let items: { id: string; category: string; note: string; amount: string }[] = [];
+              let items: { id: string; category: string; note: string; amount: string; participantIds?: string[]; participantMeta?: Array<{ id: string; name: string; avatar_url?: string }> }[] = [];
               try {
                 const desc = ledger.description;
                 if (typeof desc === 'string' && desc.startsWith('[')) {
                   items = JSON.parse(desc);
                 }
               } catch { /* ignore */ }
+              const uniqueParticipantIds = [...new Set(
+                items.flatMap((it) => Array.isArray(it.participantIds) ? it.participantIds : []).filter(Boolean)
+              )];
+              const sharedOthersCount = uniqueParticipantIds.length > 0
+                ? uniqueParticipantIds.length
+                : Math.max(0, (ledger.participants?.length || 1) - 1);
+              const sharedTotalCount = sharedOthersCount + 1;
               // 2. 动态决定顶部标签：优先显示具体的分类（取第一个分类）
               let displayCategoryBadge = isPersonal ? '🙋 个人消费' : '👫 多人均摊';
               if (items.length > 0 && items[0].category) {
@@ -338,7 +520,7 @@ const GroupDetailModal = ({
                         {displayCategoryBadge}
                       </span>
                       <span className="text-[10px] opacity-60" style={{ color: 'var(--orbit-text-muted)' }}>
-                        {isPersonal ? '(个人)' : `(与 ${(ledger.participants?.length || 1) - 1} 人均摊)`}
+                        {isPersonal ? '(个人)' : `(与 ${sharedOthersCount} 人均摊)`}
                       </span>
                     </div>
                     <div className="flex items-center gap-4" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
@@ -382,7 +564,7 @@ const GroupDetailModal = ({
                       <span className="text-xs font-medium" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>我分摊的费用</span>
                       {!isPersonal && ledger.participants && (
                         <p className="text-[10px] mt-0.5" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
-                          共 {ledger.participants.length} 人均摊
+                          共 {sharedTotalCount} 人均摊
                         </p>
                       )}
                     </div>
@@ -398,7 +580,8 @@ const GroupDetailModal = ({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -412,6 +595,7 @@ export default function LedgerPage() {
   const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
 
   const [showLedgerModal, setShowLedgerModal] = useState(false);
+  const [createFromMemoryId, setCreateFromMemoryId] = useState('');
   const [editingLedger, setEditingLedger] = useState<any>(null);
   const [viewingGroupPayload, setViewingGroupPayload] = useState<{ data: any, type: 'city' | 'memory' } | null>(null);
   const [groupBy, setGroupBy] = useState<'memory' | 'city'>('memory');
@@ -444,8 +628,36 @@ export default function LedgerPage() {
     if (!window.confirm('确定删除这笔账单？')) return;
     try {
       await deleteLedger(id);
-      setViewingGroupPayload(null);
       setEditingLedger(null);
+      setViewingGroupPayload((prev) => {
+        if (!prev?.data?.ledgers) return prev;
+        const remainingLedgers = prev.data.ledgers.filter((ledger: any) => ledger.id !== id);
+        if (remainingLedgers.length === 0) return null;
+
+        if (prev.type === 'city') {
+          const nextTotal = remainingLedgers.reduce((sum: number, ledger: any) => {
+            if (ledger.expense_type === 'personal') return sum + ledger.total_amount;
+            const myPart = ledger.participants?.find((p: any) => p.user_id === currentUser?.id);
+            return sum + (myPart ? myPart.amount : 0);
+          }, 0);
+          return {
+            ...prev,
+            data: {
+              ...prev.data,
+              ledgers: remainingLedgers,
+              total: nextTotal,
+            },
+          };
+        }
+
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            ledgers: remainingLedgers,
+          },
+        };
+      });
     } catch (e) {
       alert('删除失败');
     }
@@ -523,15 +735,43 @@ export default function LedgerPage() {
       // 关键：将明细对象转为字符串/JSON存入 description
       const structuredDescription = data.items ? JSON.stringify(data.items) : data.description;
 
-      const realParticipantIds = (data.participants as string[]).filter(id => !id.startsWith('temp-'));
-      const total = data.amount;
-      const share = total / (realParticipantIds.length + 1);
-      const participants = data.expenseType === 'personal'
-        ? [{ userId: currentUser.id, amount: total }]
-        : [
-          { userId: currentUser.id, amount: share },
-          ...realParticipantIds.map((id: string) => ({ userId: id, amount: share }))
-        ];
+      const itemList = Array.isArray(data.items) ? data.items : [];
+      const total = itemList.length > 0
+        ? itemList.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0)
+        : data.amount;
+
+      const participants = (() => {
+        const amountByUser = new Map<string, number>();
+        amountByUser.set(currentUser.id, 0);
+        const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
+        itemList.forEach((item: any) => {
+          const amount = parseFloat(item.amount) || 0;
+          if (amount <= 0) return;
+
+          const splitType = item?.splitType === 'personal' ? 'personal' : 'shared';
+          if (splitType === 'personal') {
+            amountByUser.set(currentUser.id, (amountByUser.get(currentUser.id) || 0) + amount);
+            return;
+          }
+
+          const rawIds = Array.isArray(item.participantIds) ? item.participantIds : [];
+          const participantIds = [...new Set(rawIds.filter((id: string) => !!id))];
+          const realParticipantIds = participantIds.filter((id: string) => isUuid(id));
+          // 分母保留所有被选择的人（包含虚拟人），让“我”的分摊正确变小
+          const share = amount / (participantIds.length + 1);
+
+          amountByUser.set(currentUser.id, (amountByUser.get(currentUser.id) || 0) + share);
+          // 落库只写真实账号，避免 UUID 字段报错
+          realParticipantIds.forEach((id: string) => {
+            amountByUser.set(id, (amountByUser.get(id) || 0) + share);
+          });
+        });
+
+        return Array.from(amountByUser.entries())
+          .filter(([, amount]) => amount > 0)
+          .map(([userId, amount]) => ({ userId, amount }));
+      })();
       if (data.id) {
         await updateLedger(data.id, currentUser.id, total, participants, data.memoryId, data.expenseType, structuredDescription);
       } else {
@@ -627,7 +867,7 @@ export default function LedgerPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowLedgerModal(true)}
+            onClick={() => { setCreateFromMemoryId(''); setShowLedgerModal(true); }}
             className="px-4 py-2 rounded-full bg-gradient-to-r from-[#00FFB3] to-[#00D9FF] text-white font-semibold text-sm shrink-0 shadow-md shadow-[#00D9FF]/20"
           >
             记一笔
@@ -730,7 +970,7 @@ export default function LedgerPage() {
       </div>
 
       <AnimatePresence>
-        {showLedgerModal && <LedgerModal isOpen={showLedgerModal} onClose={() => setShowLedgerModal(false)} onSave={handleSaveLedger} friends={friends} />}
+        {showLedgerModal && <LedgerModal isOpen={showLedgerModal} onClose={() => { setShowLedgerModal(false); setCreateFromMemoryId(''); }} onSave={handleSaveLedger} friends={friends} initialMemoryId={createFromMemoryId} />}
         {editingLedger && <LedgerModal isOpen={!!editingLedger} onClose={() => setEditingLedger(null)} onSave={handleSaveLedger} friends={friends} editData={editingLedger} />}
         {viewingGroupPayload && <GroupDetailModal
           groupData={viewingGroupPayload.data}
@@ -740,6 +980,12 @@ export default function LedgerPage() {
           currentUser={currentUser}
           onEdit={(item) => { setViewingGroupPayload(null); setEditingLedger(item); }}
           onDelete={handleDeleteLedger}
+          onAdd={(memoryId) => {
+            setViewingGroupPayload(null);
+            setEditingLedger(null);
+            setCreateFromMemoryId(memoryId || '');
+            setShowLedgerModal(true);
+          }}
         />}
       </AnimatePresence>
     </div>

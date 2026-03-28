@@ -288,7 +288,15 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
         className="h-full w-full overflow-y-auto"
         style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       >
-        <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative">
+        <div
+          className="safe-top sticky top-0 z-20 px-4 pt-4 pb-2 flex items-center justify-center relative"
+          style={{
+            background: isDarkMode ? 'rgba(11, 19, 36, 0.94)' : 'rgba(245, 245, 247, 0.94)',
+            backdropFilter: 'saturate(180%) blur(12px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+            borderBottom: `1px solid ${isDarkMode ? '#1f2937' : '#e5e7eb'}`
+          }}
+        >
           <button
             onClick={onClose}
             className="absolute left-4 w-8 h-8 rounded-full flex items-center justify-center"
