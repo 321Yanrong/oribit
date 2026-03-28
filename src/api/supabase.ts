@@ -1390,8 +1390,11 @@ export const rejectFriendRequest = async (friendshipId: string): Promise<void> =
 // ==================== 记忆删除 ====================
 export const deleteMemory = async (memoryId: string): Promise<void> => {
   ensureOnlineForWrite('删除记忆')
-  // 先删关联标签，再删记忆本体
+  // 删关联账单（ledger_participants 会通过 CASCADE 自动清除）
+  await supabase.from('ledgers').delete().eq('memory_id', memoryId);
+  // 删关联标签
   await supabase.from('memory_tags').delete().eq('memory_id', memoryId);
+  // 删记忆本体（memory_comments 通过 CASCADE 自动清除）
   const { error } = await supabase.from('memories').delete().eq('id', memoryId);
   if (error) throw error;
 };

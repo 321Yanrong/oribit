@@ -444,6 +444,8 @@ export default function LedgerPage() {
     if (!window.confirm('确定删除这笔账单？')) return;
     try {
       await deleteLedger(id);
+      setViewingGroupPayload(null);
+      setEditingLedger(null);
     } catch (e) {
       alert('删除失败');
     }

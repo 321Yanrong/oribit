@@ -1,51 +1,255 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>用户协议 - Orbit</title>
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif; margin: 0; background: #0b0f1c; color: #e5e7eb; }
-      .container { max-width: 860px; margin: 0 auto; padding: 24px 20px 80px; }
-      .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-      .back-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); color: #e5e7eb; background: rgba(255,255,255,0.04); font-size: 14px; }
-      .back-btn:hover { background: rgba(255,255,255,0.08); }
-      h1 { font-size: 28px; margin: 8px 0 16px; }
-      h2 { font-size: 18px; margin-top: 24px; }
-      p, li { line-height: 1.7; color: #cbd5e1; }
-      .muted { color: #94a3b8; font-size: 13px; }
-      a { color: #7cf5ff; text-decoration: none; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="topbar">
-        <a class="back-btn" href="/">← 返回</a>
-        <p class="muted">更新时间：2026-03-16</p>
-      </div>
-      <h1>用户协议</h1>
-      <p>感谢使用 Orbit。使用本服务即表示你同意本协议条款。</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbit 轨迹 - 用户服务协议 / Terms of Service</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.8;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+    }
+    h1 { font-size: 22px; color: #111; margin: 0 0 6px; }
+    h2 { font-size: 17px; color: #111; margin: 32px 0 10px; }
+    p { margin: 0 0 12px; font-size: 14px; }
+    ul, ol { margin: 0 0 12px; padding-left: 20px; font-size: 14px; }
+    li { margin-bottom: 4px; }
+    a { color: #333; text-decoration: underline; }
+    a:hover { color: #000; }
+    .header { margin-bottom: 24px; }
+    .header .date { font-size: 13px; color: #999; margin: 4px 0 0; }
+    .divider { border: none; border-top: 1px solid #e0e0e0; margin: 48px 0; }
+    .lang-tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #999; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; margin-bottom: 8px; }
+    .summary-box { background: #f9f9f9; border-left: 3px solid #ddd; padding: 12px 16px; margin: 16px 0; font-size: 14px; }
+    .footer { font-size: 12px; color: #aaa; margin-top: 48px; text-align: center; }
+    #lang-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 999;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+    }
+    #lang-toggle:hover { background: #333; }
+  </style>
+</head>
+<body>
 
-      <h2>服务说明</h2>
-      <p>Orbit 提供记录与分享回忆的工具，功能以当前实际提供为准。</p>
+<button id="lang-toggle" onclick="toggleLang()">English</button>
 
-      <h2>用户义务</h2>
-      <ul>
-        <li>你需对发布内容的合法性与真实性负责。</li>
-        <li>不得发布违法、侵权或有害内容。</li>
-      </ul>
+<div id="zh-content">
+<!-- ==================== 中文版 ==================== -->
+<span class="lang-tag">中文</span>
+<div class="header">
+  <h1>Orbit 轨迹 — 用户服务协议</h1>
+  <p class="date">生效日期：2026年3月27日 &nbsp;|&nbsp; 开发者：Yanrong Chen</p>
+</div>
 
-      <h2>内容与版权</h2>
-      <p>你保留对自己内容的版权，但授权 Orbit 为提供服务而进行必要的存储与展示。</p>
+<div class="summary-box">
+  <strong>主要内容概要：</strong>
+  <ul>
+    <li>Orbit 是一款面向熟人关系的私密回忆记录应用，提供回忆记录、好友协作、地图足迹与共享账单等服务。</li>
+    <li>回忆采用标签制可见性，仅发布者本人及被明确打标的好友可以查看。</li>
+    <li>您应对自己发布的内容和账号使用行为负责，不得发布违法或侵犯他人权益的内容。</li>
+    <li>使用 Orbit 即表示您同意本协议及相关隐私政策。</li>
+  </ul>
+</div>
 
-      <h2>账号与安全</h2>
-      <p>请妥善保管账号信息，因账号泄露造成的损失需由你承担。</p>
+<h2>前言</h2>
+<p>在使用 Orbit 轨迹（以下简称"Orbit"或"本应用"）的各项服务之前，请您仔细阅读本协议。如您不同意本协议的内容，请立即停止使用本应用。一旦您开始使用，即视为您已阅读、理解并同意接受本协议的全部条款。</p>
+<p>本应用面向 18 周岁及以上用户。如您未满 18 周岁，请在监护人的陪同和同意下使用。</p>
 
-      <h2>终止与变更</h2>
-      <p>我们可能根据运营需要调整服务或条款，并在合理范围内告知。</p>
+<h2>一、服务内容与使用范围</h2>
+<p>Orbit 是一款面向熟人的私密回忆记录应用，提供以下服务：</p>
+<ul>
+  <li>发布、存储和浏览个人及好友共同的回忆（含文字、照片、视频、位置、语音评论）</li>
+  <li>好友系统：通过邀请码添加好友，共同查看被打标的回忆</li>
+  <li>友情地图：以地图形式可视化回忆足迹</li>
+  <li>共享账单：在好友之间记录和管理共同花销</li>
+  <li>回忆相册：将回忆整理为相册和海报</li>
+</ul>
+<p>未来 Orbit 可能会推出更多功能，用户在使用时应遵守本协议的相关规定。</p>
 
-      <h2>联系我们</h2>
-      <p>如有疑问，请联系：<a href="mailto:support@orbit.yanrong.fun">support@orbit.yanrong.fun</a></p>
-    </div>
-  </body>
+<h2>二、账号注册与管理</h2>
+<ol>
+  <li>注册时须提供真实有效的邮箱地址，并自行设定密码。您有责任保管好您的账号登录凭证，不得将账号转让、出借或共享给他人。</li>
+  <li>您需对使用本账号进行的一切操作负责。</li>
+  <li>如发现账号被他人未经授权使用，请立即联系我们：<a href="mailto:support@wehihi.com">support@wehihi.com</a>。</li>
+  <li>Orbit 有权在合理通知后对违规账号采取限制或封禁措施。</li>
+</ol>
+
+<h2>三、用户内容与知识产权</h2>
+<ol>
+  <li>您发布的回忆内容（文字、照片、视频、语音等）的知识产权归您本人所有。</li>
+  <li>您授予 Orbit 在提供服务所必需的范围内使用、存储、展示上述内容的非独家许可，该许可仅用于实现应用功能，不用于商业广告或数据出售。</li>
+  <li>您保证您发布的内容不侵犯任何第三方的版权、肖像权、隐私权或其他合法权益。</li>
+  <li>您对通过本应用发布的所有内容承担法律责任。</li>
+</ol>
+
+<h2>四、禁止内容</h2>
+<p>任何用户不得利用 Orbit 发布、存储或传播以下内容：</p>
+<ol>
+  <li>违反宪法确定的基本原则的内容；</li>
+  <li>危害国家安全、泄露国家秘密、破坏国家统一的内容；</li>
+  <li>损害国家荣誉和利益的内容；</li>
+  <li>煽动民族仇恨、民族歧视，破坏民族团结的内容；</li>
+  <li>宣扬邪教或封建迷信的内容；</li>
+  <li>散布谣言，扰乱社会秩序，破坏社会稳定的内容；</li>
+  <li>散布淫秽、色情、赌博、暴力、恐怖或教唆犯罪的内容；</li>
+  <li>侮辱、诽谤他人，侵害他人合法权益的内容；</li>
+  <li>侵犯他人隐私权的内容（如未经他人同意发布其照片或位置）；</li>
+  <li>其他违反法律、行政法规禁止的内容。</li>
+</ol>
+
+<h2>五、好友系统与内容可见性</h2>
+<ol>
+  <li>回忆采用"标签制"可见性，仅发布者本人及被明确打标的好友可以看到该回忆，仅是好友关系不赋予查看权限。</li>
+  <li>您在标记好友前，请确保已获得对方同意。</li>
+  <li>删除好友关系后，历史打标记录不会自动撤销。如需彻底撤回访问权限，需手动编辑或删除相关回忆。</li>
+</ol>
+
+<h2>六、数据与隐私</h2>
+<ol>
+  <li>Orbit 不出售您的个人信息，不将数据用于广告投放或跨平台追踪。</li>
+  <li>数据存储于境外（美国）的云端服务器（Supabase Inc.），已依法采取跨境数据保护措施。</li>
+  <li>账号注销后，所有相关数据将在 7 个工作日内被永久删除，此操作不可恢复。</li>
+  <li>详细的数据处理方式请参见《Orbit 隐私保护政策》。</li>
+</ol>
+
+<h2>七、免责声明</h2>
+<ol>
+  <li>Orbit 按"现状"提供服务，不对因网络故障、系统错误、第三方服务中断或不可抗力导致的任何损失承担责任。</li>
+  <li>本应用不对用户发布内容的准确性、真实性或适用性负责。</li>
+  <li>本应用不对因用户疏忽未查看回忆或提醒而造成的任何损失承担责任。</li>
+  <li>第三方服务（如 Mapbox、Supabase 等）受其各自服务条款约束，Orbit 不对第三方服务的可用性或内容承担责任。</li>
+</ol>
+
+<h2>八、协议修改</h2>
+<p>Orbit 可根据国家法律法规的变化及业务需要随时修改本协议。修改后的条款将在应用内通知用户，继续使用即视为接受修改后的协议。</p>
+
+<h2>九、联系我们</h2>
+<p>如对本协议有任何疑问，请通过以下方式联系我们：</p>
+<ul>
+  <li>邮件：<a href="mailto:support@wehihi.com">support@wehihi.com</a></li>
+  <li>应用内：我的 → 设置 → 帮助与客服</li>
+</ul>
+
+</div><!-- end #zh-content -->
+
+<hr class="divider" />
+
+<div id="en-content" style="display:none">
+<!-- ==================== English Version ==================== -->
+<span class="lang-tag">English</span>
+<div class="header">
+  <h1>Orbit — Terms of Service</h1>
+  <p class="date">Effective date: March 27, 2026 &nbsp;|&nbsp; Developer: Yanrong Chen</p>
+</div>
+
+<div class="summary-box">
+  <strong>Key points:</strong>
+  <ul>
+    <li>Orbit is a private memory-sharing app for trusted circles, including memories, friendships, map footprints, and shared expenses.</li>
+    <li>Memories use tag-based visibility and are visible only to the author and explicitly tagged friends.</li>
+    <li>You are responsible for your account activity and the content you publish.</li>
+    <li>Using Orbit means you agree to these Terms and the related Privacy Policy.</li>
+  </ul>
+</div>
+
+<h2>Introduction</h2>
+<p>Before using Orbit ("Orbit" or the "Application"), please read these Terms carefully. If you do not agree, stop using the Application immediately. By using Orbit, you acknowledge that you have read, understood, and accepted these Terms in full.</p>
+<p>The Application is intended for users aged 18 and above. If you are under 18, please use the Application only with the involvement and consent of a guardian.</p>
+
+<h2>1. Services</h2>
+<p>Orbit is a private memory app for close friends and provides the following services:</p>
+<ul>
+  <li>Publishing, storing, and viewing shared memories with text, photos, videos, locations, and voice comments</li>
+  <li>A friend system using invite codes</li>
+  <li>A friendship map that visualizes memory footprints</li>
+  <li>Shared expense tracking among friends</li>
+  <li>Memory albums and poster generation</li>
+</ul>
+<p>Additional features may be introduced in the future, and users must continue to comply with these Terms.</p>
+
+<h2>2. Account Registration and Management</h2>
+<ol>
+  <li>You must provide a valid email address and keep your password secure. You may not transfer, lend, or share your account with others.</li>
+  <li>You are responsible for all activities performed under your account.</li>
+  <li>If you suspect unauthorized access to your account, contact us at <a href="mailto:support@wehihi.com">support@wehihi.com</a>.</li>
+  <li>Orbit may restrict or suspend accounts that violate these Terms.</li>
+</ol>
+
+<h2>3. User Content and Intellectual Property</h2>
+<ol>
+  <li>You retain ownership of the memories and other content you publish.</li>
+  <li>You grant Orbit a non-exclusive license to use, store, and display such content only as required to operate the Application.</li>
+  <li>You must ensure that your content does not infringe any third-party rights, including copyright, portrait rights, privacy rights, or other lawful interests.</li>
+  <li>You are legally responsible for the content you publish through the Application.</li>
+</ol>
+
+<h2>4. Prohibited Content</h2>
+<p>You may not use Orbit to publish, store, or distribute content that violates applicable law or infringes the rights of others, including unlawful, defamatory, violent, pornographic, fraudulent, privacy-invasive, or otherwise prohibited content.</p>
+
+<h2>5. Friend System and Visibility</h2>
+<ol>
+  <li>Memories use a tag-based visibility model: only the author and explicitly tagged friends can view a memory. Friendship alone does not grant access.</li>
+  <li>You should obtain consent before tagging another person in a memory.</li>
+  <li>Removing a friend does not automatically revoke access to previously tagged memories. You must manually remove the tag or delete the memory to revoke access completely.</li>
+</ol>
+
+<h2>6. Data and Privacy</h2>
+<ol>
+  <li>Orbit does not sell personal information or use it for advertising or cross-platform tracking.</li>
+  <li>Data is stored on cloud infrastructure provided by Supabase Inc. in the United States, with cross-border safeguards applied as required by law.</li>
+  <li>After an account deletion request, related data will be permanently removed within 7 business days.</li>
+  <li>For more details, please refer to the Orbit Privacy Policy.</li>
+</ol>
+
+<h2>7. Disclaimer</h2>
+<ol>
+  <li>Orbit is provided on an "as is" basis. We are not liable for losses caused by network failures, system errors, third-party service interruptions, or force majeure events.</li>
+  <li>Orbit does not guarantee the accuracy, authenticity, or suitability of user-generated content.</li>
+  <li>Orbit is not responsible for losses resulting from a user's failure to review memories or reminders in time.</li>
+  <li>Third-party services such as Mapbox and Supabase are governed by their own terms, and Orbit is not responsible for their availability or content.</li>
+</ol>
+
+<h2>8. Changes to These Terms</h2>
+<p>Orbit may update these Terms as required by law or business needs. Updated terms will be announced within the Application, and continued use constitutes acceptance of the revised Terms.</p>
+
+<h2>9. Contact</h2>
+<ul>
+  <li>Email: <a href="mailto:support@wehihi.com">support@wehihi.com</a></li>
+  <li>In-App: Profile → Settings → Help &amp; Support</li>
+</ul>
+
+<div class="footer">
+  <p>Orbit 轨迹 &copy; 2026 Yanrong Chen. All rights reserved.</p>
+</div>
+
+</div><!-- end #en-content -->
+
+<script>
+  var lang = 'zh';
+  function toggleLang() {
+    lang = lang === 'zh' ? 'en' : 'zh';
+    document.getElementById('zh-content').style.display = lang === 'zh' ? '' : 'none';
+    document.getElementById('en-content').style.display = lang === 'en' ? '' : 'none';
+    document.getElementById('lang-toggle').textContent = lang === 'zh' ? 'English' : '中文';
+    window.scrollTo(0, 0);
+  }
+</script>
+
+</body>
 </html>

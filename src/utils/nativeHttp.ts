@@ -62,8 +62,11 @@ export const nativeFetch: typeof fetch = async (input, init) => {
     const nativeResponse = await CapacitorHttp.request(options);
 
     // 把 CapacitorHttp 响应包装成标准 Response 对象
-    const responseBody =
-      typeof nativeResponse.data === 'string'
+    // 204 / 205 / 304 等状态码按 HTTP 规范不允许携带 body，必须传 null
+    const bodylessStatuses = new Set([101, 204, 205, 304]);
+    const responseBody = bodylessStatuses.has(nativeResponse.status)
+      ? null
+      : typeof nativeResponse.data === 'string'
         ? nativeResponse.data
         : JSON.stringify(nativeResponse.data);
 

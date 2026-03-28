@@ -162,6 +162,7 @@ function App() {
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
+  const shouldShowAuthModal = allowAuthModal && (!currentUser || showAuth);
   useAegisMonitor();
   // usePushSetup(); // 推送功能待后续启用
   useNativeStatusBar();
@@ -1102,7 +1103,7 @@ function App() {
             <PWABanners />
           </main>
 
-          {!isSettingsOpen && <BottomNav />}
+          {!isSettingsOpen && currentUser && !showAuth && <BottomNav />}
 
           {swUpdateReady && (
             // <div className="fixed bottom-24 left-4 right-4 z-[9999] rounded-2xl border shadow-lg px-4 py-3 flex items-center justify-between gap-3"
@@ -1150,7 +1151,7 @@ function App() {
 
           {/* 认证模态框 */}
           <AnimatePresence>
-            {allowAuthModal && (!currentUser || showAuth) && (
+            {shouldShowAuthModal && (
               <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
             )}
           </AnimatePresence>

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner, FaTimes } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import { FaEnvelope, FaLock, FaUser, FaArrowRight, FaSpinner } from 'react-icons/fa';
+import { Browser } from '@capacitor/browser';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { supabase, signUp, signIn, sendPasswordReset, updatePasswordAfterRecovery } from '../api/supabase';
 import appIcon from '../../assets/icons/logo.png';
 import { useUserStore } from '../store';
-import { TERMS_TEXT, PRIVACY_TEXT } from '../constants/appDocuments';
 
 const EMAIL_ACTION_COOLDOWN_MS = 60 * 1000;
 
@@ -32,6 +32,9 @@ interface AuthModalProps {
   onDemo: () => void;
 }
 
+const TERMS_URL = 'https://wehihi.com/terms/';
+const PRIVACY_URL = 'https://wehihi.com/privacy/';
+
 export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
   const isLightMode = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light';
   const textPrimary = isLightMode ? 'text-neutral-900' : 'text-white';
@@ -52,7 +55,6 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
 
   const { setCurrentUser } = useUserStore();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [docModal, setDocModal] = useState<{ isOpen: boolean; title: string; content: string }>({ isOpen: false, title: '', content: '' });
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -222,16 +224,32 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
     }
   };
 
+  const openLegalPage = async (url: string) => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({
+          url,
+          presentationStyle: 'popover',
+        });
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.warn('Open legal page failed:', err);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isLightMode ? 'bg-white/60' : 'bg-orbit-black'}`}
+      className={`fixed inset-0 z-[160] flex items-stretch justify-stretch ${isLightMode ? 'bg-white/95' : 'bg-orbit-black'}`}
       style={{
         ...(isLightMode ? { backdropFilter: 'blur(6px)' } : undefined),
         paddingBottom: keyboardHeight > 0
-          ? `${keyboardHeight + 16}px`
-          : 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+          ? `${keyboardHeight}px`
+          : 'env(safe-area-inset-bottom, 0px)',
         transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
       }}
     >
@@ -241,265 +259,236 @@ export default function AuthModal({ onSuccess, onDemo }: AuthModalProps) {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={`relative w-full max-w-md glass-card rounded-3xl p-8 overflow-y-auto hide-scrollbar ${isLightMode ? 'bg-white border border-neutral-200 text-neutral-900' : 'bg-[#121212] border border-white/10 text-white'}`}
+        className={`relative w-full min-h-full overflow-y-auto hide-scrollbar ${isLightMode ? 'text-neutral-900' : 'text-white'}`}
         style={{
-          maxHeight: keyboardHeight > 0
-            ? `calc(100dvh - ${keyboardHeight + 32}px)`
-            : 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 120px)',
-          transition: 'max-height 200ms cubic-bezier(0.33, 1, 0.68, 1)',
+          transition: 'padding-bottom 200ms cubic-bezier(0.33, 1, 0.68, 1)',
         }}
       >
-        {/* Logo 和标题 */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-            className="mx-auto mb-4"
-          >
-            <img src={appIcon} alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl" />
-          </motion.div>
-          <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Orbit 轨迹</h1>
-          <p className={`${textMuted}`}>记录与好友的每一个足迹 ✨</p>
-        </div>
+        <div
+          className="min-h-full flex flex-col justify-center px-6 pt-[max(32px,env(safe-area-inset-top))] pb-8"
+          style={{
+            paddingBottom: keyboardHeight > 0
+              ? '24px'
+              : 'max(24px, env(safe-area-inset-bottom, 0px))',
+          }}
+        >
+          <div className="w-full max-w-md mx-auto">
+            {/* Logo 和标题 */}
+            <div className="text-center mb-8">
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
+                className="mx-auto mb-4"
+              >
+                <img src={appIcon} alt="Orbit 轨迹 Logo" className="w-24 h-24 object-contain drop-shadow-2xl mx-auto" />
+              </motion.div>
+              <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Orbit 轨迹</h1>
+              <p className={`${textMuted}`}>记录与好友的每一个足迹 ✨</p>
+            </div>
 
-        {/* 表单 */}
-        <form onSubmit={isRecoveryMode ? handleCompleteRecovery : handleSubmit} className="space-y-4">
-          {isRecoveryMode ? (
-            <>
-              <div>
-                <label className={`block ${textMuted} text-sm mb-2`}>新密码</label>
-                <div className="relative">
-                  <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="input-glass pl-12"
-                    placeholder="至少6位密码"
-                    minLength={6}
-                    required
-                  />
-                </div>
-              </div>
+            <div
+              className={`rounded-[32px] px-6 py-7 shadow-xl ${isLightMode ? 'bg-white border border-neutral-200' : 'bg-[#121212] border border-white/10'}`}
+            >
+              {/* 表单 */}
+              <form onSubmit={isRecoveryMode ? handleCompleteRecovery : handleSubmit} className="space-y-4">
+                {isRecoveryMode ? (
+                  <>
+                    <div>
+                      <label className={`block ${textMuted} text-sm mb-2`}>新密码</label>
+                      <div className="relative">
+                        <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="input-glass pl-12"
+                          placeholder="至少6位密码"
+                          minLength={6}
+                          required
+                        />
+                      </div>
+                    </div>
 
-              <div>
-                <label className={`block ${textMuted} text-sm mb-2`}>确认新密码</label>
-                <div className="relative">
-                  <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="input-glass pl-12"
-                    placeholder="再输入一次新密码"
-                    minLength={6}
-                    required
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {!isLogin && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                >
-                  <label className={`block ${textMuted} text-sm mb-2`}>用户名</label>
+                    <div>
+                      <label className={`block ${textMuted} text-sm mb-2`}>确认新密码</label>
+                      <div className="relative">
+                        <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="input-glass pl-12"
+                          placeholder="再输入一次新密码"
+                          minLength={6}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {!isLogin && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <label className={`block ${textMuted} text-sm mb-2`}>用户名</label>
+                        <div className="relative">
+                          <FaUser className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                          <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="input-glass pl-12"
+                            placeholder="你的昵称"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div>
+                      <label className={`block ${textMuted} text-sm mb-2`}>邮箱</label>
+                      <div className="relative">
+                        <FaEnvelope className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="input-glass pl-12"
+                          placeholder="your@email.com"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className={`block ${textMuted} text-sm mb-2`}>密码</label>
                   <div className="relative">
-                    <FaUser className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
+                    <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
                     <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       className="input-glass pl-12"
-                      placeholder="你的昵称"
+                      placeholder="至少6位密码"
+                      minLength={6}
+                      required
                     />
                   </div>
-                </motion.div>
-              )}
-
-              <div>
-                <label className={`block ${textMuted} text-sm mb-2`}>邮箱</label>
-                <div className="relative">
-                  <FaEnvelope className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input-glass pl-12"
-                    placeholder="your@email.com"
-                    required
-                  />
                 </div>
-              </div>
-            </>
-          )}
 
-          <div>
-            <label className={`block ${textMuted} text-sm mb-2`}>密码</label>
-            <div className="relative">
-              <FaLock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${iconColor}`} />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-glass pl-12"
-                placeholder="至少6位密码"
-                minLength={6}
-                required
-              />
-            </div>
-          </div>
-
-          {/* 错误提示 */}
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: error ? 'auto' : 0, opacity: error ? 1 : 0 }}
-            className={`overflow-hidden rounded-xl text-sm ${error?.includes('成功')
-              ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-              : 'bg-red-500/20 text-red-400 border border-red-500/30'
-              }`}
-          >
-            <p className="p-3">{error}</p>
-          </motion.div>
-
-          {/* 协议勾选 */}
-          {!isRecoveryMode && (
-            <div className="flex items-start gap-2 mt-4 px-1">
-              <input
-                type="checkbox"
-                id="agreed"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className={`mt-0.5 w-3.5 h-3.5 rounded border ${isLightMode ? 'border-neutral-300' : 'border-white/30'} bg-transparent checked:bg-current`}
-                style={{ accentColor: isLightMode ? '#171717' : '#ffffff' }}
-              />
-              <label htmlFor="agreed" className={`text-xs ${textMuted} leading-relaxed select-none`}>
-                我已阅读并同意{' '}
-                <button
-                  type="button"
-                  onClick={() => setDocModal({ isOpen: true, title: '用户服务协议', content: TERMS_TEXT })}
-                  className="underline hover:opacity-80 cursor-pointer"
-                >《用户协议》</button>
-                {' '}
-                <button
-                  type="button"
-                  onClick={() => setDocModal({ isOpen: true, title: '隐私保护政策', content: PRIVACY_TEXT })}
-                  className="underline hover:opacity-80 cursor-pointer"
-                >《隐私政策》</button>
-              </label>
-            </div>
-          )}
-
-          {/* 提交按钮 */}
-          <motion.button
-            type="submit"
-            disabled={isRecoveryMode ? updatingPassword : loading}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, #00FFB3, #00D9FF)',
-              color: '#0f172a',
-              boxShadow: '0 4px 20px rgba(0, 255, 179, 0.25)',
-            }}
-          >
-            {(isRecoveryMode ? updatingPassword : loading) ? (
-              <>
-                <FaSpinner className="w-5 h-5 animate-spin" />
-                <span>处理中...</span>
-              </>
-            ) : (
-              <>
-                <span>{isRecoveryMode ? '更新密码' : (isLogin ? '登录' : '注册')}</span>
-                <FaArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </motion.button>
-        </form>
-
-        {/* 切换登录/注册 */}
-        {!isRecoveryMode && (
-          <div className="text-center mt-6">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError(null);
-                setAgreed(false);
-              }}
-              className={`${textMuted} hover:opacity-80 transition-colors`}
-            >
-              {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
-            </button>
-            {isLogin && (
-              <div className="mt-3 text-sm">
-                <button
-                  type="button"
-                  onClick={handleResetPassword}
-                  disabled={resetting}
-                  className={`${textMuted} hover:opacity-80 disabled:opacity-50`}
+                {/* 错误提示 */}
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: error ? 'auto' : 0, opacity: error ? 1 : 0 }}
+                  className={`overflow-hidden rounded-xl text-sm ${error?.includes('成功')
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
                 >
-                  {resetting ? '发送中…' : '忘记密码？发送重置邮件'}
+                  <p className="p-3">{error}</p>
+                </motion.div>
+
+                {/* 协议勾选 */}
+                {!isRecoveryMode && (
+                  <div className="flex items-start gap-2 mt-4 px-1">
+                    <input
+                      type="checkbox"
+                      id="agreed"
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      className={`mt-0.5 w-3.5 h-3.5 rounded border ${isLightMode ? 'border-neutral-300' : 'border-white/30'} bg-transparent checked:bg-current`}
+                      style={{ accentColor: isLightMode ? '#171717' : '#ffffff' }}
+                    />
+                    <label htmlFor="agreed" className={`text-xs ${textMuted} leading-relaxed select-none`}>
+                      我已阅读并同意{' '}
+                      <button
+                        type="button"
+                        onClick={() => void openLegalPage(TERMS_URL)}
+                        className="underline hover:opacity-80 cursor-pointer"
+                      >《用户协议》</button>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() => void openLegalPage(PRIVACY_URL)}
+                        className="underline hover:opacity-80 cursor-pointer"
+                      >《隐私政策》</button>
+                    </label>
+                  </div>
+                )}
+
+                {/* 提交按钮 */}
+                <motion.button
+                  type="submit"
+                  disabled={isRecoveryMode ? updatingPassword : loading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-2 mt-6 disabled:opacity-50 transition-all shadow-lg"
+                  style={{
+                    background: 'linear-gradient(135deg, #00FFB3, #00D9FF)',
+                    color: '#0f172a',
+                    boxShadow: '0 4px 20px rgba(0, 255, 179, 0.25)',
+                  }}
+                >
+                  {(isRecoveryMode ? updatingPassword : loading) ? (
+                    <>
+                      <FaSpinner className="w-5 h-5 animate-spin" />
+                      <span>处理中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isRecoveryMode ? '更新密码' : (isLogin ? '登录' : '注册')}</span>
+                      <FaArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </motion.button>
+              </form>
+
+            {/* 切换登录/注册 */}
+            {!isRecoveryMode && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setError(null);
+                    setAgreed(false);
+                  }}
+                  className={`${textMuted} hover:opacity-80 transition-colors`}
+                >
+                  {isLogin ? '还没有账号？去注册' : '已有账号？去登录'}
                 </button>
+                {isLogin && (
+                  <div className="mt-3 text-sm">
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      disabled={resetting}
+                      className={`${textMuted} hover:opacity-80 disabled:opacity-50`}
+                    >
+                      {resetting ? '发送中…' : '忘记密码？发送重置邮件'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* 演示模式 */}
-        <div className="mt-6 pt-6 border-t" style={{ borderColor: isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)' }}>
-          <button
-            onClick={onDemo}
-            className={`${textMuted} w-full py-3 hover:opacity-80 text-sm transition-colors`}
-          >
-            暂不登录，先看看演示 ✨
-          </button>
+            {/* 演示模式 */}
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: isLightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)' }}>
+              <button
+                onClick={onDemo}
+                className={`${textMuted} w-full py-3 hover:opacity-80 text-sm transition-colors`}
+              >
+                暂不登录，先看看演示 ✨
+              </button>
+            </div>
+          </div>
+        </div>
         </div>
       </motion.div>
-
-      {/* 应用内文档弹窗（用户协议 / 隐私政策） */}
-      <AnimatePresence>
-        {docModal.isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-end justify-center"
-            style={{ background: 'rgba(0,0,0,0.6)' }}
-            onClick={() => setDocModal({ isOpen: false, title: '', content: '' })}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className={`w-full max-w-lg rounded-t-3xl flex flex-col ${isLightMode ? 'bg-white text-neutral-900' : 'bg-[#1a1a1a] text-white'}`}
-              style={{ maxHeight: '80dvh' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 标题栏 */}
-              <div className={`flex items-center justify-between px-5 py-4 border-b flex-shrink-0 ${isLightMode ? 'border-neutral-200' : 'border-white/10'}`}>
-                <h2 className="text-base font-semibold">{docModal.title}</h2>
-                <button
-                  onClick={() => setDocModal({ isOpen: false, title: '', content: '' })}
-                  className={`p-2 rounded-full ${isLightMode ? 'bg-neutral-100 text-neutral-600' : 'bg-white/10 text-white/70'}`}
-                >
-                  <FaTimes className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              {/* 内容 */}
-              <div className="overflow-y-auto flex-1 px-5 py-4">
-                <pre className={`text-xs leading-relaxed whitespace-pre-wrap font-sans ${isLightMode ? 'text-neutral-700' : 'text-white/80'}`}>
-                  {docModal.content}
-                </pre>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }

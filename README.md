@@ -1,153 +1,120 @@
-# 🌌 Orbit 轨迹（内部专用）
+# Orbit 轨迹
 
-> ⚠️ **保密声明：本项目为私有资产，严禁擅自分发、二次拷贝或开源。**
-> 如需向第三方进行代码评审或产品演示，请务必先脱敏核心数据，并征得项目负责人明确同意。
+> A private mobile app for recording and sharing memories with close friends — built with React, TypeScript, and Capacitor.
 
-Orbit 是一款围绕 **“地图记忆 + 密友协作 + 轻量记账 + 破冰游戏”** 构建的移动端 PWA 应用。我们的核心愿景是：为熟人之间创造一个低摩擦、低打扰、高安全感的私密记录与共享空间。
-
----
-
-## ✨ 核心产品模块
-
-*(💡 提示：请将对应的项目截图放置在 `screenshot_app/` 目录下以正确渲染图片)*
-
-### 1. 📖 记忆流 (Memory Stream)
-<img alt="记忆流展示" src="./screenshot_app/记忆.jpg" width="320" />
-- **全媒介记录**：支持照片、视频、最高 30 秒语音备忘、长文本、精确定位、天气与心情。
-- **无缝协作**：@ 密友后双方流内同步展示；支持针对单条记忆的私密吐槽（评论）。
-- **离线与降级**：支持无网环境下的离线排队与“仅 Wi-Fi 上传”策略，确保弱网不卡死。
-
-### 2. 🗺️ 友情地图 (Friendship Map)
-<img alt="友情地图展示" src="./screenshot_app/地图.jpg" width="320" />
-- **多维聚合**：基于高德地图 (AMap) 深度定制，支持按“城市聚类”或“精确地点”双重视角查看。
-- **动态筛选**：顶部一键勾选好友，地图光点与底部回忆列表实时执行 `AND` 逻辑过滤。
-
-### 3. 💰 财务足迹 (Ledger)
-<img alt="账单展示" src="./screenshot_app/账单.jpg" width="320" />
-- **场景化记账**：发布记忆时可“顺便记账”，无缝衔接消费场景。
-- **极度私密**：即使记忆中 @ 了好友且包含平摊账单，账单金额与明细也**仅自己可见**。
-
-### 4. 🎮 破冰游戏 (Mini Games)
-<img alt="游戏集合展示" src="./screenshot_app/游戏.jpg" width="320" />
-- **线下聚会利器**：内置摇骰子、今天谁买单（转盘）、真心话大冒险、解压气泡纸等 6 款轻互动。
-- **Web Audio 引擎**：纯代码实时合成 8-bit 电子音效，脱离笨重的媒体文件依赖。
-
-### 5. 🏠 个人主页与社交关系
-<img alt="主页展示" src="./screenshot_app/主页.jpg" width="320" />
-- **灵活的关系链**：支持邀请码建立真实羁绊；也支持先创建“虚拟好友”占位，待对方注册后自动绑定并继承所有历史记忆标签。
+**Website:** [wehihi.com](https://wehihi.com) · **Platform:** iOS (App Store) · **Contact:** support@wehihi.com
 
 ---
 
-## 🛠️ 技术架构
+## Overview
 
-- **前端框架**：React 18 + TypeScript + Vite
-- **UI & 动效**：Tailwind CSS + Framer Motion
-- **状态管理**：Zustand
-- **后端与存储**：Supabase (Auth / PostgreSQL / Storage)
-- **地图服务**：AMap (高德地图 Web API)
-- **PWA 支持**：vite-plugin-pwa (Service Worker + 离线缓存)
-- **原生打包**：Capacitor (一键生成 iOS / Android 壳)
+Orbit is a memory-first social app designed for small, trusted circles. Unlike public social networks, every memory is tag-based and visible only to the people explicitly included. The app combines memory logging, a friendship map, and shared expense tracking into a single cohesive experience.
 
 ---
 
-## 🚀 本地开发指南
+## Features
 
-环境要求：Node.js 18+，npm 9+
+**Memory Stream**
+Record moments with photos, video, long-form text, precise location, weather, mood, and route tags. Tag friends to share a memory with them directly in their feed. Participants can leave text or voice comments (up to 30s). Memories can also be browsed in a full-screen story album view with poster generation.
+
+**Friendship Map**
+All geotagged memories are plotted on an interactive map (Mapbox). Filter by friend to see a shared travel history, or zoom out to see city-level clusters.
+
+**Shared Ledger**
+Log expenses alongside a memory or independently. Expense details are always private to the author only — tagged friends see the memory but never the associated numbers. AA splits can be set up with selected participants.
+
+**Friend System**
+Friends are added via invite code through a mutual confirmation flow (send request → accept/reject). Memories use a tag-based visibility model: a memory is only visible to its author and the friends explicitly tagged in it — being friends alone does not grant access to someone's memories. Virtual friend placeholders can be created for contacts who haven't registered yet; once they join and link their account via invite code, all historical memory tags and expense records transfer automatically. Removing a friend downgrades your account to a virtual placeholder on their side; any memories where they were tagged remain accessible to them until you manually remove the tag or delete the memory.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Vite |
+| Styling & Animation | Tailwind CSS, Framer Motion |
+| State Management | Zustand |
+| Backend & Database | Supabase (Auth, PostgreSQL, Storage) |
+| Maps | Mapbox GL JS |
+| Native Shell | Capacitor (iOS) |
+| Deployment | Vercel |
+| Monitoring | Aegis Web SDK (Tencent Cloud), Vercel Analytics |
+
+---
+
+## Project Structure
+
+```
+oribit/
+├── src/
+│   ├── api/              # Supabase client & API wrappers
+│   ├── components/       # Shared UI components
+│   ├── constants/        # App-wide constants (legal documents, etc.)
+│   ├── pages/            # Route-level pages (Map, Memory, Ledger, Profile)
+│   ├── store/            # Zustand state slices
+│   ├── types/            # TypeScript type definitions
+│   └── utils/            # Helpers (settings, network, tag visibility)
+├── ios/                  # Capacitor iOS project
+├── public/               # Static assets, PWA manifest, privacy policy
+├── supabase/             # SQL migration scripts
+└── docs/                 # Internal documentation
+```
+
+---
+
+## Local Development
+
+**Requirements:** Node.js 18+, npm 9+
 
 ```bash
-# 1. 依赖安装
+# Install dependencies
 npm install
 
-# 2. 启动本地开发服务器
+# Start dev server
 npm run dev
 
-# 3. 生产环境预览 (测试构建产物)
+# Production build
 npm run build
-npm run preview
 
-# 📱 原生壳调试 (Capacitor)
-npm run cap:sync     # 同步最新的 web 产物到原生目录
-npm run ios:open     # 打开 Xcode
-npm run android:open # 打开 Android Studio
+# Sync web build to native shell (Capacitor)
+npx cap sync ios
+
+# Open in Xcode
+npx cap open ios
+```
+
+Environment variables (copy `.env.example` to `.env`):
+
+```
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_MAPBOX_TOKEN=
 ```
 
 ---
 
-## 🗄️ 数据库与数据安全
+## Database
 
-- 核心表：profiles, friendships, memories, memory_tags, memory_comments, ledgers。
-- RLS 原则：
-  - 记忆与评论：仅“作者”或“被标记且互为已接受好友”可见。
-  - 评论删除：仅评论作者或该记忆作者可删。
-  - Storage：photos/avatars/videos 桶仅认证用户可写。
-- ⚠️ 迁移脚本警告：`friend-requests-migration.sql`, `memory-comments-migration.sql` 等需在 Supabase SQL Editor 按需执行。切勿在生产运行包含 `DROP TABLE ... CASCADE` 的初始化脚本，除非明确要删档重置。
+Core tables: `profiles`, `friendships`, `memories`, `memory_tags`, `memory_comments`, `ledgers`, `ledger_participants`.
 
----
+Row Level Security (RLS) is enabled on all tables. Key rules:
+- Memories are visible only to their author and explicitly tagged friends.
+- Comments are visible only to participants of the parent memory.
+- Storage buckets (photos, avatars, videos) are write-restricted to authenticated users.
 
-## 📁 目录结构速览
-
-```text
-orbit/
-├── src/
-│   ├── api/            # Supabase API 封装
-│   ├── components/     # UI 组件
-│   ├── pages/          # 地图/记忆/账单/游戏/我的
-│   ├── store/          # Zustand 状态切片
-│   ├── styles/         # 全局样式与 Tailwind 主题
-│   └── utils/          # 工具类（网络监测、Web Vitals 埋点等）
-├── supabase/           # SQL 迁移脚本与 DB 配置
-├── public/             # 静态资源与 offline.html
-├── docs/               # 内部文档与设计资产
-├── screenshot_app/     # 产品截图（请放置 README 引用的图片）
-└── README.md
-```
+Migration scripts in the project root (`*.sql`) should be run in the Supabase SQL Editor. Do not run `supabase-setup.sql` against a live database that contains user data — it drops and recreates all tables.
 
 ---
 
-## 🎯 PWA 演进与落地清单
+## Privacy & Legal
 
-**目标：** 打造接近原生 App 体验（可安装、快启动、离线可用、系统级交互）。
-
-### ✅ P0：基础设施
-- [x] manifest 元数据
-- [x] PWA 图标资源 (192x192, 512x512)
-- [x] Service Worker 自动更新 (registerType: autoUpdate)
-- [x] 离线兜底页 (public/offline.html)
-- [x] 安装引导 UI (beforeinstallprompt)
-- [x] LCP/CLS/INP 自动化采集（`window.exportOrbitWebVitalsBaseline()`）
-
-### 🚧 P1：体验护城河（当前迭代）
-- [x] 核心接口 NetworkFirst + fallback
-- [x] 写操作弱网/离线拦截与提示
-- [x] 新版本就绪提示条（点击刷新）
-- [x] iOS / Android 安装引导
-- [ ] 离线模式信息架构（无缓存页的跳转阻断）
-
-### 🔮 P2：原生级增强（规划）
-- [ ] 系统级推送通知闭环（好友申请 / 账单提醒）
-- [ ] Background Sync（发布失败自动重试）
-- [ ] manifest 商店截图完善
-- [ ] Lighthouse PWA 分数 >= 90
-
-### 验收标准
-- 3 步内完成“添加到主屏幕”
-- 刷新 / 重启无登录态卡死或白屏
-- 断网进入 offline.html，不崩溃
-- 新版本 1 次刷新完成升级
-- Lighthouse PWA 要点全部通过
-
----
-
-## 📅 近期已上线功能
-
-- 好友申请流：发送 / 接受 / 拒绝 + 红点提醒
-- 虚拟好友绑定真实账号：历史 `memory_tags` 无缝继承
-- 双向好友关系自动补全，确保互可见
-- 游戏模块 5 款主力玩法 + 8-bit 音效
-- Demo 模式与 UUID 防护
+- Privacy Policy: [wehihi.com/privacy](https://wehihi.com/privacy/)
+- Data is stored on Supabase infrastructure (US region).
+- The app does not use advertising SDKs or sell user data.
 
 ---
 
 ## License
 
-本项目当前未声明开源协议；如需开源，建议补充 MIT 或 Apache-2.0。 
+All rights reserved. This repository is private. Do not distribute, copy, or open-source without explicit written permission from the author.
