@@ -41,7 +41,7 @@ return {
     !isCapacitorBuild && VitePWA({
       injectRegister: false,
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['logo.png', 'apple-touch-icon.png'],
       // 在离线或导航失败时返回 offline.html 作为兜底
       workbox: {
         inlineWorkboxRuntime: false,
@@ -139,10 +139,9 @@ return {
         background_color: '#121212',
         categories: ['social', 'lifestyle'],
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/icon-180.png', sizes: '180x180', type: 'image/png', purpose: 'any maskable' },
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }
+          { src: 'logo.png', sizes: '384x384', type: 'image/png' },
+          { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+          { src: 'logo.png', sizes: '384x384', type: 'image/png', purpose: 'any maskable' }
         ],
         screenshots: [
           {
@@ -165,13 +164,13 @@ return {
             name: '快速记忆',
             short_name: '记忆',
             url: '/?from=shortcut-memory',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+            icons: [{ src: 'logo.png', sizes: '384x384', type: 'image/png' }]
           },
           {
             name: '打开地图',
             short_name: '地图',
             url: '/?from=shortcut-map',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }]
+            icons: [{ src: 'logo.png', sizes: '384x384', type: 'image/png' }]
           }
         ]
       },

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
@@ -233,6 +234,41 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
   const documentBody = firstNonEmptyIndex >= 0
     ? lines.filter((_, index) => index !== firstNonEmptyIndex).join('\n').replace(/^\s*\n/, '')
     : String(content || '');
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+  const openDocLink = async (url: string) => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({ url, presentationStyle: 'popover' });
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.warn('Open document link failed:', err);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const renderLineWithLinks = (line: string) => {
+    if (!line) return null;
+    const chunks = line.split(urlRegex);
+    return chunks.map((chunk, idx) => {
+      if (/^https?:\/\//.test(chunk)) {
+        return (
+          <button
+            key={`${chunk}-${idx}`}
+            type="button"
+            onClick={() => void openDocLink(chunk)}
+            className="underline underline-offset-2 transition-opacity hover:opacity-80"
+            style={{ color: isDarkMode ? '#60a5fa' : '#2563eb' }}
+          >
+            {chunk}
+          </button>
+        );
+      }
+      return <span key={`${chunk}-${idx}`}>{chunk}</span>;
+    });
+  };
 
   if (typeof document === 'undefined') return null;
 
@@ -269,8 +305,12 @@ const DocumentModal = ({ isOpen, onClose, title, content, isDarkMode }: any) => 
               {documentMainTitle}
             </h3>
           ) : null}
-          <div className="text-[14px] leading-7 whitespace-pre-wrap">
-            {documentBody}
+          <div className="text-[14px] leading-7">
+            {documentBody.split('\n').map((line, idx) => (
+              <div key={`line-${idx}`} className="whitespace-pre-wrap min-h-[28px]">
+                {renderLineWithLinks(line)}
+              </div>
+            ))}
           </div>
         </div>
       </motion.div>
