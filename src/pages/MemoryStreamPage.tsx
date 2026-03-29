@@ -9,7 +9,8 @@ import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage } from '../api/supabase';
+import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage, insertNotification } from '../api/supabase';
+import NotificationCenter from '../components/NotificationCenter';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
@@ -1492,8 +1493,6 @@ export default function MemoryStreamPage() {
     scrollPositions,
     memoryCommentReadMarkers,
     memoryCommentUnreadCount,
-    likeReadMarkers,
-    memoryLikeUnreadCount,
     memoryComposerRequestId,
     setMemoryStreamSearchQuery,
     setMemoryStreamFilterFriendIds,
@@ -1503,12 +1502,12 @@ export default function MemoryStreamPage() {
     setScrollPosition,
     markMemoryCommentsRead,
     setMemoryCommentUnreadCount,
-    markMemoryLikesRead,
-    setMemoryLikeUnreadCount,
     clearMemoryComposerRequest,
   } = useUIStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<any>(null);
+  const [notifForceOpen, setNotifForceOpen] = useState(false);
+  const notifReopenRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshingPull, setIsRefreshingPull] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(getIsDarkTheme());
@@ -1534,7 +1533,6 @@ export default function MemoryStreamPage() {
   const [activeMenuMemoryId, setActiveMenuMemoryId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showNotificationSheet, setShowNotificationSheet] = useState(false);
-  const [showLikeNotificationSheet, setShowLikeNotificationSheet] = useState(false);
   const [commentNotificationSnapshot, setCommentNotificationSnapshot] = useState<any[]>([]);
   const [reportingFriend, setReportingFriend] = useState<any>(null);
 
@@ -1797,7 +1795,14 @@ export default function MemoryStreamPage() {
         // 如果是赞别人的动态才发通知
         if (targetMemory && targetMemory.user_id && targetMemory.user_id !== currentUser.id) {
           const fromName = currentUser.username || currentUser.full_name || '好友';
-          // 不 await 它，让它后台发，别阻塞前端交互哦
+          // 写入应用内通知
+          void insertNotification({
+            userId: targetMemory.user_id,
+            type: 'like',
+            actorId: currentUser.id,
+            entityId: memoryId,
+          });
+          // 推送外部通知（不 await，后台发）
           supabase.functions.invoke('send-notifications', {
             body: {
               user_ids: [targetMemory.user_id],
@@ -1959,14 +1964,6 @@ export default function MemoryStreamPage() {
     setShowNotificationSheet(true);
   };
 
-  const hasUnreadLikes = (memory: any) => {
-    const r = reactions[memory.id];
-    if (!r?.likers?.length) return false;
-    const otherLikers = r.likers.filter((id: string) => id !== currentUser?.id);
-    const lastSeen = likeReadMarkers[memory.id] ?? 0;
-    return otherLikers.length > lastSeen;
-  };
-
   const handleShareMemory = async (memory: any) => {
     // If the sharer is not the author, check whether the author allows sharing
     if (memory.user_id !== currentUser?.id) {
@@ -2109,19 +2106,6 @@ export default function MemoryStreamPage() {
       .filter((item: any): item is NonNullable<typeof item> => item !== null);
   }, [memories, commentsByMemory, currentUser, memoryCommentReadMarkers]);
 
-  const unreadLikeItems = useMemo(() => {
-    return memories
-      .filter((m: any) => hasUnreadLikes(m))
-      .map((m: any) => {
-        const likers: string[] = (reactions[m.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
-        const lastSeen = likeReadMarkers[m.id] ?? 0;
-        const newLikerIds = likers.slice(lastSeen);
-        const latestLikerId = newLikerIds[newLikerIds.length - 1];
-        const latestLiker = getMemoryAuthor(latestLikerId) || { name: '好友', avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=' + latestLikerId };
-        return { memory: m, newLikerIds, latestLiker };
-      });
-  }, [memories, reactions, likeReadMarkers, currentUser?.id]);
-
   // 首次进入时若存在历史好友筛选，自动清空避免进来就空白
   useEffect(() => {
     if (initialFilterClearedRef.current) return;
@@ -2234,11 +2218,6 @@ export default function MemoryStreamPage() {
     const unreadCount = memories.reduce((count: number, memory: any) => count + (hasUnreadComments(memory) ? 1 : 0), 0);
     setMemoryCommentUnreadCount(unreadCount);
   }, [memories, commentsByMemory, memoryCommentReadMarkers, currentUser?.id, setMemoryCommentUnreadCount]);
-
-  useEffect(() => {
-    const count = memories.filter((m: any) => hasUnreadLikes(m)).length;
-    setMemoryLikeUnreadCount(count);
-  }, [memories, reactions, likeReadMarkers, currentUser?.id]);
 
   const refreshMemoryStream = useCallback(async (showLoading: boolean) => {
     if (!shouldAllowRefresh()) return;
@@ -2497,19 +2476,23 @@ export default function MemoryStreamPage() {
                   {memoryCommentUnreadCount} 条新评论
                 </motion.button>
               )}
-              {memoryLikeUnreadCount > 0 && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowLikeNotificationSheet(true)}
-                  className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-400 border border-red-500/20"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  {memoryLikeUnreadCount} 个新的赞
-                </motion.button>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationCenter
+              onNavigateToMemory={(memoryId) => {
+                setTimeout(() => {
+                  const el = document.getElementById(`memory-${memoryId}`)
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }, 300)
+              }}
+              onOpenMemory={(memory) => {
+                notifReopenRef.current = true
+                setSelectedMemory(memory)
+              }}
+              forceOpen={notifForceOpen}
+              onForceOpenConsumed={() => setNotifForceOpen(false)}
+            />
             <motion.button
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               onClick={() => {
@@ -2829,10 +2812,9 @@ export default function MemoryStreamPage() {
 
                       <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="flex items-center gap-4">
-                          <button onClick={() => { toggleLike(memory.id); const otherLikers = (reactions[memory.id]?.likers || []).filter((id: string) => id !== currentUser?.id); markMemoryLikesRead(memory.id, otherLikers.length); }} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                          <button onClick={() => { toggleLike(memory.id); }} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
                             <div className="relative">
                               <FaHeart className="text-[22px]" />
-                              {hasUnreadLikes(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
                             </div>
                             {reaction.likes > 0 && <span className="text-sm font-medium">{reaction.likes}</span>}
                           </button>
@@ -3154,10 +3136,9 @@ export default function MemoryStreamPage() {
 
                       <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="flex items-center gap-4">
-                          <button onClick={() => { toggleLike(memory.id); const otherLikers = (reactions[memory.id]?.likers || []).filter((id: string) => id !== currentUser?.id); markMemoryLikesRead(memory.id, otherLikers.length); }} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
+                          <button onClick={() => { toggleLike(memory.id); }} className={`flex items-center gap-1 transition-all active:scale-125 ${reaction.liked ? 'text-red-500' : 'text-[color:var(--orbit-text)] hover:text-gray-400'}`}>
                             <div className="relative">
                               <FaHeart className="text-[22px]" />
-                              {hasUnreadLikes(memory) && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#FF6B6B]" />}
                             </div>
                             {reaction.likes > 0 && <span className="text-sm font-medium">{reaction.likes}</span>}
                           </button>
@@ -3593,7 +3574,13 @@ export default function MemoryStreamPage() {
           {selectedMemory && (
             <MemoryDetailModal
               memory={selectedMemory}
-              onClose={() => setSelectedMemory(null)}
+              onClose={() => {
+                setSelectedMemory(null)
+                if (notifReopenRef.current) {
+                  notifReopenRef.current = false
+                  setNotifForceOpen(true)
+                }
+              }}
               friends={friends}
               currentUser={currentUser}
             />
@@ -3659,84 +3646,6 @@ export default function MemoryStreamPage() {
                         </div>
                       );
                     })
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showLikeNotificationSheet && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => {
-                memories.forEach((m: any) => {
-                  if (hasUnreadLikes(m)) {
-                    const otherLikers = (reactions[m.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
-                    markMemoryLikesRead(m.id, otherLikers.length);
-                  }
-                });
-                setShowLikeNotificationSheet(false);
-              }}
-              className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-20 left-0 right-0 z-[191] flex flex-col rounded-t-3xl border-t shadow-2xl safe-bottom"
-              style={{ backgroundColor: 'var(--orbit-surface)', borderColor: 'var(--orbit-border)', maxHeight: '70vh' }}
-            >
-              <div className="w-full flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => {
-                memories.forEach((m: any) => {
-                  if (hasUnreadLikes(m)) {
-                    const otherLikers = (reactions[m.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
-                    markMemoryLikesRead(m.id, otherLikers.length);
-                  }
-                });
-                setShowLikeNotificationSheet(false);
-              }}>
-                <div className="w-12 h-1.5 rounded-full bg-gray-400/30" />
-              </div>
-
-              <div className="px-6 pb-4 flex-1 overflow-hidden flex flex-col">
-                <h2 className="text-lg font-bold mb-4 shrink-0" style={{ color: 'var(--orbit-text)' }}>新的赞</h2>
-
-                <div className="overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-6 flex-1">
-                  {unreadLikeItems.length === 0 ? (
-                    <p className="text-sm text-center py-8" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>暂无未读点赞</p>
-                  ) : (
-                    unreadLikeItems.map(({ memory, newLikerIds, latestLiker }: any) => (
-                      <div
-                        key={memory.id}
-                        className="p-3 rounded-2xl flex gap-3 items-start border cursor-pointer hover:opacity-80 transition-opacity"
-                        style={{ backgroundColor: 'var(--orbit-card)', borderColor: 'var(--orbit-border)' }}
-                        onClick={() => {
-                          const otherLikers = (reactions[memory.id]?.likers || []).filter((id: string) => id !== currentUser?.id);
-                          markMemoryLikesRead(memory.id, otherLikers.length);
-                          setShowLikeNotificationSheet(false);
-                          setSelectedMemory(memory);
-                        }}
-                      >
-                        <img src={latestLiker.avatar} className="w-8 h-8 rounded-full bg-gray-200 object-cover shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold truncate" style={{ color: 'var(--orbit-text)' }}>
-                              {newLikerIds.length > 1 ? `${latestLiker.name} 等 ${newLikerIds.length} 人` : latestLiker.name}
-                            </p>
-                            <FaHeart className="text-red-400 text-xs shrink-0" />
-                          </div>
-                          <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>
-                            赞了你的回忆{memory.content ? `：${memory.content.slice(0, 30)}${memory.content.length > 30 ? '…' : ''}` : ''}
-                          </p>
-                        </div>
-                        {memory.photos?.[0] && (
-                          <img src={memory.photos[0]} className="w-10 h-10 rounded-lg object-cover ml-1 opacity-80" />
-                        )}
-                      </div>
-                    ))
                   )}
                 </div>
               </div>

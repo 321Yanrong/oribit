@@ -33,8 +33,6 @@ interface UIState {
   scrollPositions: Record<string, number>;
   memoryCommentReadMarkers: Record<string, string>;
   memoryCommentUnreadCount: number;
-  likeReadMarkers: Record<string, number>;
-  memoryLikeUnreadCount: number;
   memoryComposerRequestId: number;
 
   setMemoryStreamSearchQuery: (value: string) => void;
@@ -45,8 +43,6 @@ interface UIState {
   setScrollPosition: (pageKey: string, y: number) => void;
   markMemoryCommentsRead: (memoryId: string, lastSeenAt: string) => void;
   setMemoryCommentUnreadCount: (value: number) => void;
-  markMemoryLikesRead: (memoryId: string, count: number) => void;
-  setMemoryLikeUnreadCount: (value: number) => void;
   triggerMemoryComposerRequest: () => void;
   clearMemoryComposerRequest: () => void;
 }
@@ -61,8 +57,6 @@ export const useUIStore = create<UIState>()(
       scrollPositions: {},
       memoryCommentReadMarkers: {},
       memoryCommentUnreadCount: 0,
-      likeReadMarkers: {},
-      memoryLikeUnreadCount: 0,
       memoryComposerRequestId: 0,
 
       setMemoryStreamSearchQuery: (value) => set({ memoryStreamSearchQuery: value }),
@@ -85,14 +79,6 @@ export const useUIStore = create<UIState>()(
           },
         })),
       setMemoryCommentUnreadCount: (value) => set({ memoryCommentUnreadCount: value }),
-      markMemoryLikesRead: (memoryId, count) =>
-        set((state) => ({
-          likeReadMarkers: {
-            ...state.likeReadMarkers,
-            [memoryId]: count,
-          },
-        })),
-      setMemoryLikeUnreadCount: (value) => set({ memoryLikeUnreadCount: value }),
       triggerMemoryComposerRequest: () => set({ memoryComposerRequestId: Date.now() }),
       clearMemoryComposerRequest: () => set({ memoryComposerRequestId: 0 }),
     }),
@@ -106,8 +92,6 @@ export const useUIStore = create<UIState>()(
         scrollPositions: state.scrollPositions,
         memoryCommentReadMarkers: state.memoryCommentReadMarkers,
         memoryCommentUnreadCount: state.memoryCommentUnreadCount,
-        likeReadMarkers: state.likeReadMarkers,
-        memoryLikeUnreadCount: state.memoryLikeUnreadCount,
       }),
     }
   )

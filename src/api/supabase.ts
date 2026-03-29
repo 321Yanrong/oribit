@@ -711,6 +711,24 @@ export const bindVirtualFriend = async (
     .delete()
     .eq('virtual_friend_id', friendshipId);
 
+  // 5. Notify the newly-bound real user that they are now friends with the owner
+  void (async () => {
+    try {
+      const ownerProfile = await supabase.from('profiles').select('username').eq('id', ownerUserId).maybeSingle()
+      const ownerName = (ownerProfile.data as any)?.username || '好友'
+      void insertNotification({ userId: realUserId, type: 'friend_bind', actorId: ownerUserId })
+      sendPushNotification({
+        userIds: [realUserId],
+        headings: '新朋友',
+        contents: `${ownerName} 已将你添加为好友`,
+        type: 'friend_bind',
+        data: { type: 'friend_bind', actor_id: ownerUserId },
+      })
+    } catch {
+      // non-critical
+    }
+  })()
+
   const syncedCount = syncedRows?.length ?? 0;
   return { syncedCount };
 }
@@ -931,6 +949,25 @@ export const createMemory = async (
     if (allTags.length > 0) {
       const { error: tagsError } = await supabase.from('memory_tags').insert(allTags)
       if (tagsError) throw tagsError
+    }
+  }
+
+  // Notify real (non-virtual) tagged friends (fire-and-forget)
+  if (memory && (taggedFriends || []).length > 0) {
+    const realTaggedIds = (taggedFriends || []).filter(id => !id.startsWith('temp-'))
+    if (realTaggedIds.length > 0) {
+      const creatorProfile = await supabase.from('profiles').select('username').eq('id', userId).maybeSingle()
+      const creatorName = (creatorProfile.data as any)?.username || '好友'
+      for (const friendId of realTaggedIds) {
+        void insertNotification({ userId: friendId, type: 'at', actorId: userId, entityId: memory.id })
+      }
+      sendPushNotification({
+        userIds: realTaggedIds,
+        headings: '你被提到了',
+        contents: `${creatorName} 在回忆里提到了你`,
+        type: 'at',
+        data: { type: 'at', memory_id: memory.id, actor_id: userId },
+      })
     }
   }
 
@@ -1299,6 +1336,19 @@ export const addRealFriendByCode = async (currentUserId: string, inviteCode: str
     }
     throw error;
   }
+
+  // Notify the recipient of the friend request (fire-and-forget)
+  const senderProfile = await supabase.from('profiles').select('username').eq('id', currentUserId).maybeSingle()
+  const senderName = (senderProfile.data as any)?.username || '好友'
+  void insertNotification({ userId: profile.id, type: 'friend_request', actorId: currentUserId })
+  sendPushNotification({
+    userIds: [profile.id],
+    headings: '新的好友申请',
+    contents: `${senderName} 想加你为好友`,
+    type: 'friend_request',
+    data: { type: 'friend_request', actor_id: currentUserId },
+  })
+
   return profile;
 };
 
@@ -1360,12 +1410,12 @@ export const acceptFriendRequest = async (
 ): Promise<void> => {
   ensureOnlineForWrite('处理好友申请')
 
-  // 1) 先按 id 更新（兼容旧调用；即便 0 行也不阻断后续幂等修复）
+  // 1) 把对方发来的申请记录直接改为 accepted（filter by friend_id = 当前用户，即申请接收方）
   const { error: updateError } = await supabase
     .from('friendships')
     .update({ status: 'accepted' })
     .eq('id', friendshipId)
-    .eq('user_id', currentUserId);
+    .eq('friend_id', currentUserId);
   if (updateError && !isPermissionError(updateError)) throw updateError;
 
   // 2) 双向都做幂等修复，确保“同意一次”后双方都能立即看到彼此
@@ -1391,9 +1441,20 @@ export const acceptFriendRequest = async (
 
   // 4) 可选：把已存在的马甲好友绑定到此真实用户
   if (bindVirtualFriendshipId) {
-    // 利用现有的绑定逻辑（会同步 memory_tags 并创建反向关系，重复插入会被 23505 吃掉）
     await bindVirtualFriend(bindVirtualFriendshipId, requesterId);
   }
+
+  // Notify the original requester that their request was accepted (fire-and-forget)
+  const accepterProfile = await supabase.from('profiles').select('username').eq('id', currentUserId).maybeSingle()
+  const accepterName = (accepterProfile.data as any)?.username || '好友'
+  void insertNotification({ userId: requesterId, type: 'friend_accepted', actorId: currentUserId })
+  sendPushNotification({
+    userIds: [requesterId],
+    headings: '好友申请已通过',
+    contents: `${accepterName} 接受了你的好友申请`,
+    type: 'friend_accepted',
+    data: { type: 'friend_accepted', actor_id: currentUserId },
+  })
 };
 
 // 拒绝 / 忽略好友申请
@@ -1403,12 +1464,51 @@ export const rejectFriendRequest = async (friendshipId: string): Promise<void> =
   if (authError) throw authError;
   const currentUserId = authData?.user?.id;
   if (!currentUserId) throw new Error('当前未登录，无法拒绝好友申请');
+
+  // 先读取待处理申请，拿到发起人 id，供后续回传“被拒绝”通知
+  const { data: pendingRow, error: pendingError } = await supabase
+    .from('friendships')
+    .select('id, user_id, friend_id')
+    .eq('id', friendshipId)
+    .eq('friend_id', currentUserId)
+    .maybeSingle();
+  if (pendingError) throw pendingError;
+
   const { error } = await supabase
     .from('friendships')
     .delete()
     .eq('id', friendshipId)
     .eq('friend_id', currentUserId);
   if (error) throw error;
+
+  const requesterId = (pendingRow as any)?.user_id as string | undefined;
+  if (requesterId && requesterId !== currentUserId) {
+    void insertNotification({
+      userId: requesterId,
+      type: 'friend_rejected',
+      actorId: currentUserId,
+      entityId: friendshipId,
+    });
+    void (async () => {
+      try {
+        const rejectorProfile = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', currentUserId)
+          .maybeSingle();
+        const rejectorName = (rejectorProfile.data as any)?.username || '好友';
+        sendPushNotification({
+          userIds: [requesterId],
+          headings: '好友申请未通过',
+          contents: `${rejectorName} 拒绝了你的好友申请`,
+          type: 'friend_rejected',
+          data: { type: 'friend_rejected', actor_id: currentUserId, friendship_id: friendshipId },
+        });
+      } catch {
+        // non-critical
+      }
+    })();
+  }
 };
 
 // ==================== 记忆删除 ====================
@@ -1462,6 +1562,46 @@ export const addMemoryComment = async (
     .single()
 
   if (error) throw error
+
+  // Notify memory owner + tagged friends (fire-and-forget)
+  void (async () => {
+    try {
+      const { data: memRow } = await supabase
+        .from('memories')
+        .select('user_id, tags:memory_tags(user_id)')
+        .eq('id', memoryId)
+        .maybeSingle()
+      if (!memRow) return
+
+      const authorProfile = await supabase.from('profiles').select('username').eq('id', authorId).maybeSingle()
+      const authorName = (authorProfile.data as any)?.username || '好友'
+
+      const ownerId = (memRow as any).user_id as string
+      const taggedUserIds: string[] = ((memRow as any).tags || [])
+        .map((t: any) => t.user_id)
+        .filter(Boolean) as string[]
+
+      const recipientSet = new Set<string>([ownerId, ...taggedUserIds])
+      recipientSet.delete(authorId) // don't notify the commenter themselves
+
+      const recipients = Array.from(recipientSet)
+      if (recipients.length === 0) return
+
+      for (const uid of recipients) {
+        void insertNotification({ userId: uid, type: 'comment', actorId: authorId, entityId: memoryId })
+      }
+      sendPushNotification({
+        userIds: recipients,
+        headings: '新评论',
+        contents: `${authorName} 评论了你们的回忆`,
+        type: 'comment',
+        data: { type: 'comment', memory_id: memoryId, actor_id: authorId },
+      })
+    } catch {
+      // non-critical
+    }
+  })()
+
   return data
 }
 
@@ -1474,6 +1614,56 @@ export const deleteMemoryComment = async (commentId: string) => {
     .eq('id', commentId)
 
   if (error) throw error
+}
+
+// ==================== 通知触发辅助 ====================
+
+/**
+ * Write a row to the notifications table (fire-and-forget, never throws).
+ * Used to power the in-app notification centre.
+ */
+export const insertNotification = async (params: {
+  userId: string
+  type: string
+  actorId?: string | null
+  entityId?: string | null
+}): Promise<void> => {
+  try {
+    await (supabase as any)
+      .from('notifications')
+      .insert({
+        user_id: params.userId,
+        type: params.type,
+        actor_id: params.actorId ?? null,
+        entity_id: params.entityId ?? null,
+        read: false,
+      })
+  } catch {
+    // non-critical, ignore
+  }
+}
+
+/**
+ * Send a push notification via the send-notifications Edge Function (fire-and-forget).
+ */
+const sendPushNotification = (params: {
+  userIds: string[]
+  headings: string
+  contents: string
+  type: string
+  data?: Record<string, unknown>
+}): void => {
+  supabase.functions
+    .invoke('send-notifications', {
+      body: {
+        user_ids: params.userIds,
+        headings: params.headings,
+        contents: params.contents,
+        type: params.type,
+        data: params.data || {},
+      },
+    })
+    .catch((err) => console.warn('[push] send-notifications failed (ignored):', err))
 }
 
 // ==================== 通知偏好相关 ====================
@@ -1513,6 +1703,133 @@ export const setOneSignalPlayerId = async (userId: string, playerId: string | nu
     .eq('id', userId)
 
   if (res.error) throw res.error
+}
+
+// ==================== 应用内通知中心 ====================
+
+export type NotificationRow = {
+  id: string
+  type: string
+  actor_id: string | null
+  entity_id: string | null
+  read: boolean
+  created_at: string
+  actor: { id: string; username: string; avatar_url: string | null } | null
+  memory?: { photos: string[]; content: string } | null
+}
+
+export const getNotifications = async (userId: string, limit = 40): Promise<NotificationRow[]> => {
+  const { data, error } = await (supabase as any)
+    .from('notifications')
+    .select('id, type, actor_id, entity_id, read, created_at, actor:profiles!notifications_actor_id_fkey(id, username, avatar_url)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+
+  const rows: NotificationRow[] = data || []
+
+  // Batch-fetch memory thumbnails for memory-related notifications
+  const memoryIds = [...new Set(
+    rows.filter(n => n.entity_id && ['at', 'comment', 'like'].includes(n.type)).map(n => n.entity_id!)
+  )]
+  if (memoryIds.length > 0) {
+    const { data: memories } = await (supabase as any)
+      .from('memories')
+      .select('id, photos, content')
+      .in('id', memoryIds)
+    const memMap = new Map((memories || []).map((m: any) => [m.id, m]))
+    for (const row of rows) {
+      if (row.entity_id && memMap.has(row.entity_id)) {
+        row.memory = memMap.get(row.entity_id) as { photos: string[]; content: string }
+      }
+    }
+  }
+
+  return rows
+}
+
+export const getMemoryById = async (memoryId: string) => {
+  const { data, error } = await supabase
+    .from('memories')
+    .select(`
+      *,
+      location:locations(*),
+      tags:memory_tags(user_id, virtual_friend_id)
+    `)
+    .eq('id', memoryId)
+    .single()
+  if (error) throw error
+  if (!data) return null
+  // Keep shape aligned with getMemories() output, then harden nullable/legacy fields.
+  const formatted = formatMemoryRecord(data, (data as any).user_id || '')
+  const normalizedLocation = Array.isArray((formatted as any).location)
+    ? ((formatted as any).location[0] || null)
+    : ((formatted as any).location || null)
+
+  return {
+    ...formatted,
+    location: normalizedLocation,
+    content: typeof (formatted as any).content === 'string' ? (formatted as any).content : '',
+    photos: Array.isArray((formatted as any).photos) ? (formatted as any).photos : [],
+    videos: Array.isArray((formatted as any).videos) ? (formatted as any).videos : [],
+    audios: Array.isArray((formatted as any).audios) ? (formatted as any).audios : [],
+    tagged_friends: Array.isArray((formatted as any).tagged_friends) ? (formatted as any).tagged_friends : [],
+  }
+}
+
+export const markNotificationsRead = async (userId: string, ids?: string[]) => {
+  let query = (supabase as any).from('notifications').update({ read: true }).eq('user_id', userId)
+  if (ids && ids.length > 0) query = query.in('id', ids)
+  const { error } = await query
+  if (error) throw error
+}
+
+export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
+  const { count, error } = await (supabase as any)
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false)
+  if (error) return 0
+  return count ?? 0
+}
+
+// ==================== 点赞 ====================
+
+export const toggleMemoryLike = async (
+  memoryId: string,
+  userId: string,
+  isLiking: boolean,
+  memoryOwnerId: string,
+): Promise<void> => {
+  ensureOnlineForWrite('点赞')
+  if (isLiking) {
+    await (supabase.from('memory_likes' as any) as any)
+      .insert({ memory_id: memoryId, user_id: userId })
+  } else {
+    await (supabase.from('memory_likes' as any) as any)
+      .delete().match({ memory_id: memoryId, user_id: userId })
+  }
+  // Fire-and-forget notifications only on like (not unlike) and not to self
+  if (isLiking && memoryOwnerId && memoryOwnerId !== userId) {
+    void insertNotification({ userId: memoryOwnerId, type: 'like', actorId: userId, entityId: memoryId })
+    void (async () => {
+      try {
+        const actorProfile = await supabase.from('profiles').select('username').eq('id', userId).maybeSingle()
+        const actorName = (actorProfile.data as any)?.username || '好友'
+        sendPushNotification({
+          userIds: [memoryOwnerId],
+          headings: '新点赞',
+          contents: `${actorName} 点赞了你的回忆`,
+          type: 'like',
+          data: { type: 'like', memory_id: memoryId, actor_id: userId },
+        })
+      } catch {
+        // non-critical
+      }
+    })()
+  }
 }
 
 // ==================== 帮助中心问题反馈 ====================

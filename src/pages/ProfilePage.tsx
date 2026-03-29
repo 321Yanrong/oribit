@@ -9,7 +9,7 @@ import { FaEdit, FaChevronRight, FaChevronLeft, FaSpinner, FaHeart, FaUsers, FaC
 import { FiLogOut, FiTrash2, FiInfo, FiHeadphones, FiMoreHorizontal, FiSettings } from 'react-icons/fi';
 import { useUserStore, useMemoryStore, useLedgerStore } from '../store';
 import { useAppStore } from '../store/app';
-import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment, submitHelpQuestionFeedback, updateAllowShare } from '../api/supabase';
+import { supabase, signOut, uploadAvatar, saveInviteCode, lookupProfileByInviteCode, bindVirtualFriend, addRealFriendByCode, updateFriendRemark, acceptFriendRequest, rejectFriendRequest, updateProfileUsername, getProfile, deleteMyAccount, getMemoryComments, addMemoryComment, submitHelpQuestionFeedback, updateAllowShare, getNotifications, markNotificationsRead } from '../api/supabase';
 import { DEFAULT_SETTINGS, readSettings, writeSettings, SETTINGS_EVENT, shouldAllowRefresh, shouldAllowUpload } from '../utils/settings';
 import { TERMS_TEXT, PRIVACY_TEXT } from '../constants/appDocuments';
 import { STORAGE_LIMIT_BYTES, STORAGE_LIMIT_MB } from '../constants/storageQuota';
@@ -22,8 +22,7 @@ import ReportPage from '../components/ReportPage';
 import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import PhotoUploader from '../components/PhotoUploader';
 
-// Set to true once push notifications are fully configured (APNs + OneSignal)
-const PUSH_NOTIFICATIONS_ENABLED = false;
+const PUSH_NOTIFICATIONS_ENABLED = true;
 import AdminReportsPage from '../components/AdminReportsPage';
 import appIcon from '../../assets/icons/logo.png';
 
@@ -1966,7 +1965,7 @@ const AddFriendModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
@@ -2060,17 +2059,19 @@ const AddFriendModal = ({
                   <input type="radio" name="bindTarget" value="new" checked={bindTarget === 'new'} onChange={() => setBindTarget('new')} className="accent-[#00FFB3]" />
                   <span className="text-sm" style={{ color: 'var(--orbit-text)' }}>➕ 直接添加为新好友</span>
                 </label>
-                {virtualFriends.map((vf: any) => (
-                  <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-orange-50' : 'border-[color:var(--orbit-border)] bg-[color:var(--orbit-card)]'}`} style={{ borderColor: bindTarget === vf.id ? undefined : 'var(--orbit-border)' }}>
-                    <input type="radio" name="bindTarget" value={vf.id} checked={bindTarget === vf.id} onChange={() => setBindTarget(vf.id)} className="accent-[#FF9F43]" />
-                    <img src={vf.friend.avatar_url} alt={vf.friend.username} className="w-7 h-7 rounded-lg" />
-                    <div className="min-w-0">
-                      <p className="text-sm truncate" style={{ color: 'var(--orbit-text)' }}>{vf.friend.username}</p>
-                      {vf.remark && <p className="text-xs truncate text-gray-500">{vf.remark}</p>}
-                    </div>
-                    <span className="ml-auto text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded shrink-0">绑定</span>
-                  </label>
-                ))}
+                <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '260px' }}>
+                  {virtualFriends.map((vf: any) => (
+                    <label key={vf.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${bindTarget === vf.id ? 'border-[#FF9F43] bg-orange-50' : 'border-[color:var(--orbit-border)] bg-[color:var(--orbit-card)]'}`} style={{ borderColor: bindTarget === vf.id ? undefined : 'var(--orbit-border)' }}>
+                      <input type="radio" name="bindTarget" value={vf.id} checked={bindTarget === vf.id} onChange={() => setBindTarget(vf.id)} className="accent-[#FF9F43]" />
+                      <img src={vf.friend.avatar_url} alt={vf.friend.username} className="w-7 h-7 rounded-lg" />
+                      <div className="min-w-0">
+                        <p className="text-sm truncate" style={{ color: 'var(--orbit-text)' }}>{vf.friend.username}</p>
+                        {vf.remark && <p className="text-xs truncate text-gray-500">{vf.remark}</p>}
+                      </div>
+                      <span className="ml-auto text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded shrink-0">绑定</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -2134,7 +2135,7 @@ const AcceptFriendModal = ({
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
@@ -3093,22 +3094,20 @@ const SharedMemoriesModal = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-xl"
+      className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-xl pointer-events-none"
       style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
-      onClick={onClose}
     >
       <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-        className="h-[100dvh] w-full flex flex-col overflow-hidden"
+        className="h-[100dvh] w-full flex flex-col overflow-hidden pointer-events-auto"
         style={{
           backgroundColor: isDarkMode ? '#070707' : '#f5f5f7',
           color: isDarkMode ? '#f3f4f6' : '#111827',
           WebkitOverflowScrolling: 'touch'
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header 适配亮色并加入安全区内边距 */}
         <div
@@ -3478,6 +3477,10 @@ export default function ProfilePage() {
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [showAllFriends, setShowAllFriends] = useState(false);
   const [friendTab, setFriendTab] = useState<'all' | 'real' | 'virtual'>('all');
+  // Friend-related notifications shown in Profile
+  const [newFriendNotifs, setNewFriendNotifs] = useState<Array<{ id: string; actorName: string; actorAvatar: string | null }>>([]);
+  const [rejectedFriendNotifs, setRejectedFriendNotifs] = useState<Array<{ id: string; actorName: string; actorAvatar: string | null }>>([]);
+  const [friendNotifsLoaded, setFriendNotifsLoaded] = useState(false);
   const [showPostsCongrats, setShowPostsCongrats] = useState(false);
   const [showBillsCongrats, setShowBillsCongrats] = useState(false);
   const [showAccountDiagnostics, setShowAccountDiagnostics] = useState(false);
@@ -3930,6 +3933,32 @@ export default function ProfilePage() {
     }
   }, [currentUser?.id, inviteCode]);
 
+  // Fetch unread friend-related notifications
+  useEffect(() => {
+    if (!currentUser?.id) return
+    getNotifications(currentUser.id, 50).then((rows) => {
+      const connectionRows = rows.filter(
+        (n) => !n.read && (n.type === 'friend_accepted' || n.type === 'friend_bind')
+      )
+      const rejectedRows = rows.filter((n) => !n.read && n.type === 'friend_rejected')
+      setNewFriendNotifs(
+        connectionRows.map((n) => ({
+          id: n.id,
+          actorName: n.actor?.username || '好友',
+          actorAvatar: n.actor?.avatar_url ?? null,
+        }))
+      )
+      setRejectedFriendNotifs(
+        rejectedRows.map((n) => ({
+          id: n.id,
+          actorName: n.actor?.username || '好友',
+          actorAvatar: n.actor?.avatar_url ?? null,
+        }))
+      )
+      setFriendNotifsLoaded(true)
+    }).catch(() => setFriendNotifsLoaded(true))
+  }, [currentUser?.id])
+
   // ================= 核心逻辑交互 =================
 
   // ✨ 点击好友列表时的分发逻辑
@@ -4012,7 +4041,6 @@ export default function ProfilePage() {
       await useUserStore.getState().fetchFriends();
       await useUserStore.getState().fetchPendingRequests();
       await useMemoryStore.getState().fetchMemories();
-      setAcceptingRequest(null);
     } catch (err: any) {
       alert('接受失败：' + err.message);
     } finally {
@@ -4022,6 +4050,7 @@ export default function ProfilePage() {
         delete copy[req.id];
         return copy;
       });
+      setAcceptingRequest(null);
     }
   };
 
@@ -4171,22 +4200,13 @@ export default function ProfilePage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [showAvatarPreview, closeAvatarPreview]);
 
-  useScrollLock(showAllFriends);
-
   useEffect(() => {
     if (showAllFriends) {
-      // 弹窗打开时：禁止 body 滚动，并记录当前位置（防止 iOS 页面回弹）
-      // document.body.style.overflow = 'hidden'; // handled by useScrollLock
       document.body.style.height = '100vh';
     } else {
-      // 弹窗关闭时：恢复滚动
-      // document.body.style.overflow = '';
       document.body.style.height = '';
     }
-
-    // 组件卸载时安全清理
     return () => {
-      // document.body.style.overflow = '';
       document.body.style.height = '';
     };
   }, [showAllFriends]);
@@ -5008,9 +5028,17 @@ export default function ProfilePage() {
                   <p className="text-xl font-bold" style={{ color: isDarkMode ? '#ffffff' : '#111827' }}>{memories.length}</p>
                   <p className="text-xs mt-0.5" style={{ color: isDarkMode ? '#9ca3af' : '#6b7280' }}>帖子</p>
                 </button>
-                <button type="button" onClick={() => setShowAllFriends(true)} className="text-center">
+                <button type="button" onClick={() => setShowAllFriends(true)} className="text-center relative">
                   <p className="text-xl font-bold" style={{ color: isDarkMode ? '#ffffff' : '#111827' }}>{friends.length}</p>
                   <p className="text-xs mt-0.5" style={{ color: isDarkMode ? '#60a5fa' : '#2563eb' }}>好友</p>
+                  {newFriendNotifs.length > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1"
+                      style={{ background: '#ef4444', lineHeight: 1 }}
+                    >
+                      +{newFriendNotifs.length}
+                    </span>
+                  )}
                 </button>
                 <button type="button" onClick={() => setShowBillsCongrats(true)} className="text-center">
                   <p className="text-xl font-bold" style={{ color: isDarkMode ? '#ffffff' : '#111827' }}>{ledgers.length}</p>
@@ -5138,17 +5166,49 @@ export default function ProfilePage() {
       </div>
 
       {/* 好友申请通知 */}
-      {pendingRequests.length > 0 && (
+      {(pendingRequests.length > 0 || rejectedFriendNotifs.length > 0) && (
         <div className="relative z-10 px-4 mt-6">
           <h2 className="text-sm font-medium mb-2 px-1 flex items-center gap-2" style={{ color: 'var(--orbit-text-muted)' }}>
             <span className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
             好友申请
-            <span className="px-1.5 py-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold">{pendingRequests.length}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-[#FF6B6B] text-white text-[10px] font-bold">{pendingRequests.length + rejectedFriendNotifs.length}</span>
           </h2>
           <div
             className="overflow-hidden rounded-2xl"
             style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#f2f2f7'}` }}
           >
+            {rejectedFriendNotifs.map((notif: any) => (
+              <div
+                key={notif.id}
+                className="flex items-center gap-3 py-3 px-1"
+                style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#f2f2f7'}` }}
+              >
+                {notif.actorAvatar ? (
+                  <img src={notif.actorAvatar} alt={notif.actorName} className="w-11 h-11 rounded-full shrink-0 object-cover" />
+                ) : (
+                  <div className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center text-sm font-bold" style={{ background: '#ef4444', color: '#fff' }}>
+                    {notif.actorName[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate" style={{ color: 'var(--orbit-text)' }}>{notif.actorName}</p>
+                  <p className="text-xs" style={{ color: isDarkMode ? '#fca5a5' : '#991b1b' }}>拒绝了你的好友申请</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setRejectedFriendNotifs((prev) => prev.filter((n) => n.id !== notif.id))
+                    if (currentUser?.id) {
+                      void markNotificationsRead(currentUser.id, [notif.id])
+                    }
+                  }}
+                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full"
+                  style={{ color: isDarkMode ? '#fca5a5' : '#991b1b', background: 'transparent' }}
+                  aria-label="关闭"
+                >
+                  <FaTimes className="text-xs" />
+                </button>
+              </div>
+            ))}
             {pendingRequests.map((req: any) => {
               const reqUser = req.requester;
               return (
@@ -5901,18 +5961,15 @@ export default function ProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/25"
-            onClick={() => setShowAllFriends(false)}
+            className="fixed inset-0 z-50 bg-black/25 pointer-events-none"
           >
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-              // className="min-h-screen max-h-screen w-full flex flex-col"
-              className="h-[100dvh] w-full flex flex-col overflow-hidden"
+              className="h-[100dvh] w-full flex flex-col overflow-hidden pointer-events-auto"
               style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', fontFamily: '"PingFang SC", "-apple-system", "SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
-              onClick={(e) => e.stopPropagation()}
             >
               <div className="sticky top-0 safe-top p-4 border-b flex items-center justify-between" style={{ borderColor: isDarkMode ? '#1f2937' : '#ececec', background: isDarkMode ? '#0b0f1a' : '#ffffff', zIndex: 5 }}>
                 <button onClick={() => setShowAllFriends(false)} className="p-2 rounded-full hover:bg-black/5" style={{ color: isDarkMode ? '#f9fafb' : '#000000' }}><FaTimes className="text-inherit" /></button>
@@ -5943,6 +6000,52 @@ export default function ProfilePage() {
                   </button>
                 ))}
               </div>
+
+              {/* New friend connection toasts */}
+              <AnimatePresence initial={false}>
+                {newFriendNotifs.map((notif) => (
+                  <motion.div
+                    key={notif.id}
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                    className="mx-4 mt-2 overflow-hidden"
+                  >
+                    <div
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                      style={{
+                        background: isDarkMode ? 'rgba(16,185,129,0.12)' : '#ecfdf5',
+                        border: `1px solid ${isDarkMode ? 'rgba(16,185,129,0.3)' : '#a7f3d0'}`,
+                      }}
+                    >
+                      {notif.actorAvatar ? (
+                        <img src={notif.actorAvatar} alt={notif.actorName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-sm font-bold" style={{ background: '#10b981', color: '#fff' }}>
+                          {notif.actorName[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <p className="flex-1 text-sm font-medium" style={{ color: isDarkMode ? '#6ee7b7' : '#065f46' }}>
+                        已和 <span className="font-bold">{notif.actorName}</span> 成为好友 🎉
+                      </p>
+                      <button
+                        onClick={() => {
+                          setNewFriendNotifs((prev) => prev.filter((n) => n.id !== notif.id))
+                          if (currentUser?.id) {
+                            void markNotificationsRead(currentUser.id, [notif.id])
+                          }
+                        }}
+                        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full"
+                        style={{ color: isDarkMode ? '#6ee7b7' : '#065f46', background: 'transparent' }}
+                        aria-label="关闭"
+                      >
+                        <FaTimes className="text-xs" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
 
               {friends.length >= 4 && (
                 <div className="p-4 pb-2 shrink-0" style={{ background: isDarkMode ? '#0b0f1a' : '#ffffff', top: 'calc(env(safe-area-inset-top, 0px) + 116px)', zIndex: 3 }}>
@@ -6001,8 +6104,10 @@ export default function ProfilePage() {
             </motion.div>
           </motion.div>
         )}
-        <AnimatePresence>
-          {showPostsCongrats && (
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPostsCongrats && (
             <motion.div
               key="posts-congrats"
               initial={{ opacity: 0 }}
@@ -6076,14 +6181,14 @@ export default function ProfilePage() {
               </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
+      </AnimatePresence>
+
+      <AnimatePresence>
         {selectedFriend && (<SharedMemoriesModal
           key={`shared-${selectedFriend.id || 'unknown'}`}
           friend={selectedFriend}
           memories={memories.filter(m =>
-            // 我发布的、@了对方的记忆
             m.tagged_friends?.includes(selectedFriend.id) ||
-            // 对方发布的、@了我的记忆（通过 RLS 已拉取到本地）
             m.user_id === selectedFriend.id
           )}
           onClose={() => setSelectedFriend(null)}
@@ -6092,7 +6197,13 @@ export default function ProfilePage() {
           onBlockUser={(user: any) => handleBlockUser(user)}
         />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {bindingFriend && <BindFriendModal key={`bind-${bindingFriend.id || 'unknown'}`} friend={bindingFriend} isOpen={!!bindingFriend} onClose={() => setBindingFriend(null)} onBind={handleBindFriend} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {acceptingRequest && (
           <AcceptFriendModal
             key={`accept-${acceptingRequest.id || 'unknown'}`}
@@ -6104,9 +6215,17 @@ export default function ProfilePage() {
             loading={acceptingLoading}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showAddFriend && <AddFriendModal key="add-friend-modal" isOpen={showAddFriend} onClose={() => setShowAddFriend(false)} onAddVirtual={handleAddFriend} onAddReal={handleAddRealFriend} virtualFriends={friends.filter((f: any) => f.friend?.id?.startsWith('temp-'))} onBindExisting={handleBindExisting} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showInviteCode && <InviteCodeModal key="invite-code-modal" isOpen={showInviteCode} onClose={() => setShowInviteCode(false)} inviteCode={inviteCode} username={currentUser?.username || '用户'} />}
-        
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showAccountDiagnostics && (
           <AccountDiagnosticsModal
             key="account-diagnostics-modal"
@@ -6119,52 +6238,53 @@ export default function ProfilePage() {
             isDarkMode={isDarkMode}
           />
         )}
-        <ChangeEmailModal
-          key="change-email-modal"
-          isOpen={showEmailModal}
-          onClose={() => setShowEmailModal(false)}
-          onSubmit={handleSubmitEmail}
-          loading={actionLoading}
-        />
-        <ReportPage
-          key="report-page"
-          isOpen={showReportModal}
-          onClose={() => {
-            setShowReportModal(false);
-            setReportingFriend(null);
-          }}
-          targetName={reportingFriend?.friend?.username || reportingFriend?.friend_name || '该用户'}
-          onSubmit={handleReportSubmit}
-          isDarkMode={isDarkMode}
-        />
-        <AdminReportsPage
-          isOpen={showAdminPage}
-          onClose={() => setShowAdminPage(false)}
-          isDarkMode={isDarkMode}
-        />
-        <ChangePasswordModal
-          key="change-password-modal"
-          isOpen={showPasswordModal}
-          onClose={() => setShowPasswordModal(false)}
-          onSubmit={handleSubmitPassword}
-          loading={actionLoading}
-        />
-        <ResetPasswordModal
-          key="reset-password-modal"
-          isOpen={showResetModal}
-          onClose={() => setShowResetModal(false)}
-          onSubmit={handleResetPassword}
-          loading={resetLoading}
-        />
-        <DocumentModal
-          key={`doc-${docModal.title || 'doc'}`}
-          isOpen={docModal.isOpen}
-          onClose={() => setDocModal({ ...docModal, isOpen: false })}
-          title={docModal.title}
-          content={docModal.content}
-          isDarkMode={isDarkMode}
-        />
       </AnimatePresence>
+
+      <ChangeEmailModal
+        key="change-email-modal"
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        onSubmit={handleSubmitEmail}
+        loading={actionLoading}
+      />
+      <ReportPage
+        key="report-page"
+        isOpen={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportingFriend(null);
+        }}
+        targetName={reportingFriend?.friend?.username || reportingFriend?.friend_name || '该用户'}
+        onSubmit={handleReportSubmit}
+        isDarkMode={isDarkMode}
+      />
+      <AdminReportsPage
+        isOpen={showAdminPage}
+        onClose={() => setShowAdminPage(false)}
+        isDarkMode={isDarkMode}
+      />
+      <ChangePasswordModal
+        key="change-password-modal"
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={handleSubmitPassword}
+        loading={actionLoading}
+      />
+      <ResetPasswordModal
+        key="reset-password-modal"
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onSubmit={handleResetPassword}
+        loading={resetLoading}
+      />
+      <DocumentModal
+        key={`doc-${docModal.title || 'doc'}`}
+        isOpen={docModal.isOpen}
+        onClose={() => setDocModal({ ...docModal, isOpen: false })}
+        title={docModal.title}
+        content={docModal.content}
+        isDarkMode={isDarkMode}
+      />
 
       {randomMemory && typeof document !== 'undefined' && createPortal(
         <RandomMemoryModal

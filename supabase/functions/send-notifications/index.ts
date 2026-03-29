@@ -60,7 +60,11 @@ serve(async (req) => {
       switch (t) {
         case 'comment': return 'notifyComment'
         case 'friend_request': return 'notifyFriendRequest'
+        case 'friend_accepted': return 'notifyFriendRequest'
+        case 'friend_rejected': return 'notifyFriendRequest'
+        case 'friend_bind': return 'notifyFriendRequest'
         case 'at': return 'notifyAt'
+        case 'like': return 'notifyLike'
         default: return 'browser_notifications_enabled'
       }
     }
