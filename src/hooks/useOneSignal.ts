@@ -45,7 +45,19 @@ export function usePushSetup() {
           notifyButton: { enable: false },
         });
 
-        // 3. 只有上面的 init 没有报错，才会走到这里执行 login！
+        // 3. 请求通知权限（弹出系统授权弹窗，仅首次有效）
+        try {
+          const OneSignalAny: any = OneSignal;
+          if (typeof OneSignalAny?.Notifications?.requestPermission === 'function') {
+            await OneSignalAny.Notifications.requestPermission(true);
+          } else if (typeof OneSignalAny?.showNativePrompt === 'function') {
+            await OneSignalAny.showNativePrompt();
+          }
+        } catch {
+          // 权限弹窗失败不阻断后续流程
+        }
+
+        // 4. 只有上面的 init 没有报错，才会走到这里执行 login！
         if (currentUser?.id) {
           await OneSignal.login(currentUser.id);
           await syncPushState(currentUser.id);
