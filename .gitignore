@@ -15,3 +15,6 @@ xcuserdata/
 
 # Capacitor generated (rebuilt by `npx cap sync`)
 ios/App/App/capacitor.config.json
+
+# Apple APNs private keys
+*.p8
