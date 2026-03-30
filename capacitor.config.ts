@@ -15,6 +15,8 @@ const config: CapacitorConfig = {
     backgroundColor: '#ffffff',
     // 禁用原生 WebView 的橡皮筋回弹
     scrollEnabled: false,
+    // 让 OneSignal 插件处理推送注册，避免 "APNS Delegate Never Fired" 错误
+    handleApplicationNotifications: false,
   },
 
   plugins: {
