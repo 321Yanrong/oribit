@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useNavStore, useUserStore, useMemoryStore, useLedgerStore, hydrateUserCache } from './store';
 import { useAppStore } from './store/app';
-// import { usePushSetup } from './hooks/useOneSignal'; // 推送功能待后续启用
+import { usePushSetup } from './hooks/useOneSignal';
 import { supabase, getProfile, saveInviteCode } from './api/supabase';
 import { clearOrbitStorage, isLikelyInvalidSession, ORBIT_AUTH_INVALID_EVENT } from './utils/auth';
 import BottomNav, { BOTTOM_NAV_CONTENT_GAP } from './components/BottomNav';
@@ -12,6 +12,7 @@ import AuthModal from './components/AuthModal';
 import PWABanners from './components/PWABanners';
 import MapPage from './pages/MapPage';
 import MemoryStreamPage from './pages/MemoryStreamPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import LedgerPage from './pages/LedgerPage';
 import ProfilePage from './pages/ProfilePage';
 import { shouldAllowRefresh, readSettings, SETTINGS_EVENT, setCachedConnectionType } from './utils/settings';
@@ -164,7 +165,7 @@ function App() {
   const resumeTimerRef = useRef<number | null>(null);
   const shouldShowAuthModal = allowAuthModal && (!currentUser || showAuth);
   useAegisMonitor();
-  // usePushSetup(); // 推送功能待后续启用
+  usePushSetup();
   useNativeStatusBar();
   useNativeKeyboardGuard();
 
@@ -1093,7 +1094,11 @@ function App() {
                     touchAction: 'pan-y',
                   }}
                 >
-                  {currentPage === 'memory' && <MemoryStreamPage />}
+                  {currentPage === 'memory' && (
+                    <ErrorBoundary key="memory-page-boundary">
+                      <MemoryStreamPage />
+                    </ErrorBoundary>
+                  )}
                   {currentPage === 'ledger' && <LedgerPage />}
                   {currentPage === 'profile' && <ProfilePage />}
                 </motion.div>

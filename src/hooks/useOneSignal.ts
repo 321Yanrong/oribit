@@ -8,12 +8,29 @@ export function usePushSetup() {
   const hasInitialized = useRef(false);
 
   useEffect(() => {
+    const syncPushState = async (userId: string) => {
+      try {
+        const playerId = await OneSignal.getUserId();
+        if (playerId) {
+          const { setOneSignalPlayerId } = await import('../api/supabase');
+          await setOneSignalPlayerId(userId, playerId);
+        }
+        const store = useUserStore.getState();
+        if (store.fetchNotificationPrefs) await store.fetchNotificationPrefs();
+      } catch {
+        // ignore player id / prefs sync errors
+      }
+    };
+
     const initOneSignal = async () => {
       // 1. 如果已经成功初始化过，直接登录并返回
       if (hasInitialized.current) {
         if (currentUser?.id) {
           // 加个 try-catch 保护一下内部报错
-          try { await OneSignal.login(currentUser.id); } catch (e) {}
+          try {
+            await OneSignal.login(currentUser.id);
+            await syncPushState(currentUser.id);
+          } catch (e) {}
         }
         return;
       }
@@ -31,35 +48,22 @@ export function usePushSetup() {
         // 3. 只有上面的 init 没有报错，才会走到这里执行 login！
         if (currentUser?.id) {
           await OneSignal.login(currentUser.id);
+          await syncPushState(currentUser.id);
 
-          // Sync player id to Supabase and fetch persisted prefs into the store
+          // subscribe to subscription changes to keep Supabase in sync
           try {
-            const playerId = await OneSignal.getUserId();
-            if (playerId) {
-              const { setOneSignalPlayerId } = await import('../api/supabase');
-              await setOneSignalPlayerId(currentUser.id, playerId);
-            }
-            // load server-side prefs into store
-            const store = useUserStore.getState();
-            if (store.fetchNotificationPrefs) await store.fetchNotificationPrefs();
-
-            // subscribe to subscription changes to keep Supabase in sync
-            try {
-              // react-onesignal proxies OneSignal API
-              OneSignal.on && OneSignal.on('subscriptionChange', async (isSubscribed: boolean) => {
-                try {
-                  const pid = await OneSignal.getUserId();
-                  const { setOneSignalPlayerId } = await import('../api/supabase');
-                  await setOneSignalPlayerId(currentUser.id, isSubscribed ? pid : null);
-                } catch (e) {
-                  console.warn('subscriptionChange handler error', e);
-                }
-              });
-            } catch (e) {
-              // ignore
-            }
+            // react-onesignal proxies OneSignal API
+            OneSignal.on && OneSignal.on('subscriptionChange', async (isSubscribed: boolean) => {
+              try {
+                const pid = await OneSignal.getUserId();
+                const { setOneSignalPlayerId } = await import('../api/supabase');
+                await setOneSignalPlayerId(currentUser.id, isSubscribed ? pid : null);
+              } catch (e) {
+                console.warn('subscriptionChange handler error', e);
+              }
+            });
           } catch (e) {
-            // ignore player id / prefs sync errors
+            // ignore
           }
         }
 

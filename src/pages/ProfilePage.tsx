@@ -23,6 +23,7 @@ import MemoryDetailModal from './MemoryStreamPage/components/MemoryDetailModal';
 import PhotoUploader from '../components/PhotoUploader';
 
 const PUSH_NOTIFICATIONS_ENABLED = true;
+const PROFILE_NOTIFICATION_KEYS = ['notifyAt', 'notifyComment', 'notifyFriendRequest'] as const;
 import AdminReportsPage from '../components/AdminReportsPage';
 import appIcon from '../../assets/icons/logo.png';
 
@@ -3503,6 +3504,18 @@ export default function ProfilePage() {
   const [showHelpSupport, setShowHelpSupport] = useState(false);
   const [helpSupportOpenFeedback, setHelpSupportOpenFeedback] = useState(false);
   const [settings, setSettings] = useState(readSettings());
+  const [pushStatus, setPushStatus] = useState<{
+    loading: boolean;
+    permissionGranted: boolean | null;
+    subscribed: boolean | null;
+    playerId: string | null;
+  }>({
+    loading: false,
+    permissionGranted: null,
+    subscribed: null,
+    playerId: null,
+  });
+  const pushPermissionHintShownRef = useRef(false);
   const [refreshingHome, setRefreshingHome] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -3738,11 +3751,82 @@ export default function ProfilePage() {
     };
   }, [currentUser?.id]);
 
+  const refreshPushStatus = useCallback(async () => {
+    if (!PUSH_NOTIFICATIONS_ENABLED) return;
+    setPushStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      const OneSignalModule = await import('react-onesignal');
+      const OneSignalAny: any = OneSignalModule.default;
+
+      let permissionGranted: boolean | null = null;
+      if (typeof OneSignalAny?.Notifications?.permission === 'boolean') {
+        permissionGranted = OneSignalAny.Notifications.permission;
+      } else if (typeof OneSignalAny?.isPushNotificationsEnabled === 'function') {
+        permissionGranted = !!(await OneSignalAny.isPushNotificationsEnabled());
+      }
+
+      let subscribed: boolean | null = null;
+      if (typeof OneSignalAny?.User?.PushSubscription?.optedIn === 'boolean') {
+        subscribed = OneSignalAny.User.PushSubscription.optedIn;
+      } else if (typeof OneSignalAny?.isPushNotificationsEnabled === 'function') {
+        subscribed = !!(await OneSignalAny.isPushNotificationsEnabled());
+      }
+
+      let playerId: string | null = null;
+      if (typeof OneSignalAny?.User?.PushSubscription?.id === 'string') {
+        playerId = OneSignalAny.User.PushSubscription.id;
+      } else if (typeof OneSignalAny?.getUserId === 'function') {
+        playerId = (await OneSignalAny.getUserId()) || null;
+      }
+
+      if (import.meta.env.DEV) {
+        console.info('[push-status]', { permissionGranted, subscribed, hasPlayerId: !!playerId });
+      }
+
+      setPushStatus({
+        loading: false,
+        permissionGranted,
+        subscribed,
+        playerId,
+      });
+    } catch {
+      setPushStatus((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!PUSH_NOTIFICATIONS_ENABLED) return;
+    void refreshPushStatus();
+  }, [refreshPushStatus, currentUser?.id]);
+
+  const handleEnableExternalPush = useCallback(async () => {
+    if (!PUSH_NOTIFICATIONS_ENABLED) return;
+    try {
+      const OneSignalModule = await import('react-onesignal');
+      const OneSignalAny: any = OneSignalModule.default;
+      if (typeof OneSignalAny?.Notifications?.requestPermission === 'function') {
+        await OneSignalAny.Notifications.requestPermission(true);
+      } else if (typeof OneSignalAny?.showNativePrompt === 'function') {
+        await OneSignalAny.showNativePrompt();
+      } else if (typeof OneSignalAny?.registerForPushNotifications === 'function') {
+        await OneSignalAny.registerForPushNotifications();
+      } else {
+        alert('请在系统设置中手动开启通知权限。');
+      }
+    } catch {
+      alert('无法直接拉起通知授权，请在系统设置中开启通知权限。');
+    } finally {
+      setTimeout(() => {
+        void refreshPushStatus();
+      }, 500);
+    }
+  }, [refreshPushStatus]);
+
   const updateSettings = (patch: Partial<typeof DEFAULT_SETTINGS>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
 
     // If user is logged in, persist notification-related settings to Supabase
-    const notifKeys = ['notifyAt', 'notifyComment', 'notifyFriendRequest'];
+    const notifKeys = PROFILE_NOTIFICATION_KEYS as readonly string[];
     const hasNotifPatch = Object.keys(patch).some((k) => notifKeys.includes(k));
     const userId = useUserStore.getState().currentUser?.id;
     if (hasNotifPatch && userId) {
@@ -3754,6 +3838,10 @@ export default function ProfilePage() {
       });
       const next = { ...serverPrefs, ...patchPrefs };
       if (store.updateNotificationPrefs) void store.updateNotificationPrefs(next);
+      if (pushStatus.permissionGranted === false && !pushPermissionHintShownRef.current) {
+        pushPermissionHintShownRef.current = true;
+        alert('通知偏好已保存。当前系统通知未开启，暂时无法收到外部推送。');
+      }
     }
   };
 
@@ -5429,6 +5517,34 @@ export default function ProfilePage() {
                     {PUSH_NOTIFICATIONS_ENABLED && (
                       <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                         <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>通知设置</p>
+                        <div className="mt-1 text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#6b7280' }}>
+                          系统通知：
+                          {pushStatus.loading
+                            ? '检测中...'
+                            : pushStatus.permissionGranted === true
+                              ? '已开启'
+                              : pushStatus.permissionGranted === false
+                                ? '未开启'
+                                : '未知'}
+                          {' · '}
+                          设备订阅：
+                          {pushStatus.loading
+                            ? '检测中...'
+                            : pushStatus.subscribed === true
+                              ? '已订阅'
+                              : pushStatus.subscribed === false
+                                ? '未订阅'
+                                : '未知'}
+                        </div>
+                        {pushStatus.permissionGranted === false && (
+                          <button
+                            onClick={handleEnableExternalPush}
+                            className="mt-2 px-2.5 py-1 rounded-lg text-[11px] border"
+                            style={{ color: isDarkMode ? '#bae6fd' : '#0369a1', borderColor: isDarkMode ? '#155e75' : '#7dd3fc', background: isDarkMode ? 'rgba(8,47,73,0.45)' : '#ecfeff' }}
+                          >
+                            去开启系统通知
+                          </button>
+                        )}
                         <div className="mt-1.5 py-2 flex items-center justify-between" style={{ borderBottom: `0.5px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                           <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}><FaAt className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />@ 通知</span>
                           <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className="w-10 h-5 rounded-full transition-colors" style={{ background: settings.notifyAt ? '#38bdf8' : (isDarkMode ? '#1f2937' : '#d1d5db') }}>
@@ -5857,6 +5973,37 @@ export default function ProfilePage() {
                 {PUSH_NOTIFICATIONS_ENABLED && (
                   <div className="glass-card rounded-2xl overflow-hidden">
                     <div className="px-4 pt-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">通知设置</div>
+                    <div className="px-4 pb-2 text-xs text-[color:var(--orbit-text-muted)]">
+                      系统通知：
+                      {pushStatus.loading
+                        ? '检测中...'
+                        : pushStatus.permissionGranted === true
+                          ? '已开启'
+                          : pushStatus.permissionGranted === false
+                            ? '未开启'
+                            : '未知'}
+                      {' · '}
+                      设备订阅：
+                      {pushStatus.loading
+                        ? '检测中...'
+                        : pushStatus.subscribed === true
+                          ? '已订阅'
+                          : pushStatus.subscribed === false
+                            ? '未订阅'
+                            : '未知'}
+                      {pushStatus.playerId ? ' · 设备已绑定' : ' · 设备未绑定'}
+                    </div>
+                    {pushStatus.permissionGranted === false && (
+                      <div className="px-4 pb-2">
+                        <button
+                          onClick={handleEnableExternalPush}
+                          className="px-3 py-1.5 rounded-lg text-xs border"
+                          style={{ color: isDarkMode ? '#bae6fd' : '#0369a1', borderColor: isDarkMode ? '#155e75' : '#7dd3fc', background: isDarkMode ? 'rgba(8,47,73,0.45)' : '#ecfeff' }}
+                        >
+                          去开启系统通知
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between px-4 py-4 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
                       <p className="font-medium text-[color:var(--orbit-text)]">@ 通知</p>
                       <button onClick={() => updateSettings({ notifyAt: !settings.notifyAt })} className={`w-12 h-6 rounded-full transition-colors ${settings.notifyAt ? 'bg-[#00FFB3]' : 'bg-black/10 dark:bg-white/10'}`}>

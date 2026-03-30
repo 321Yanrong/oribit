@@ -13,8 +13,19 @@ export default class ErrorBoundary extends React.Component<React.PropsWithChildr
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('Global error boundary caught:', error, info);
+  componentDidCatch(error: unknown, info: React.ErrorInfo) {
+    let detail: string
+    if (error instanceof Error) {
+      detail = `${error.name}: ${error.message}\n${error.stack ?? ''}`
+    } else {
+      try {
+        detail = JSON.stringify(error, Object.getOwnPropertyNames(Object(error)))
+      } catch {
+        detail = String(error)
+      }
+    }
+    console.error('[ErrorBoundary] error detail:', detail)
+    console.error('[ErrorBoundary] component stack:', info.componentStack)
   }
 
   handleGoHome = () => {

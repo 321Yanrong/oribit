@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { VoiceRecorder } from '../../../components/MediaUploader';
-import { uploadAvatar, updateProfileAvatarUrl, supabase } from '../../../api/supabase';
+import { uploadAvatar, updateProfileAvatarUrl, supabase, toggleMemoryLike } from '../../../api/supabase';
 import { shouldAllowUpload } from '../../../utils/settings';
 import { useUserStore } from '../../../store';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
@@ -146,11 +146,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     });
 
     try {
-      if (isLiking) {
-        await (supabase.from('memory_likes' as any) as any).insert({ memory_id: memory.id, user_id: currentUser.id });
-      } else {
-        await (supabase.from('memory_likes' as any) as any).delete().match({ memory_id: memory.id, user_id: currentUser.id });
-      }
+      await toggleMemoryLike(memory.id, currentUser.id, isLiking, memory.user_id);
     } catch {
       // rollback if needed
     }
@@ -195,15 +191,17 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
   const bgOpacity = useTransform(y, [-150, 0, 150], [0, 1, 0]);
   const imgScale = useTransform(y, [-150, 0, 150], [0.8, 1, 0.8]);
 
-  const photos = memory.photos || [];
-  const videos = memory.videos || [];
-  const audios = memory.audios || [];
-  const { text: memoryText, weather, mood, route } = decodeMemoryContent(memory.content || '');
+  const photos = Array.isArray(memory?.photos) ? memory.photos : [];
+  const videos = Array.isArray(memory?.videos) ? memory.videos : [];
+  const audios = Array.isArray(memory?.audios) ? memory.audios : [];
+  const safeContent = typeof memory?.content === 'string' ? memory.content : '';
+  const { text: memoryText, weather, mood, route } = decodeMemoryContent(safeContent);
   const displayWeather = Array.isArray(weather) ? (weather[0] || '') : (weather || '');
   const displayMood = Array.isArray(mood) ? (mood[0] || '') : (mood || '');
+  const memoryLocation = Array.isArray(memory?.location) ? (memory.location[0] || null) : (memory?.location || null);
 
   const getVisibleTags = () => getVisibleTaggedFriendIds(
-    memory?.tagged_friends || [],
+    Array.isArray(memory?.tagged_friends) ? memory.tagged_friends : [],
     memory?.user_id,
     currentUser?.id,
     friends
@@ -323,7 +321,8 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
     setComments((prev) => prev.filter((item) => item.id !== commentId));
   };
 
-  const routeStops = route ? route.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
+  const routeText = typeof route === 'string' ? route : '';
+  const routeStops = routeText ? routeText.split(/→|->|>/).map(s => s.trim()).filter(Boolean) : [];
 
   const goPrevPhoto = () => setCurrentPhotoIndex((idx) => Math.max(0, idx - 1));
   const goNextPhoto = () => setCurrentPhotoIndex((idx) => Math.min(photos.length - 1, idx + 1));
@@ -463,7 +462,7 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
           className="px-4 pb-32 w-full max-w-3xl mx-auto"
           style={{ paddingTop: '16px' }}
         >
-          {memory.location && (
+          {memoryLocation && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -474,8 +473,8 @@ const MemoryDetailModal = ({ memory, onClose, friends, currentUser }: MemoryDeta
                 <FaMapMarkerAlt style={{ color: 'var(--orbit-text)' }} />
               </div>
               <div>
-                <div className="font-medium" style={{ color: 'var(--orbit-text)' }}>{memory.location.name}</div>
-                <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{memory.location.address}</div>
+                <div className="font-medium" style={{ color: 'var(--orbit-text)' }}>{memoryLocation.name || ''}</div>
+                <div className="text-sm" style={{ color: 'var(--orbit-text-muted, #9ca3af)' }}>{memoryLocation.address || ''}</div>
               </div>
             </motion.div>
           )}
