@@ -24,14 +24,18 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Orbit 需要使用相机来直接拍摄照片或视频用于发布回忆</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Orbit 需要获取你的位置来在地图上展示回忆和发布时标记地点</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Orbit 需要使用麦克风来录制语音评论和语音记忆</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Orbit 需要使用相机来直接拍摄照片或视频用于发布回忆</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Orbit 需要访问你的相册来上传照片和视频到回忆中</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

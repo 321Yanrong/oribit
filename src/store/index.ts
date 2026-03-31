@@ -498,9 +498,40 @@ export const hydrateUserCache = (userId: string) => {
 // ==========================================
 // 6. 导航/页面 Store
 // ==========================================
-export const useNavStore = create<{ currentPage: string; setCurrentPage: (page: string) => void }>((set) => ({
+export interface DeepLink {
+  type: string;
+  memoryId?: string;
+  actorId?: string;
+  friendshipId?: string;
+}
+
+export interface Announcement {
+  title: string;
+  body: string;
+}
+
+interface NavState {
+  currentPage: string;
+  setCurrentPage: (page: string) => void;
+  pendingDeepLink: DeepLink | null;
+  setPendingDeepLink: (link: DeepLink | null) => void;
+  consumeDeepLink: () => DeepLink | null;
+  pendingAnnouncement: Announcement | null;
+  setPendingAnnouncement: (a: Announcement | null) => void;
+}
+
+export const useNavStore = create<NavState>((set, get) => ({
   currentPage: 'map',
   setCurrentPage: (page) => set({ currentPage: page }),
+  pendingDeepLink: null,
+  setPendingDeepLink: (link) => set({ pendingDeepLink: link }),
+  consumeDeepLink: () => {
+    const link = get().pendingDeepLink;
+    if (link) set({ pendingDeepLink: null });
+    return link;
+  },
+  pendingAnnouncement: null,
+  setPendingAnnouncement: (a) => set({ pendingAnnouncement: a }),
 }));
 
 // 为了兼容你可能在其他地方使用的 usePageStore

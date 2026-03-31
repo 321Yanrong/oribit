@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "cap:sync": "CAPACITOR=1 vite build && npx cap sync",
+    "cap:sync": "CAPACITOR=1 vite build && npx cap sync && node scripts/fix-onesignal-spm.mjs",
     "cap:copy": "CAPACITOR=1 vite build && npx cap copy",
     "ios:open": "npx cap open ios",
     "android:open": "npx cap open android"

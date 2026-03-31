@@ -6,10 +6,10 @@ import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaMapMarkerAlt, FaAt, FaDollarSign, FaSpinner, FaCheckCircle, FaCalendarAlt, FaCamera, FaChevronRight, FaImages, FaHeart, FaQuoteLeft, FaSearch, FaCheck, FaPlus, FaEdit, FaTrash, FaComment, FaMicrophone, FaShareAlt, FaBookOpen, FaPause, FaPlay, FaStepBackward, FaStepForward, FaLock, FaCity, FaEllipsisH } from 'react-icons/fa';
 import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
-import { useMemoryStore, useUserStore, useLedgerStore } from '../store';
+import { useMemoryStore, useUserStore, useLedgerStore, useNavStore } from '../store';
 import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage, insertNotification } from '../api/supabase';
+import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage, insertNotification, getMemoryById } from '../api/supabase';
 import NotificationCenter from '../components/NotificationCenter';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
@@ -1524,6 +1524,21 @@ export default function MemoryStreamPage() {
       window.removeEventListener(SETTINGS_EVENT, updateTheme);
     };
   }, []);
+  // Handle push notification deep links — auto-open the referenced memory
+  useEffect(() => {
+    const link = useNavStore.getState().consumeDeepLink();
+    if (!link?.memoryId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const memory = await getMemoryById(link.memoryId!);
+        if (!cancelled && memory) setSelectedMemory(memory);
+      } catch { /* non-critical */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [activeStoryMemories, setActiveStoryMemories] = useState<any[] | null>(null);
   const [showStoryEntry, setShowStoryEntry] = useState(false);
   // 在原有的 useState 旁边加上这两个：

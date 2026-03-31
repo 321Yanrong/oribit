@@ -3494,6 +3494,23 @@ export default function ProfilePage() {
   const [remarkInput, setRemarkInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminPage, setShowAdminPage] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setIsAdmin(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('is_admin').eq('id', currentUser.id).single();
+        // Some native bridges return JSON as string, normalize both shapes.
+        const normalized = typeof data === 'string' ? JSON.parse(data) : data;
+        setIsAdmin(normalized?.is_admin === true);
+      } catch {
+        setIsAdmin(false);
+      }
+    })();
+  }, [currentUser?.id]);
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [showFontSizePage, setShowFontSizePage] = useState(false);
   const [showDarkModePage, setShowDarkModePage] = useState(false);
@@ -5379,6 +5396,21 @@ export default function ProfilePage() {
                         <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
                       </button>
                     </div>
+                    {isAdmin && (
+                      <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
+                        <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>管理</p>
+                        <button
+                          onClick={() => { setShowSideMenu(false); setShowAdminPage(true); }}
+                          className="w-full mt-1.5 pt-2 pb-1 flex items-center justify-between"
+                        >
+                          <span className="text-[13px] flex items-center gap-2" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }}>
+                            <FaUserShield className="text-[12px]" style={{ color: isDarkMode ? '#e5e7eb' : '#000000' }} />
+                            管理者界面
+                          </span>
+                          <FaChevronRight className="text-[13px]" style={{ color: isDarkMode ? '#6b7280' : '#c4c4c8' }} />
+                        </button>
+                      </div>
+                    )}
 
                     <div className="rounded-2xl px-3 py-2.5" style={{ background: isDarkMode ? '#0f172a' : '#ffffff', border: `1px solid ${isDarkMode ? '#1f2937' : '#ececf1'}` }}>
                       <p className="text-[11px]" style={{ color: isDarkMode ? '#94a3b8' : '#9ca3af' }}>显示</p>
@@ -5912,10 +5944,6 @@ export default function ProfilePage() {
                   <button onClick={() => alert('猜你想问：功能即将上线')} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
                     <p className="font-medium text-[color:var(--orbit-text)]">❓ 猜你想问</p>
                     <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">常见问题与使用技巧</p>
-                  </button>
-                  <button onClick={() => setShowAdminPage(true)} className="w-full p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 border-t" style={{ borderColor: 'var(--orbit-border)' }}>
-                    <p className="font-medium text-[color:var(--orbit-text)]">🛡️ 举报审核 (Admin)</p>
-                    <p className="text-sm mt-1 text-[color:var(--orbit-text-muted)]">查看并处理用户举报</p>
                   </button>
                 </div>
 

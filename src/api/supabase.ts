@@ -749,9 +749,21 @@ export const getProfile = async (userId: string, userEmail?: string) => {
     throw error
   }
 
-  // Combine profile data with email from auth user
+  // PostgREST schema cache may not include newly-added columns in select(*).
+  // Fetch admin fields with an explicit column list as a fallback.
+  let adminFields: Record<string, any> = {}
+  try {
+    const { data: af } = await supabase
+      .from('profiles')
+      .select('is_admin, is_banned, storage_quota_bytes')
+      .eq('id', userId)
+      .single()
+    if (af) adminFields = af
+  } catch { /* non-critical */ }
+
   return {
     ...data,
+    ...adminFields,
     email: userEmail || '',
   } as import('../types').User
 }

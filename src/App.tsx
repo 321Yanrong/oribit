@@ -145,7 +145,7 @@ function App() {
   // 注入心脏起搏器，代替之前的 usePWAKeeper(triggerResume)
   useAppWakeUp(triggerResume);
 
-  const { currentPage } = useNavStore();
+  const { currentPage, pendingAnnouncement, setPendingAnnouncement } = useNavStore();
   const { currentUser, setCurrentUser } = useUserStore();
   const [showAuth, setShowAuth] = useState(false);
   const [allowAuthModal, setAllowAuthModal] = useState(false);
@@ -1158,6 +1158,61 @@ function App() {
           <AnimatePresence>
             {shouldShowAuthModal && (
               <AuthModal onSuccess={() => setShowAuth(false)} onDemo={handleDemo} />
+            )}
+          </AnimatePresence>
+
+          {/* Admin announcement popup */}
+          <AnimatePresence>
+            {pendingAnnouncement && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
+                style={{ background: 'rgba(0,0,0,0.5)' }}
+                onClick={() => setPendingAnnouncement(null)}
+              >
+                <motion.div
+                  initial={{ scale: 0.88, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.88, opacity: 0, y: 20 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+                  style={{ background: 'var(--app-root-bg, #fff)' }}
+                >
+                  {/* Header */}
+                  <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b" style={{ borderColor: 'var(--orbit-border, #e5e7eb)' }}>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
+                      <span className="text-white text-sm">📣</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium opacity-50 mb-0.5">官方公告</p>
+                      <p className="font-bold text-base leading-tight truncate" style={{ color: 'var(--orbit-text, #111)' }}>
+                        {pendingAnnouncement.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Body */}
+                  <div className="px-6 py-5">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--orbit-text-secondary, #555)' }}>
+                      {pendingAnnouncement.body}
+                    </p>
+                  </div>
+
+                  {/* Close button */}
+                  <div className="px-6 pb-6">
+                    <button
+                      onClick={() => setPendingAnnouncement(null)}
+                      className="w-full py-3 rounded-2xl font-semibold text-sm text-white"
+                      style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
+                    >
+                      我知道了
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
             )}
           </AnimatePresence>
         </>
