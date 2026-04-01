@@ -58,7 +58,7 @@
 <span class="lang-tag">中文</span>
 <div class="header">
   <h1>Orbit 轨迹 — 隐私保护政策</h1>
-  <p class="date">生效日期：2026年3月27日 &nbsp;|&nbsp; 开发者：Yanrong Chen</p>
+  <p class="date">生效日期：2026年4月1日 &nbsp;|&nbsp; 开发者：Yanrong Chen</p>
 </div>
 
 <h2>前言</h2>
@@ -141,7 +141,16 @@
 <h3>2.7 使用数据</h3>
 <p>为改善服务体验，我们可能会收集您在应用内的操作行为数据，包括功能使用情况、浏览记录等。这些数据经匿名化处理后用于功能改进和稳定性分析。</p>
 
-<h3>2.8 好友与社交互动</h3>
+<h3>2.8 推送通知</h3>
+<p>当您授权通知权限后，我们会通过 OneSignal 服务向您发送以下类型的推送通知：</p>
+<ul>
+  <li>社交互动通知：好友在您的回忆下发表评论、点赞或 @ 您、发起好友申请或接受好友申请。</li>
+  <li>运营公告：由应用管理员发送的重要公告（点击通知后将在应用内以弹窗形式展示内容）。</li>
+</ul>
+<p>为实现上述功能，设备注册 OneSignal 推送服务后将生成一个唯一的<strong>推送订阅 ID（OneSignal Player ID）</strong>，该 ID 将与您的账号关联存储在我们的服务器上，仅用于向您准确投递通知，不用于广告目的。</p>
+<p>您可以随时在系统设置中关闭 Orbit 的通知权限（管理方式见下文「三、设备权限调用说明」），或在应用内「我的 → 左上角设置图标（齿轮）→ 通知」中逐类关闭特定类型的通知。关闭后您将不再收到对应推送，但不影响其他功能。</p>
+
+<h3>2.9 好友与社交互动</h3>
 <p>Orbit 提供好友系统，以支持回忆互动和共享账单等社交功能。以下说明该功能涉及的个人信息处理：</p>
 <ul>
   <li><strong>邀请码</strong>：您登录后，系统会为您生成一个唯一邀请码并存储在服务器上。其他用户可通过输入您的邀请码查找并查看您的用户名和头像，并向您发送好友申请。邀请码不包含您的邮箱、密码或位置等敏感信息。</li>
@@ -162,6 +171,7 @@
   <tr><td>相册</td><td>照片/视频上传</td><td>发布回忆时从相册选择并上传图片或视频</td><td>可以</td></tr>
   <tr><td>麦克风</td><td>语音评论</td><td>录制语音评论内容</td><td>可以</td></tr>
   <tr><td>相机</td><td>拍摄</td><td>直接拍摄照片或视频用于发布回忆</td><td>可以</td></tr>
+  <tr><td>通知</td><td>推送通知</td><td>接收好友互动（评论、点赞、@ 提及、好友申请）及官方公告通知</td><td>可以（也可在应用内按类型关闭）</td></tr>
 </table>
 
 <h2>四、第三方服务及 SDK 说明</h2>
@@ -203,6 +213,13 @@
     <td>分享链接 URL（含回忆 ID 等参数）</td>
     <td><a href="https://quickchart.io/privacy" target="_blank">查看</a></td>
   </tr>
+  <tr>
+    <td>OneSignal</td>
+    <td>OneSignal, Inc.</td>
+    <td>推送通知投递</td>
+    <td>设备推送令牌（APNs Device Token）、设备平台、推送订阅 ID；不收集 IDFA，不用于广告目的</td>
+    <td><a href="https://onesignal.com/privacy_policy" target="_blank">查看</a></td>
+  </tr>
 </table>
 
 <h2>五、我们如何共享、转让、公开披露您的个人信息</h2>
@@ -238,6 +255,7 @@
   <li>部署访问控制机制，确保只有授权人员可访问用户信息。</li>
   <li>定期审查安全配置和访问权限。</li>
 </ul>
+<p><strong>管理员权限说明：</strong>应用设有经授权的管理员账号，管理员可基于维护平台安全、处理违规投诉、解决用户问题等合理目的，访问以下有限范围的用户信息：用户名、注册邮箱、最近登录时间、账号状态（是否被封禁）、已用存储空间及存储配额。管理员不能查看您的私密回忆内容、评论、账单数据或位置历史，也不能查看您的密码（密码以哈希方式存储，任何人均无法获取明文）。管理员可向全体或指定用户发送推送通知（公告、运营通知等）。上述操作均受内部访问控制约束，仅用于平台运营管理目的。</p>
 <p>尽管我们已采取合理的安全措施，但互联网环境并非绝对安全，任何安全措施都无法做到万无一失。在不幸发生信息安全事件后，我们将按照法律法规的要求，及时向您告知事件情况及我们采取的补救措施。</p>
 
 <h2>七、您如何管理您的个人信息</h2>
@@ -313,7 +331,7 @@
 <span class="lang-tag">English</span>
 <div class="header">
   <h1>Orbit — Privacy Policy</h1>
-  <p class="date">Effective date: March 27, 2026 &nbsp;|&nbsp; Developer: Yanrong Chen</p>
+  <p class="date">Effective date: April 1, 2026 &nbsp;|&nbsp; Developer: Yanrong Chen</p>
 </div>
 
 <h2>Introduction</h2>
@@ -378,7 +396,16 @@
 <h3>1.7 Usage Data</h3>
 <p>We may collect anonymized usage data to improve our services.</p>
 
-<h3>1.8 Friends and Social Interactions</h3>
+<h3>1.8 Push Notifications</h3>
+<p>When you grant notification permission, we use OneSignal to deliver the following types of push notifications:</p>
+<ul>
+  <li><strong>Social interactions</strong>: when a friend comments on your memory, likes it, @-mentions you, sends you a friend request, or accepts your friend request.</li>
+  <li><strong>Admin announcements</strong>: important notices sent by app administrators. Tapping such a notification opens the app and displays the message in a modal overlay.</li>
+</ul>
+<p>To deliver notifications, your device registers with OneSignal and receives a unique <strong>push subscription ID (OneSignal Player ID)</strong>. This ID is stored on our servers linked to your account and is used solely to route notifications to your device. It is not used for advertising.</p>
+<p>You may disable notifications for Orbit at any time in your device's system settings, or manage notification types individually within the app: <em>Profile → Settings (gear icon, top-left) → Notifications</em>.</p>
+
+<h3>1.9 Friends and Social Interactions</h3>
 <p>Orbit provides a friend system to support social features such as memory interaction and shared expense tracking. The following describes how personal information is processed in this context:</p>
 <ul>
   <li><strong>Invite code</strong>: After you log in, the system generates a unique invite code for your account and stores it on our servers. Other users can enter your invite code to find your username and profile photo, and send you a friend request. The invite code does not contain your email address, password, location, or other sensitive information.</li>
@@ -399,6 +426,7 @@
   <tr><td>Photo Library</td><td>Photo/video upload</td><td>Select and upload media when publishing memories</td><td>Yes</td></tr>
   <tr><td>Microphone</td><td>Voice comments</td><td>Record voice comments</td><td>Yes</td></tr>
   <tr><td>Camera</td><td>Photo/video capture</td><td>Capture media for publishing</td><td>Yes</td></tr>
+  <tr><td>Notifications</td><td>Push notifications</td><td>Receive alerts for social interactions (comments, likes, @-mentions, friend requests) and admin announcements</td><td>Yes (also manageable per-type in-app)</td></tr>
 </table>
 <p>Disabling any permission will not affect other features of the Application.</p>
 
@@ -441,6 +469,13 @@
     <td>Share link URL (including memory ID parameters)</td>
     <td><a href="https://quickchart.io/privacy" target="_blank">View</a></td>
   </tr>
+  <tr>
+    <td>OneSignal</td>
+    <td>OneSignal, Inc.</td>
+    <td>Push notification delivery</td>
+    <td>Device push token (APNs Device Token), device platform, push subscription ID; IDFA is not collected and data is not used for advertising</td>
+    <td><a href="https://onesignal.com/privacy_policy" target="_blank">View</a></td>
+  </tr>
 </table>
 
 <h2>4. Information Sharing</h2>
@@ -465,6 +500,7 @@
   <li>Access control mechanisms limit data access to authorized personnel only.</li>
   <li>Regular security configuration reviews.</li>
 </ul>
+<p><strong>Administrator access:</strong> Orbit has designated administrator accounts authorized to access a limited set of user information for legitimate platform operations such as safety enforcement, handling abuse reports, and resolving user issues. Administrators may view: username, registered email, last sign-in time, account status (banned/active), storage usage, and storage quota. Administrators <em>cannot</em> view private memory content, comments, expense records, location history, or your password (passwords are irreversibly hashed). Administrators may send push notifications (announcements, operational notices) to all users, individual users, or filtered groups. All such access is logged and governed by internal access controls.</p>
 <p>While we implement reasonable measures, no electronic transmission or storage method is completely secure. In the event of a security incident, we will notify affected users as required by law.</p>
 
 <h2>6. Your Rights</h2>
