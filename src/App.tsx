@@ -139,6 +139,15 @@ const applyThemeFromSettings = (settings: ReturnType<typeof readSettings>) => {
   }
 };
 
+/** 与 applyThemeFromSettings 一致，供组件使用实色背景（地图页会把 --app-root-bg 设为 transparent） */
+const resolveThemeForUi = (settings: ReturnType<typeof readSettings>): 'light' | 'dark' => {
+  if (typeof window === 'undefined') return 'light';
+  const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const mode = settings.themeMode || 'system';
+  if (mode === 'system') return isSystemDark ? 'dark' : 'light';
+  return mode === 'dark' ? 'dark' : 'light';
+};
+
 function App() {
   const triggerResume = useAppStore((state) => state.triggerResume);
   const resumeTrigger = useAppStore((state) => state.resumeTrigger);
@@ -159,6 +168,9 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [sessionInvalid, setSessionInvalid] = useState(false);
   const [swUpdateReady, setSwUpdateReady] = useState(false);
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() =>
+    typeof window !== 'undefined' ? resolveThemeForUi(readSettings()) : 'light',
+  );
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const lastRefreshRef = useRef(0);
   const bootstrappedUserRef = useRef<string | null>(null);
@@ -294,16 +306,20 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const settings = readSettings();
-    applyThemeFromSettings(settings);
+    const refreshTheme = (settings: ReturnType<typeof readSettings>) => {
+      applyThemeFromSettings(settings);
+      setResolvedTheme(resolveThemeForUi(settings));
+    };
+
+    refreshTheme(readSettings());
 
     const onSettings = (event: Event) => {
       const detail = (event as CustomEvent<ReturnType<typeof readSettings>>).detail;
-      applyThemeFromSettings(detail || readSettings());
+      refreshTheme(detail || readSettings());
     };
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemThemeChange = () => applyThemeFromSettings(readSettings());
+    const handleSystemThemeChange = () => refreshTheme(readSettings());
 
     window.addEventListener(SETTINGS_EVENT, onSettings as EventListener);
     if (mediaQuery?.addEventListener) {
@@ -1161,7 +1177,7 @@ function App() {
             )}
           </AnimatePresence>
 
-          {/* Admin announcement popup */}
+          {/* 推送/公告弹窗：禁止用 --app-root-bg（地图页会设为 transparent，导致透出底图） */}
           <AnimatePresence>
             {pendingAnnouncement && (
               <motion.div
@@ -1169,7 +1185,7 @@ function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
-                style={{ background: 'rgba(0,0,0,0.5)' }}
+                style={{ background: 'rgba(0,0,0,0.55)' }}
                 onClick={() => setPendingAnnouncement(null)}
               >
                 <motion.div
@@ -1179,16 +1195,36 @@ function App() {
                   transition={{ type: 'spring', damping: 24, stiffness: 300 }}
                   onClick={e => e.stopPropagation()}
                   className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
-                  style={{ background: 'var(--app-root-bg, #fff)' }}
+                  style={{
+                    background: resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+                    border: `1px solid ${resolvedTheme === 'dark' ? '#333333' : '#e5e5e5'}`,
+                  }}
                 >
                   {/* Header */}
-                  <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b" style={{ borderColor: 'var(--orbit-border, #e5e7eb)' }}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
-                      <span className="text-white text-sm">📣</span>
+                  <div
+                    className="px-6 pt-6 pb-4 flex items-center gap-3 border-b"
+                    style={{ borderColor: resolvedTheme === 'dark' ? '#333333' : '#e5e5e5' }}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border"
+                      style={{
+                        background: resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+                        borderColor: resolvedTheme === 'dark' ? '#525252' : '#e5e5e5',
+                      }}
+                    >
+                      <span className="text-base leading-none">📣</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-medium opacity-50 mb-0.5">官方公告</p>
-                      <p className="font-bold text-base leading-tight truncate" style={{ color: 'var(--orbit-text, #111)' }}>
+                      <p
+                        className="text-[11px] font-medium mb-0.5"
+                        style={{ color: resolvedTheme === 'dark' ? '#a3a3a3' : '#525252' }}
+                      >
+                        官方公告
+                      </p>
+                      <p
+                        className="font-bold text-base leading-tight truncate"
+                        style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#000000' }}
+                      >
                         {pendingAnnouncement.title}
                       </p>
                     </div>
@@ -1196,7 +1232,10 @@ function App() {
 
                   {/* Body */}
                   <div className="px-6 py-5">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--orbit-text-secondary, #555)' }}>
+                    <p
+                      className="text-sm leading-relaxed whitespace-pre-wrap"
+                      style={{ color: resolvedTheme === 'dark' ? '#e5e5e5' : '#1a1a1a' }}
+                    >
                       {pendingAnnouncement.body}
                     </p>
                   </div>
@@ -1204,9 +1243,14 @@ function App() {
                   {/* Close button */}
                   <div className="px-6 pb-6">
                     <button
+                      type="button"
                       onClick={() => setPendingAnnouncement(null)}
-                      className="w-full py-3 rounded-2xl font-semibold text-sm text-white"
-                      style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
+                      className="w-full py-3 rounded-2xl font-semibold text-sm"
+                      style={
+                        resolvedTheme === 'dark'
+                          ? { background: '#ffffff', color: '#000000' }
+                          : { background: '#000000', color: '#ffffff' }
+                      }
                     >
                       我知道了
                     </button>

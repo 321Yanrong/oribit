@@ -19,13 +19,14 @@ const authAwareFetch: typeof fetch = async (input, init) => {
 
   // 路由策略：
   //   WebView fetch  → Storage POST（multipart 流式 body，nativeFetch 不支持）
-  //                  → Edge Functions（CORS 需要带 Origin，走 WebView 更安全）
-  //   nativeFetch    → Auth（/auth/v1/）+ REST（/rest/v1/）：绕开 WKWebView 死连接，
-  //                    唤醒后立即可用，彻底消灭 getSession-timeout
+  //                  → Edge Functions（仅浏览器：需 CORS；Capacitor 原生无 CORS，走 nativeFetch
+  //                    与 REST 一致，避免 WKWebView/CapacitorHttp 桥接对超长 Authorization 处理异常 → 401 Invalid JWT）
+  //   nativeFetch    → Auth（/auth/v1/）+ REST（/rest/v1/）+ 原生端 Edge：绕开 WKWebView 死连接
   const isStorageUpload =
     /\/storage\/v1\/object\//.test(url) && (init?.method?.toUpperCase() ?? 'GET') === 'POST'
   const isEdgeFunction = /\/functions\/v1\//.test(url)
-  const mustUseWebViewFetch = isStorageUpload || isEdgeFunction
+  const mustUseWebViewFetch =
+    isStorageUpload || (isEdgeFunction && !Capacitor.isNativePlatform())
 
   const fetchFn = mustUseWebViewFetch ? fetch : nativeFetch
   const response = await fetchFn(input, init)
@@ -491,7 +492,21 @@ export const signIn = async (email: string, password: string) => {
 }
 
 export const signOut = async () => {
-  // local scope is faster and more reliable for SPA logout UX
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const uid = session?.user?.id
+    if (uid) {
+      await supabase.from('profiles').update({ one_signal_player_id: null } as any).eq('id', uid)
+    }
+  } catch { /* best-effort cleanup */ }
+
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const OneSignal = (await import('onesignal-cordova-plugin')).default
+      OneSignal.logout()
+    }
+  } catch { /* OneSignal may not be available */ }
+
   const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw error
 }
@@ -1656,6 +1671,75 @@ export const insertNotification = async (params: {
 }
 
 /**
+ * Same strategy as AdminReportsPage.getValidToken: refresh then SDK session.
+ * Raw localStorage access_token alone caused Edge gateway 401 Invalid JWT on iOS (REST still 200).
+ */
+async function resolveAccessTokenForEdgeFunctions(): Promise<string | null> {
+  const trimJwt = (t: string | null | undefined) => {
+    if (typeof t !== 'string') return null
+    const s = t.trim()
+    return s.length > 0 ? s : null
+  }
+  try {
+    const { data } = await supabase.auth.refreshSession()
+    const t = trimJwt(data?.session?.access_token)
+    if (t) return t
+  } catch {
+    // ignore
+  }
+  try {
+    const { data } = await supabase.auth.getSession()
+    const t = trimJwt(data?.session?.access_token)
+    if (t) return t
+  } catch {
+    // ignore
+  }
+  return trimJwt(getSessionFromStorage()?.access_token)
+}
+
+/**
+ * Fire-and-forget Edge Function call. Uses authAwareFetch directly — bypasses supabase-js
+ * FunctionsClient + fetchWithAuth chain, which was still producing gateway 401 Invalid JWT on
+ * iOS even immediately after refreshSession() returned 200.
+ */
+export function triggerSendNotifications(body: Record<string, unknown>): void {
+  void (async () => {
+    const token = await resolveAccessTokenForEdgeFunctions()
+    if (!token) {
+      console.warn('[push] send-notifications skipped: no access_token after refresh/session/storage')
+      return
+    }
+    const fnUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/send-notifications`
+    try {
+      const res = await authAwareFetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey,
+        },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const text = (await res.text()).slice(0, 1000)
+        console.warn('[push] send-notifications HTTP', res.status, text || '(empty body)')
+        return
+      }
+      const json = (await res.json().catch(() => null)) as {
+        error?: string
+        onesignal?: { id?: string; errors?: unknown }
+      } | null
+      if (json?.error) console.warn('[push] send-notifications edge error field:', json.error)
+      if (json?.onesignal && !json.onesignal.id && json.onesignal.errors != null) {
+        console.warn('[push] OneSignal API errors:', JSON.stringify(json.onesignal.errors).slice(0, 500))
+      }
+    } catch (err) {
+      console.warn('[push] send-notifications failed (ignored):', err)
+    }
+  })().catch((err) => console.warn('[push] send-notifications failed (ignored):', err))
+}
+
+/**
  * Send a push notification via the send-notifications Edge Function (fire-and-forget).
  */
 const sendPushNotification = (params: {
@@ -1665,17 +1749,13 @@ const sendPushNotification = (params: {
   type: string
   data?: Record<string, unknown>
 }): void => {
-  supabase.functions
-    .invoke('send-notifications', {
-      body: {
-        user_ids: params.userIds,
-        headings: params.headings,
-        contents: params.contents,
-        type: params.type,
-        data: params.data || {},
-      },
-    })
-    .catch((err) => console.warn('[push] send-notifications failed (ignored):', err))
+  triggerSendNotifications({
+    user_ids: params.userIds,
+    headings: params.headings,
+    contents: params.contents,
+    type: params.type,
+    data: params.data || {},
+  })
 }
 
 // ==================== 通知偏好相关 ====================
@@ -1709,12 +1789,21 @@ export const updateUserNotificationPrefs = async (userId: string, prefs: Record<
 export const setOneSignalPlayerId = async (userId: string, playerId: string | null) => {
   ensureOnlineForWrite('更新推送标识')
 
+  const now = new Date().toISOString()
   const res: any = await supabase
     .from('profiles')
-    .update({ one_signal_player_id: playerId } as any)
+    .update({ one_signal_player_id: playerId, updated_at: now } as any)
     .eq('id', userId)
+    .select('id, one_signal_player_id, updated_at')
+    .maybeSingle()
 
   if (res.error) throw res.error
+  if (!res.data) {
+    console.warn('[Orbit] setOneSignalPlayerId: no row updated — auth.uid() may not match userId or RLS blocked', {
+      userId,
+    })
+    throw new Error('无法写入推送标识：数据库未更新任何行（请确认已登录为当前账号）')
+  }
 }
 
 // ==================== 应用内通知中心 ====================

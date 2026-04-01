@@ -68,7 +68,6 @@ serve(async (req) => {
     let query = adminClient
       .from('profiles')
       .select('id, notification_prefs, one_signal_player_id')
-      .not('one_signal_player_id', 'is', null)
 
     const modeCount =
       (all_users ? 1 : 0) +
@@ -116,7 +115,10 @@ serve(async (req) => {
     }
 
     const prefKey = mapTypeToPrefKey(type)
-    const allowedPlayerIds: string[] = []
+    /** Supabase user ids that passed prefs (for counting / external_id fallback). */
+    const allowedUserIds: string[] = []
+    /** OneSignal push subscription ids from profiles — direct device targeting. */
+    const subscriptionIds: string[] = []
     const reasonSkipped: Record<string, string> = {}
 
     for (const u of rows || []) {
@@ -136,47 +138,96 @@ serve(async (req) => {
         reasonSkipped[u.id] = '用户偏好关闭此类通知'
         continue
       }
-      if (!playerId) {
-        reasonSkipped[u.id] = '无有效 OneSignal player id'
-        continue
-      }
-      allowedPlayerIds.push(playerId)
+      allowedUserIds.push(u.id)
+      if (playerId) subscriptionIds.push(playerId)
     }
 
-    if (allowedPlayerIds.length === 0) {
+    if (allowedUserIds.length === 0) {
       return new Response(
         JSON.stringify({ success: true, sent: 0, skipped: Object.keys(reasonSkipped).length, reasonSkipped }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
-    // ── Send via OneSignal REST API ────────────────────────────────────────────
-    const onesignalBody = {
-      app_id:              oneSignalAppId,
-      include_player_ids:  allowedPlayerIds,
-      headings:            { en: headings || '', 'zh-Hans': headings || '' },
-      contents:            { en: contents || '', 'zh-Hans': contents || '' },
-      data:                data || {},
-    }
-
-    const resp = await fetch('https://onesignal.com/api/v1/notifications', {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json;charset=utf-8',
-        'Authorization': `Basic ${oneSignalRestKey}`,
-      },
-      body: JSON.stringify(onesignalBody),
+    // OneSignal allows only one targeting mode per request. Previously we always used
+    // include_aliases.external_id whenever any recipient existed, so include_subscription_ids
+    // was never used — pushes often accepted (HTTP 200) but with no message id / no delivery.
+    const externalIdOnly = allowedUserIds.filter((id) => {
+      const row = (rows || []).find((r) => r.id === id)
+      return !row?.one_signal_player_id
     })
 
-    const respJson = await resp.json()
+    const basePayload: Record<string, unknown> = {
+      app_id:   oneSignalAppId,
+      headings: { en: headings || '', 'zh-Hans': headings || '' },
+      contents: { en: contents || '', 'zh-Hans': contents || '' },
+      data:     data || {},
+      target_channel: 'push',
+    }
+
+    const sendToOneSignal = async (body: Record<string, unknown>) => {
+      const resp = await fetch('https://api.onesignal.com/notifications', {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json; charset=utf-8',
+          'Authorization': `Key ${oneSignalRestKey}`,
+        },
+        body: JSON.stringify(body),
+      })
+      const respJson = await resp.json()
+      if (!resp.ok) {
+        console.error('[send-notifications] OneSignal HTTP', resp.status, respJson)
+      } else if (respJson && !respJson.id) {
+        console.warn('[send-notifications] OneSignal 200 but no message id (no eligible subscriptions?)', respJson)
+      }
+      return { status: resp.status, json: respJson }
+    }
+
+    const onesignalResults: { mode: string; status: number; json: unknown }[] = []
+
+    if (subscriptionIds.length > 0) {
+      const r = await sendToOneSignal({
+        ...basePayload,
+        include_subscription_ids: [...new Set(subscriptionIds)],
+      })
+      onesignalResults.push({ mode: 'include_subscription_ids', status: r.status, json: r.json })
+    }
+
+    if (externalIdOnly.length > 0) {
+      const r = await sendToOneSignal({
+        ...basePayload,
+        include_aliases: { external_id: [...new Set(externalIdOnly)] },
+      })
+      onesignalResults.push({ mode: 'include_aliases.external_id', status: r.status, json: r.json })
+    }
+
+    const onesignalPayload =
+      onesignalResults.length === 1
+        ? onesignalResults[0].json
+        : {
+            batches: onesignalResults.map((r) => r.json),
+            id: (() => {
+              for (const r of onesignalResults) {
+                const j = r.json
+                if (j && typeof j === 'object' && 'id' in j && (j as { id?: string }).id) {
+                  return (j as { id: string }).id
+                }
+              }
+              return undefined
+            })(),
+          }
 
     return new Response(
       JSON.stringify({
         success:   true,
-        sent:      allowedPlayerIds.length,
+        sent:      allowedUserIds.length,
         total:     (rows || []).length,
         skipped:   reasonSkipped,
-        onesignal: respJson,
+        targeting: {
+          subscription_ids: subscriptionIds.length,
+          external_id_only: externalIdOnly.length,
+        },
+        onesignal: onesignalPayload,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )

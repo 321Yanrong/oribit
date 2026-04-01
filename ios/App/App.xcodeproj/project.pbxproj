@@ -20,6 +20,8 @@
 		DF02AAC12F76A00000E7E99B /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF02AAC02F76A00000E7E99B /* MainViewController.swift */; };
 		DF03BDC12F85710100BBDD01 /* ThemeSyncPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF03BDC02F85710100BBDD01 /* ThemeSyncPlugin.swift */; };
 		DF03BDC32F85710100BBDD01 /* ThemeSyncPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = DF03BDC22F85710100BBDD01 /* ThemeSyncPlugin.m */; };
+		DF04CEC12F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF04CEC02F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.swift */; };
+		DF04CEC32F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = DF04CEC22F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.m */; };
 		DF88A1012F99000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DF88A1002F99000000000001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -40,6 +42,8 @@
 		DF02AAC02F76A00000E7E99B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		DF03BDC02F85710100BBDD01 /* ThemeSyncPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSyncPlugin.swift; sourceTree = "<group>"; };
 		DF03BDC22F85710100BBDD01 /* ThemeSyncPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ThemeSyncPlugin.m; sourceTree = "<group>"; };
+		DF04CEC02F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitOpenAppSettingsPlugin.swift; sourceTree = "<group>"; };
+		DF04CEC22F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrbitOpenAppSettingsPlugin.m; sourceTree = "<group>"; };
 		DF88A1002F99000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DFBD76482F75503000C99756 /* App-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "App-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -88,6 +92,8 @@
 				DF02AAC02F76A00000E7E99B /* MainViewController.swift */,
 				DF03BDC22F85710100BBDD01 /* ThemeSyncPlugin.m */,
 				DF03BDC02F85710100BBDD01 /* ThemeSyncPlugin.swift */,
+				DF04CEC22F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.m */,
+				DF04CEC02F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.swift */,
 				504EC3131FED79650016851F /* Info.plist */,
 				DF88A1002F99000000000001 /* PrivacyInfo.xcprivacy */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
@@ -184,6 +190,8 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				DF03BDC12F85710100BBDD01 /* ThemeSyncPlugin.swift in Sources */,
 				DF03BDC32F85710100BBDD01 /* ThemeSyncPlugin.m in Sources */,
+				DF04CEC12F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.swift in Sources */,
+				DF04CEC32F85710300BBDD01 /* OrbitOpenAppSettingsPlugin.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,7 +334,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Orbit 轨迹";
@@ -359,7 +367,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = 3VR2XF2B5J;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Orbit 轨迹";

@@ -60,12 +60,9 @@ serve(async (req) => {
       })
     }
 
-    // 5. 用户模式：发起 7 个工作日后的删除申请
-    if (!authHeader) throw new Error('未授权请求')
-    const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-      global: { headers: { Authorization: authHeader } }
-    })
-    const { data: { user }, error: userError } = await userClient.auth.getUser()
+    // 5. 用户模式：发起 7 个工作日后的删除申请（与另两个 Edge 一致：adminClient.auth.getUser(token)）
+    if (!token) throw new Error('未授权请求')
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(token)
     if (userError || !user) throw new Error('未授权请求')
 
     const confirmEmail = (body?.confirmEmail || '').trim().toLowerCase()

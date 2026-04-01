@@ -9,7 +9,7 @@ import { FaChevronDown as ChevronDownIcon } from 'react-icons/fa';
 import { useMemoryStore, useUserStore, useLedgerStore, useNavStore } from '../store';
 import { useAppStore } from '../store/app';
 import { MemoryStreamDraft, useUIStore } from '../store/ui';
-import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage, insertNotification, getMemoryById } from '../api/supabase';
+import { supabase, createMemory, createLocation, createLedger, updateLedger, deleteLedger, getLedgerByMemory, getMemoryComments, addMemoryComment, deleteMemoryComment, checkSessionIsHealthy, getSessionFromStorage, insertNotification, getMemoryById, triggerSendNotifications } from '../api/supabase';
 import NotificationCenter from '../components/NotificationCenter';
 import MediaUploader, { VoiceRecorder } from '../components/MediaUploader';
 import { MemoryStoryEntry, MemoryStoryDrawer } from './MemoryStreamPage/components/SharedMemoryAlbumBookFixed';
@@ -1818,18 +1818,16 @@ export default function MemoryStreamPage() {
             entityId: memoryId,
           });
           // 推送外部通知（不 await，后台发）
-          supabase.functions.invoke('send-notifications', {
-            body: {
-              user_ids: [targetMemory.user_id],
-              headings: '新的赞 ❤️',
-              contents: `${fromName} 赞了你的动态！`,
-              type: 'general',
-              data: {
-                type: 'new_like',
-                memory_id: memoryId
-              }
+          triggerSendNotifications({
+            user_ids: [targetMemory.user_id],
+            headings: '新的赞 ❤️',
+            contents: `${fromName} 赞了你的动态！`,
+            type: 'general',
+            data: {
+              type: 'new_like',
+              memory_id: memoryId
             }
-          }).catch(err => console.error('发送点赞通知失败:', err));
+          });
         }
 
       } else {

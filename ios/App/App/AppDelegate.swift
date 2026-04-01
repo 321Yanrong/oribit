@@ -1,4 +1,5 @@
 import UIKit
+import UserNotifications
 import Capacitor
 
 @UIApplicationMain
@@ -15,6 +16,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 ? UIColor(red: 0x12/255.0, green: 0x12/255.0, blue: 0x12/255.0, alpha: 1)
                 : .white
         }
+
+        // 推送权限与 registerForRemoteNotifications 由 onesignal-cordova-plugin 在 JS 初始化后处理。
+        // 若在此处抢先 requestAuthorization / register，可能与 OneSignal 的 UNUserNotificationCenter delegate
+        // 抢顺序，导致 APNs token 未正确关联，表现为 Dashboard 测试推送也收不到。
+
         return true
     }
 

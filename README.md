@@ -22,9 +22,6 @@ Orbit is a memory-first social app designed for small, trusted circles. Unlike p
 |---|---|---|
 | ![memory](docs/screenshots/memory_stream.png) | ![map](docs/screenshots/map.png) | ![friend](docs/screenshots/friend_privacy.png) |
 
-| Ledger Privacy | | |
-|---|---|---|
-| ![ledger](docs/screenshots/ledger.png) | | |
 
 ---
 

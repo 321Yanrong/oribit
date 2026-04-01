@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    FaChevronLeft, FaSpinner, FaSearch, FaBan, FaCheck,
+    FaChevronLeft, FaChevronRight, FaSpinner, FaSearch, FaBan, FaCheck,
     FaBell, FaUsers, FaFlag, FaUser, FaTimes,
 } from 'react-icons/fa';
 import { supabase } from '../api/supabase';
 import { useScrollLock } from '../hooks/useScrollLock';
+
+/** 全屏遮罩盖住底栏时，仅需避开 Home 指示条，勿再用底栏高度留白 */
+const ADMIN_SCROLL_BOTTOM_PAD = 'max(28px, calc(env(safe-area-inset-bottom, 0px) + 16px))';
 
 interface AdminReportsPageProps {
     isOpen: boolean;
@@ -132,9 +136,25 @@ const callAdminAction = async (body: Record<string, unknown>) => {
 };
 
 const callSendNotifications = async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke('send-notifications', { body });
+    const token = await getValidToken();
+    if (!token) throw new Error('登录已过期，请重新登录后再试');
+
+    console.log('[AdminNotify] request payload:', body);
+    const { data, error } = await supabase.functions.invoke('send-notifications', {
+        body,
+        headers: { Authorization: `Bearer ${token}` },
+    });
     if (error) throw new Error(await extractFunctionErrorMessage(error));
     if (data?.error) throw new Error(data.error);
+    const skippedCount = Object.keys(data?.skipped ?? {}).length;
+    const onesignalErrors = (data?.onesignal?.errors ?? data?.onesignal?.invalid_aliases ?? data?.onesignal?.warnings ?? null);
+    console.log('[AdminNotify] response summary:', {
+        sent: data?.sent ?? 0,
+        skippedCount,
+        total: data?.total ?? 0,
+        onesignalId: data?.onesignal?.id ?? null,
+        onesignalErrors,
+    });
     return data;
 };
 
@@ -206,7 +226,10 @@ const ReportsTab = ({ isDark }: { isDark: boolean }) => {
     const visible = reports.filter(r => filter === 'all' || r.status === filter);
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div
+            className="flex-1 overflow-y-auto p-4 space-y-3"
+            style={{ paddingBottom: ADMIN_SCROLL_BOTTOM_PAD }}
+        >
             {/* Filter row */}
             <div className="flex gap-2 flex-wrap">
                 {(['all', 'pending', 'resolved'] as const).map(f => (
@@ -363,7 +386,10 @@ const UsersTab = ({ isDark }: { isDark: boolean }) => {
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div
+            className="flex-1 overflow-y-auto p-4 space-y-3"
+            style={{ paddingBottom: ADMIN_SCROLL_BOTTOM_PAD }}
+        >
             {/* Search bar */}
             <div className="flex gap-2">
                 <div className="flex-1 flex items-center gap-2 px-3 rounded-xl border"
@@ -562,171 +588,380 @@ const NotificationsTab = ({ isDark }: { isDark: boolean }) => {
         }
     };
 
-    const inputCls = `w-full px-3 py-2 rounded-xl border text-sm outline-none`;
-    const inputStyle = {
-        background:   isDark ? '#1f2937' : '#f9fafb',
-        borderColor:  isDark ? '#374151' : '#d1d5db',
-        color:        isDark ? '#e5e7eb' : '#111827',
+    // 深色：框内纯黑 + 白字；浅色：框内纯白 + 黑字
+    const t = {
+        canvas: isDark ? '#000000' : '#ffffff',
+        frame: isDark ? '#000000' : '#ffffff',
+        frameBorder: isDark ? '#333333' : '#e5e5e5',
+        headerRule: isDark ? '#333333' : '#e5e5e5',
+        text: isDark ? '#ffffff' : '#000000',
+        muted: isDark ? '#d4d4d4' : '#404040',
+        faint: isDark ? '#a3a3a3' : '#737373',
+        section: isDark ? '#000000' : '#ffffff',
+        sectionBorder: isDark ? '#333333' : '#e5e5e5',
+        inputBg: isDark ? '#000000' : '#ffffff',
+        inputBorder: isDark ? '#525252' : '#d4d4d4',
+        chipInactiveBg: isDark ? '#000000' : '#ffffff',
+        chipInactiveText: isDark ? '#ffffff' : '#000000',
+        listHover: isDark ? '#1a1a1a' : '#f5f5f5',
+        selectedRow: isDark ? '#000000' : '#ffffff',
+        selectedRowBorder: isDark ? '#525252' : '#d4d4d4',
+        successBg: isDark ? '#052e16' : '#ecfdf5',
+        successText: isDark ? '#86efac' : '#065f46',
+        errorBg: isDark ? '#450a0a' : '#fef2f2',
+        errorText: isDark ? '#fca5a5' : '#991b1b',
+        ctaBg: isDark ? '#ffffff' : '#000000',
+        ctaText: isDark ? '#000000' : '#ffffff',
+        iconTileBg: isDark ? '#000000' : '#ffffff',
+        iconTileBorder: isDark ? '#333333' : '#e5e5e5',
     };
 
-    return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Mode selector */}
-            <div className="flex gap-2 flex-wrap">
-                {([
-                    ['broadcast', '全体广播'],
-                    ['individual', '单个用户'],
-                    ['filter', '筛选发送'],
-                ] as [NotifyMode, string][]).map(([m, label]) => (
-                    <button
-                        key={m}
-                        onClick={() => { setMode(m); reset(); }}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            mode === m
-                                ? 'bg-blue-500 text-white'
-                                : isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
-                        }`}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
+    const inputCls =
+        `w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-shadow focus:ring-2 ${isDark ? 'placeholder:text-neutral-500' : 'placeholder:text-neutral-400'}`;
+    const inputClsFocus = isDark ? 'focus:ring-white/25' : 'focus:ring-black/15';
 
-            {/* ── Individual: user search ── */}
-            {mode === 'individual' && (
-                <Card isDark={isDark}>
-                    <p className="text-xs font-semibold mb-2 opacity-60">选择接收用户</p>
-                    <div className="flex gap-2 mb-2">
-                        <input
-                            value={userQuery}
-                            onChange={e => setUserQuery(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && searchUser()}
-                            placeholder="用户名 / 邮箱"
-                            className={inputCls}
-                            style={inputStyle}
-                        />
-                        <button
-                            onClick={searchUser}
-                            disabled={searching}
-                            className="px-3 py-2 rounded-xl bg-blue-500/20 text-blue-400 text-sm disabled:opacity-50"
-                        >
-                            {searching ? <FaSpinner className="animate-spin" /> : <FaSearch />}
-                        </button>
+    const inputStyle: React.CSSProperties = {
+        background: t.inputBg,
+        borderColor: t.inputBorder,
+        color: t.text,
+    };
+
+    const Section = ({
+        title,
+        children,
+    }: {
+        title: string;
+        children: React.ReactNode;
+    }) => (
+        <div
+            className="rounded-xl p-4"
+            style={{
+                background: t.section,
+                border: `1px solid ${t.sectionBorder}`,
+            }}
+        >
+            <p
+                className="text-[11px] font-semibold uppercase tracking-wider mb-3"
+                style={{ color: t.muted }}
+            >
+                {title}
+            </p>
+            {children}
+        </div>
+    );
+
+    return (
+        <div
+            className="flex-1 overflow-y-auto px-3 py-4 sm:px-4"
+            style={{
+                background: t.canvas,
+                color: t.text,
+                paddingBottom: ADMIN_SCROLL_BOTTOM_PAD,
+            }}
+        >
+            <div
+                className="mx-auto max-w-lg rounded-2xl overflow-hidden"
+                style={{
+                    background: t.frame,
+                    border: `1px solid ${t.frameBorder}`,
+                    boxShadow: isDark
+                        ? '0 20px 40px rgba(0,0,0,0.6)'
+                        : '0 8px 32px rgba(0,0,0,0.06)',
+                }}
+            >
+                {/* 顶部说明区 */}
+                <div
+                    className="px-5 pt-5 pb-4 flex gap-3.5 items-start"
+                    style={{ borderBottom: `1px solid ${t.headerRule}` }}
+                >
+                    <div
+                        className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center text-lg"
+                        style={{
+                            background: t.iconTileBg,
+                            color: t.text,
+                            border: `1px solid ${t.iconTileBorder}`,
+                        }}
+                    >
+                        <FaBell />
                     </div>
-                    {selectedUser && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2 text-sm"
-                            style={{ background: isDark ? '#1f2937' : '#eff6ff' }}>
-                            <FaUser className="text-blue-400 shrink-0" />
-                            <span className="flex-1 truncate">{selectedUser.username} ({selectedUser.email})</span>
-                            <button onClick={() => setSelectedUser(null)} className="opacity-50">
-                                <FaTimes />
-                            </button>
-                        </div>
-                    )}
-                    {userResults.length > 0 && !selectedUser && (
-                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                            {userResults.map(u => (
+                    <div className="min-w-0 pt-0.5">
+                        <h2 className="text-base font-bold leading-tight" style={{ color: t.text }}>
+                            推送通知
+                        </h2>
+                        <p className="text-sm mt-1 leading-snug" style={{ color: t.muted }}>
+                            选择发送范围，填写标题与正文。用户可在系统设置中关闭推送。
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-5 space-y-5">
+                    {/* 范围 */}
+                    <Section title="发送范围">
+                        <div className="flex gap-2 flex-wrap">
+                            {([
+                                ['broadcast', '全体广播'],
+                                ['individual', '单个用户'],
+                                ['filter', '筛选发送'],
+                            ] as [NotifyMode, string][]).map(([m, label]) => (
                                 <button
-                                    key={u.id}
-                                    onClick={() => { setSelectedUser(u); setUserResults([]); }}
-                                    className="w-full text-left px-3 py-2 rounded-lg text-sm hover:opacity-80 transition-opacity"
-                                    style={{ background: isDark ? '#1f2937' : '#f3f4f6' }}
+                                    key={m}
+                                    type="button"
+                                    onClick={() => {
+                                        setMode(m);
+                                        reset();
+                                    }}
+                                    className="px-3.5 py-2 rounded-xl text-sm font-medium transition-all"
+                                    style={
+                                        mode === m
+                                            ? {
+                                                  background: t.ctaBg,
+                                                  color: t.ctaText,
+                                                  boxShadow: isDark ? 'none' : '0 1px 2px rgba(0,0,0,0.06)',
+                                              }
+                                            : {
+                                                  background: t.chipInactiveBg,
+                                                  color: t.chipInactiveText,
+                                                  border: `1px solid ${t.inputBorder}`,
+                                              }
+                                    }
                                 >
-                                    <span className="font-medium">{u.username}</span>
-                                    <span className="opacity-50 ml-2 text-xs">{u.email}</span>
+                                    {label}
                                 </button>
                             ))}
                         </div>
-                    )}
-                </Card>
-            )}
+                    </Section>
 
-            {/* ── Filter: date range ── */}
-            {mode === 'filter' && (
-                <Card isDark={isDark}>
-                    <p className="text-xs font-semibold mb-2 opacity-60">按注册时间筛选</p>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                        <div>
-                            <label className="text-xs opacity-50 mb-1 block">注册晚于</label>
-                            <input type="date" value={afterDate} onChange={e => setAfterDate(e.target.value)}
-                                className={inputCls} style={inputStyle} />
+                    {/* Individual */}
+                    {mode === 'individual' && (
+                        <Section title="接收用户">
+                            <div className="flex gap-2 mb-2">
+                                <input
+                                    value={userQuery}
+                                    onChange={(e) => setUserQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && searchUser()}
+                                    placeholder="用户名 / 邮箱"
+                                    className={`${inputCls} ${inputClsFocus} flex-1 min-w-0`}
+                                    style={inputStyle}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={searchUser}
+                                    disabled={searching}
+                                    className="shrink-0 px-3.5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-45 transition-opacity"
+                                    style={{
+                                        background: t.chipInactiveBg,
+                                        color: t.text,
+                                        border: `1px solid ${t.inputBorder}`,
+                                    }}
+                                >
+                                    {searching ? <FaSpinner className="animate-spin" /> : <FaSearch />}
+                                </button>
+                            </div>
+                            {selectedUser && (
+                                <div
+                                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-2 text-sm"
+                                    style={{
+                                        background: t.selectedRow,
+                                        border: `1px solid ${t.selectedRowBorder}`,
+                                        color: t.text,
+                                    }}
+                                >
+                                    <FaUser className="shrink-0 opacity-80" />
+                                    <span className="flex-1 truncate">
+                                        {selectedUser.username} ({selectedUser.email})
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedUser(null)}
+                                        className="p-1 rounded-lg opacity-50 hover:opacity-100"
+                                        style={{ color: t.text }}
+                                    >
+                                        <FaTimes />
+                                    </button>
+                                </div>
+                            )}
+                            {userResults.length > 0 && !selectedUser && (
+                                <div
+                                    className="max-h-40 overflow-y-auto rounded-xl border"
+                                    style={{ borderColor: t.inputBorder, color: t.text }}
+                                >
+                                    {userResults.map((u, i) => (
+                                        <button
+                                            key={u.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedUser(u);
+                                                setUserResults([]);
+                                            }}
+                                            className="w-full text-left px-3 py-2.5 text-sm transition-colors"
+                                            style={{
+                                                background: t.frame,
+                                                borderBottom:
+                                                    i < userResults.length - 1
+                                                        ? `1px solid ${t.inputBorder}`
+                                                        : undefined,
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = t.listHover;
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = t.frame;
+                                            }}
+                                        >
+                                            <span className="font-medium">{u.username}</span>
+                                            <span className="ml-2 text-xs" style={{ color: t.muted }}>
+                                                {u.email}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </Section>
+                    )}
+
+                    {/* Filter */}
+                    {mode === 'filter' && (
+                        <Section title="按注册时间">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label className="text-xs block mb-1.5 font-medium" style={{ color: t.muted }}>
+                                        注册晚于
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={afterDate}
+                                        onChange={(e) => setAfterDate(e.target.value)}
+                                        className={`${inputCls} ${inputClsFocus}`}
+                                        style={inputStyle}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs block mb-1.5 font-medium" style={{ color: t.muted }}>
+                                        注册早于
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={beforeDate}
+                                        onChange={(e) => setBeforeDate(e.target.value)}
+                                        className={`${inputCls} ${inputClsFocus}`}
+                                        style={inputStyle}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={previewFilter}
+                                disabled={previewing}
+                                className="text-xs px-3.5 py-2 rounded-xl font-medium disabled:opacity-45"
+                                style={{
+                                    background: t.chipInactiveBg,
+                                    color: t.text,
+                                    border: `1px solid ${t.inputBorder}`,
+                                }}
+                            >
+                                {previewing ? (
+                                    <span className="flex items-center gap-2 justify-center">
+                                        <FaSpinner className="animate-spin" /> 计算中…
+                                    </span>
+                                ) : (
+                                    '预览人数'
+                                )}
+                            </button>
+                            {previewCount !== null && (
+                                <p className="text-sm mt-3 font-medium" style={{ color: t.text }}>
+                                    预计覆盖 <strong>{previewCount}</strong> 名用户
+                                </p>
+                            )}
+                        </Section>
+                    )}
+
+                    {/* 正文 */}
+                    <Section title="通知文案">
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs block mb-1.5 font-medium" style={{ color: t.muted }}>
+                                    标题
+                                </label>
+                                <input
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="通知标题"
+                                    maxLength={80}
+                                    className={`${inputCls} ${inputClsFocus}`}
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs block mb-1.5 font-medium" style={{ color: t.muted }}>
+                                    内容
+                                </label>
+                                <textarea
+                                    value={body}
+                                    onChange={(e) => setBody(e.target.value)}
+                                    placeholder="通知正文"
+                                    rows={4}
+                                    maxLength={300}
+                                    className={`${inputCls} ${inputClsFocus} resize-none`}
+                                    style={inputStyle}
+                                />
+                            </div>
+                            {(title || body) && (
+                                <div
+                                    className="px-3.5 py-3 rounded-xl text-sm space-y-1 border"
+                                    style={{
+                                        background: t.frame,
+                                        borderColor: t.inputBorder,
+                                        color: t.text,
+                                    }}
+                                >
+                                    <p className="font-semibold leading-snug">{title || '（无标题）'}</p>
+                                    <p className="leading-relaxed" style={{ color: t.muted }}>
+                                        {body || '（无内容）'}
+                                    </p>
+                                    <p className="text-[10px] pt-1" style={{ color: t.faint }}>
+                                        以上为设备上大致展示效果
+                                    </p>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className="text-xs opacity-50 mb-1 block">注册早于</label>
-                            <input type="date" value={beforeDate} onChange={e => setBeforeDate(e.target.value)}
-                                className={inputCls} style={inputStyle} />
+                    </Section>
+
+                    {result && (
+                        <div
+                            className="text-sm px-4 py-3 rounded-xl font-medium"
+                            style={{ background: t.successBg, color: t.successText }}
+                        >
+                            {result}
                         </div>
-                    </div>
+                    )}
+                    {error && (
+                        <div
+                            className="text-sm px-4 py-3 rounded-xl font-medium"
+                            style={{ background: t.errorBg, color: t.errorText }}
+                        >
+                            {error}
+                        </div>
+                    )}
+
                     <button
-                        onClick={previewFilter}
-                        disabled={previewing}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-gray-500/20 font-medium disabled:opacity-50"
+                        type="button"
+                        onClick={send}
+                        disabled={sending}
+                        className="w-full py-3.5 rounded-xl font-semibold text-sm disabled:opacity-45 flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                        style={{ background: t.ctaBg, color: t.ctaText }}
                     >
-                        {previewing ? <span className="flex items-center gap-1"><FaSpinner className="animate-spin" /> 计算中…</span> : '预览人数'}
+                        {sending ? (
+                            <>
+                                <FaSpinner className="animate-spin" /> 发送中…
+                            </>
+                        ) : (
+                            <>
+                                <FaBell /> {mode === 'broadcast' ? '立即广播' : '发送通知'}
+                            </>
+                        )}
                     </button>
-                    {previewCount !== null && (
-                        <p className="text-xs mt-2 text-blue-400">预计覆盖 <strong>{previewCount}</strong> 名用户</p>
-                    )}
-                </Card>
-            )}
-
-            {/* ── Message composer ── */}
-            <Card isDark={isDark}>
-                <p className="text-xs font-semibold mb-2 opacity-60">通知内容</p>
-                <div className="space-y-2">
-                    <div>
-                        <label className="text-xs opacity-50 block mb-1">标题</label>
-                        <input
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            placeholder="通知标题"
-                            maxLength={80}
-                            className={inputCls}
-                            style={inputStyle}
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs opacity-50 block mb-1">内容</label>
-                        <textarea
-                            value={body}
-                            onChange={e => setBody(e.target.value)}
-                            placeholder="通知正文"
-                            rows={3}
-                            maxLength={300}
-                            className={`${inputCls} resize-none`}
-                            style={inputStyle}
-                        />
-                    </div>
-                    {/* Preview row */}
-                    {(title || body) && (
-                        <div className="px-3 py-2 rounded-lg text-xs space-y-0.5"
-                            style={{ background: isDark ? '#1f2937' : '#f3f4f6' }}>
-                            <p className="font-semibold">{title || '(无标题)'}</p>
-                            <p className="opacity-70">{body || '(无内容)'}</p>
-                        </div>
-                    )}
                 </div>
-            </Card>
-
-            {/* Result / Error */}
-            {result && (
-                <div className="text-sm px-3 py-2 rounded-lg bg-green-500/20 text-green-400">{result}</div>
-            )}
-            {error && (
-                <div className="text-sm px-3 py-2 rounded-lg bg-red-500/20 text-red-400">{error}</div>
-            )}
-
-            {/* Send button */}
-            <button
-                onClick={send}
-                disabled={sending}
-                className="w-full py-3 rounded-xl bg-blue-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-                {sending
-                    ? <><FaSpinner className="animate-spin" /> 发送中…</>
-                    : <><FaBell /> {mode === 'broadcast' ? '立即广播' : '发送通知'}</>
-                }
-            </button>
+            </div>
         </div>
     );
 };
@@ -742,6 +977,7 @@ const AdminReportsPage = ({ isOpen, onClose, isDarkMode }: AdminReportsPageProps
     }, [isOpen]);
 
     if (!isOpen) return null;
+    if (typeof document === 'undefined') return null;
 
     const layerTitleMap: Record<Tab, string> = {
         reports: '处理举报',
@@ -750,70 +986,102 @@ const AdminReportsPage = ({ isOpen, onClose, isDarkMode }: AdminReportsPageProps
     };
 
     const layerIconMap: Record<Tab, React.ReactNode> = {
-        reports: <FaFlag />,
-        users: <FaUsers />,
-        notifications: <FaBell />,
+        reports: <FaFlag className="text-[12px]" />,
+        users: <FaUsers className="text-[12px]" />,
+        notifications: <FaBell className="text-[12px]" />,
     };
 
-    return (
-        <div className="fixed inset-0 z-[100]">
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/25"
-                onClick={() => {
-                    if (activeLayer) setActiveLayer(null);
-                    else onClose();
-                }}
-            />
+    const notifyPageBg = isDarkMode ? '#000000' : '#ffffff';
+    const notifyHeaderRule = isDarkMode ? '#333333' : '#e5e5e5';
 
-            {/* 第一层：管理者界面入口页 */}
+    const shellBg = isDarkMode ? '#0b1324' : '#f5f5f7';
+    const cardBg = isDarkMode ? '#0f172a' : '#ffffff';
+    const cardBorder = isDarkMode ? '#1f2937' : '#ececf1';
+    const labelColor = isDarkMode ? '#94a3b8' : '#9ca3af';
+    const textColor = isDarkMode ? '#e5e7eb' : '#000000';
+    const dividerColor = isDarkMode ? '#1f2937' : '#ececf1';
+    const chevronColor = isDarkMode ? '#6b7280' : '#c4c4c8';
+    const fontStack = '"PingFang SC", "PingFangSC-Regular", "Helvetica Neue", Arial, sans-serif';
+
+    const menuRows: Tab[] = ['reports', 'users', 'notifications'];
+
+    return createPortal(
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10002] overflow-hidden"
+            style={{
+                background: shellBg,
+                fontFamily: fontStack,
+                overscrollBehaviorY: 'contain',
+                touchAction: 'pan-y',
+                color: textColor,
+            }}
+        >
+            {/* 第一层：与 AccountPage / 侧栏分组一致 — 实色全屏 + 自右滑入 */}
             <motion.div
                 initial={{ x: '100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                className="absolute inset-0 overflow-hidden flex flex-col"
-                style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', color: isDarkMode ? '#e5e7eb' : '#000000' }}
+                className="absolute inset-0 flex flex-col overflow-hidden"
+                style={{ background: shellBg, WebkitOverflowScrolling: 'touch' }}
             >
-                <div
-                    className="safe-top px-4 pt-4 pb-2 flex items-center justify-between border-b shrink-0"
-                    style={{ borderColor: isDarkMode ? '#1f2937' : '#e5e7eb' }}
-                >
-                    <button onClick={onClose} className="p-2 -ml-2">
-                        <FaChevronLeft />
+                <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative shrink-0">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute left-4 w-8 h-8 flex items-center justify-center"
+                        style={{ color: labelColor }}
+                    >
+                        <FaChevronLeft className="text-base" />
                     </button>
-                    <span className="font-bold text-lg">管理者界面</span>
-                    <div className="w-8" />
+                    <h2 className="text-[18px] font-semibold" style={{ color: textColor }}>
+                        管理者界面
+                    </h2>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {(['reports', 'users', 'notifications'] as Tab[]).map((layer) => (
-                        <button
-                            key={layer}
-                            onClick={() => setActiveLayer(layer)}
-                            className="w-full p-4 rounded-xl border text-left flex items-center justify-between transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ borderColor: isDarkMode ? '#374151' : '#e5e7eb', background: isDarkMode ? '#111827' : '#ffffff' }}
-                        >
-                            <div className="flex items-center gap-3">
-                                <span className="text-base">{layerIconMap[layer]}</span>
-                                <div>
-                                    <p className="font-semibold text-sm">{layerTitleMap[layer]}</p>
-                                    <p className="text-xs opacity-60 mt-0.5">
-                                        {layer === 'reports' && '查看并处理用户举报'}
-                                        {layer === 'users' && '搜索用户、封禁与配额调整'}
-                                        {layer === 'notifications' && '广播、单人、筛选发送'}
-                                    </p>
-                                </div>
-                            </div>
-                            <span className="opacity-50">›</span>
-                        </button>
-                    ))}
+                <div
+                    className="flex-1 overflow-y-auto px-4 pt-2"
+                    style={{ paddingBottom: ADMIN_SCROLL_BOTTOM_PAD, WebkitOverflowScrolling: 'touch' }}
+                >
+                    <div
+                        className="rounded-2xl px-3 py-2.5"
+                        style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
+                    >
+                        <p className="text-[11px]" style={{ color: labelColor }}>
+                            管理
+                        </p>
+                        {menuRows.map((layer, idx) => (
+                            <button
+                                key={layer}
+                                type="button"
+                                onClick={() => setActiveLayer(layer)}
+                                className="w-full flex items-center justify-between text-left"
+                                style={{
+                                    marginTop: idx === 0 ? 6 : 0,
+                                    paddingTop: idx === 0 ? 8 : 10,
+                                    paddingBottom: 8,
+                                    borderBottom:
+                                        idx < menuRows.length - 1 ? `0.5px solid ${dividerColor}` : undefined,
+                                }}
+                            >
+                                <span
+                                    className="text-[13px] flex items-center gap-2"
+                                    style={{ color: textColor }}
+                                >
+                                    <span style={{ color: textColor }}>{layerIconMap[layer]}</span>
+                                    {layerTitleMap[layer]}
+                                </span>
+                                <FaChevronRight className="text-[13px]" style={{ color: chevronColor }} />
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </motion.div>
 
-            {/* 第二层：子功能页，从右侧叠加滑入 */}
+            {/* 第二层：子页叠在上层，自右滑入；返回仅退出子层（与账户子页栈一致） */}
             <AnimatePresence>
                 {activeLayer && (
                     <motion.div
@@ -822,18 +1090,60 @@ const AdminReportsPage = ({ isOpen, onClose, isDarkMode }: AdminReportsPageProps
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                        className="absolute inset-0 overflow-hidden flex flex-col shadow-2xl"
-                        style={{ background: isDarkMode ? '#0b1324' : '#f5f5f7', color: isDarkMode ? '#e5e7eb' : '#000000' }}
+                        className="absolute inset-0 z-10 flex flex-col overflow-hidden"
+                        style={{
+                            background:
+                                activeLayer === 'notifications'
+                                    ? notifyPageBg
+                                    : shellBg,
+                            color:
+                                activeLayer === 'notifications'
+                                    ? isDarkMode
+                                        ? '#ffffff'
+                                        : '#000000'
+                                    : textColor,
+                            WebkitOverflowScrolling: 'touch',
+                        }}
                     >
                         <div
-                            className="safe-top px-4 pt-4 pb-2 flex items-center justify-between border-b shrink-0"
-                            style={{ borderColor: isDarkMode ? '#1f2937' : '#e5e7eb' }}
+                            className="safe-top px-4 pt-4 pb-2 flex items-center justify-center relative shrink-0"
+                            style={{
+                                borderBottom:
+                                    activeLayer === 'notifications'
+                                        ? `0.5px solid ${notifyHeaderRule}`
+                                        : `0.5px solid ${dividerColor}`,
+                                background:
+                                    activeLayer === 'notifications' ? notifyPageBg : shellBg,
+                            }}
                         >
-                            <button onClick={() => setActiveLayer(null)} className="p-2 -ml-2">
-                                <FaChevronLeft />
+                            <button
+                                type="button"
+                                onClick={() => setActiveLayer(null)}
+                                className="absolute left-4 w-8 h-8 flex items-center justify-center"
+                                style={{
+                                    color:
+                                        activeLayer === 'notifications'
+                                            ? isDarkMode
+                                                ? '#a3a3a3'
+                                                : '#6b7280'
+                                            : labelColor,
+                                }}
+                            >
+                                <FaChevronLeft className="text-base" />
                             </button>
-                            <span className="font-bold text-lg">{layerTitleMap[activeLayer]}</span>
-                            <div className="w-8" />
+                            <h2
+                                className="text-[18px] font-semibold"
+                                style={{
+                                    color:
+                                        activeLayer === 'notifications'
+                                            ? isDarkMode
+                                                ? '#ffffff'
+                                                : '#000000'
+                                            : textColor,
+                                }}
+                            >
+                                {layerTitleMap[activeLayer]}
+                            </h2>
                         </div>
 
                         {activeLayer === 'reports' && <ReportsTab isDark={isDarkMode} />}
@@ -842,7 +1152,8 @@ const AdminReportsPage = ({ isOpen, onClose, isDarkMode }: AdminReportsPageProps
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </motion.div>,
+        document.body
     );
 };
 
